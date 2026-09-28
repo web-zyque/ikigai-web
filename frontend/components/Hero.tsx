@@ -80,24 +80,32 @@ export default function Hero() {
             that spark connections, inspire loyalty and elevate your message
           </p>
 
-          <Link
-            href="/feel"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#b52838] px-6 py-3 text-sm font-semibold text-white transition-colors hover:opacity-90"
-          >
-            Open Feel
-            <svg
-              viewBox="0 0 24 24"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
+          <div className="mt-8 flex w-full max-w-[300px] items-center overflow-hidden rounded-full bg-white/10 pl-4 pr-1 py-1 backdrop-blur-md border border-white/20 transition-colors focus-within:border-white/40 focus-within:bg-white/15">
+            <input
+              type="text"
+              placeholder="Search accessories, parts..."
+              className="w-full bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 outline-none"
+            />
+            <button
+              type="button"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#640C0C] text-white transition-opacity hover:opacity-90"
+              aria-label="Search"
             >
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </Link>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </button>
+          </div>
 
           <ul className="mt-20 hidden gap-4 lg:flex">
             {socials.map((s) => {
