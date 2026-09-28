@@ -21,7 +21,7 @@ const navLinks = [
 
 export default function Hero() {
   return (
-    <section className="relative isolate min-h-screen overflow-hidden bg-black text-white">
+    <section className="relative isolate h-screen overflow-hidden bg-black text-white">
 
       <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-12">
         <Link href="/" className="flex items-center gap-2 text-xl font-bold">
@@ -57,7 +57,7 @@ export default function Hero() {
         </div>
       </header>
 
-      <div className="relative mx-auto grid max-w-7xl gap-10 px-6 pb-24 pt-10 lg:min-h-[calc(100vh-88px)] lg:grid-cols-2 lg:items-center lg:px-12">
+      <div className="relative mx-auto grid h-[calc(100vh-88px)] max-w-7xl items-center gap-10 px-6 lg:grid-cols-2 lg:px-12">
 
         <div className="relative z-10 max-w-xl">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
@@ -111,16 +111,15 @@ export default function Hero() {
           </ul>
         </div>
 
-        <div className="relative h-[320px] sm:h-[420px] lg:h-[560px]">
-
+        <div className="relative h-[400px] sm:h-[500px] lg:h-[650px]">
           <div className="absolute inset-0 -z-10 rounded-full bg-white/5 blur-3xl" />
           <Image
-            src="/images/car2.png"
+            src="/images/car3.png"
             alt="Black classic sports car"
             fill
             priority
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-contain object-center lg:scale-125 lg:object-right"
+            className="object-contain object-center scale-110 lg:scale-150 lg:object-right"
           />
         </div>
       </div>
