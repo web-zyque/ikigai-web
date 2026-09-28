@@ -25,8 +25,14 @@ export default function Hero() {
 
       <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-12">
         <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-          <span className="text-orange-400">✦</span>
-          CAR
+          <Image
+            src="/images/logo.png"
+            alt="IKIGAI"
+            height={32}
+            width={32}
+            
+          />
+          IKIGAI
         </Link>
 
         <nav className="hidden gap-10 text-xs text-white/80 md:flex">
