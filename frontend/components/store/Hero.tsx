@@ -1,23 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
-import { FaLinkedin, FaInstagram, FaFacebook } from 'react-icons/fa';
+import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Project", href: "/project" },
+  { label: "Products", href: "/products" },
   { label: "About us", href: "/about" },
   { label: "Contact us", href: "/contact" },
 ];
 
-
-  const socials = [
-    { name: 'Instagram', icon: FaInstagram, href: '' },
-    { name: 'Twitter', icon: FaXTwitter, href: '' },
-    { name: 'LinkedIn', icon: FaLinkedin, href: '' },
-    { name: 'Facebook', icon: FaFacebook, href: '' },
-  ];
-
+const socials = [
+  { name: "Instagram", icon: FaInstagram, href: "" },
+  { name: "Twitter", icon: FaXTwitter, href: "" },
+  { name: "LinkedIn", icon: FaLinkedin, href: "" },
+  { name: "Facebook", icon: FaFacebook, href: "" },
+];
 
 export default function Hero() {
   return (
@@ -25,23 +23,13 @@ export default function Hero() {
 
       <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-12">
         <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-          <Image
-            src="/images/logo.png"
-            alt="IKIGAI"
-            height={32}
-            width={32}
-            
-          />
+          <Image src="/images/logo.png" alt="IKIGAI" height={32} width={32} />
           IKIGAI
         </Link>
 
         <nav className="hidden gap-10 text-xs text-white/80 md:flex">
           {navLinks.map((l) => (
-            <Link
-              key={l.label}
-              href={l.href}
-              className="transition-colors hover:text-white"
-            >
+            <Link key={l.label} href={l.href} className="transition-colors hover:text-white">
               {l.label}
             </Link>
           ))}
@@ -91,18 +79,8 @@ export default function Hero() {
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#640C0C] text-white transition-opacity hover:opacity-90"
               aria-label="Search"
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2.5}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
           </div>
