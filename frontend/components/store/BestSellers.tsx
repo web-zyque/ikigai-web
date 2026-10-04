@@ -51,7 +51,15 @@ export default function BestSellers() {
   return (
     <section className="bg-black text-white py-12 relative">
       <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-12 relative">
-        <h2 className="mb-8 text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="mb-8 text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
+          <Link
+            href="/products"
+            className="text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+          >
+            View All
+          </Link>
+        </div>
 
         <div className="relative group">
 
@@ -77,22 +85,20 @@ export default function BestSellers() {
           <div
             ref={scrollRef}
             onScroll={checkScroll}
-            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-4 items-stretch"
+            className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pt-4 pb-4 items-stretch"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {products.map((product) => (
               <div
                 key={product.id}
-
-                className={`${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden`}
+                className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-[460px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
               >
                 <div className="relative w-full aspect-3/4 bg-[#0a0a0a] shrink-0 p-4">
                   <Image
                     src={product.image}
                     alt={product.name}
                     fill
-                    //sizes="(max-width: 640px) 47vw, (max-width: 1024px) 33vw, 20vw"
-                    className="object-contain mix-blend-screen p-4"
+                    className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
                   />
                 </div>
 
