@@ -51,7 +51,7 @@ export default function BestSellers() {
   return (
     <section className="bg-black text-white py-12 relative">
       <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-12 relative">
-        <h2 className="mb-8 text-2xl font-bold tracking-tight sm:text-3xl">Best Selling Products</h2>
+        <h2 className="mb-8 text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
 
         <div className="relative group">
 
@@ -83,9 +83,10 @@ export default function BestSellers() {
             {products.map((product) => (
               <div
                 key={product.id}
-                className={`${inter.className} snap-start shrink-0 w-[75vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-[460px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden`}
+
+                className={`${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden`}
               >
-                <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
+                <div className="relative w-full aspect-3/4 bg-[#0a0a0a] shrink-0 p-4">
                   <Image
                     src={product.image}
                     alt={product.name}
@@ -102,12 +103,12 @@ export default function BestSellers() {
                   <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
 
                   <div className="mt-auto flex w-full gap-2 font-sans">
-                    <button className="w-[80%] rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90">
+                    <button className="flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90">
                       Buy Now
                     </button>
                     <button
-                      aria-label="Buy Now"
-                      className="grid w-[20%] place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                      aria-label="Add to cart"
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
                     >
                       <ShoppingCart className="h-4 w-4 text-white/80" />
                     </button>
@@ -116,7 +117,7 @@ export default function BestSellers() {
               </div>
             ))}
 
-            <div className={`${inter.className} snap-start shrink-0 pl-4 pr-12 h-[460px] flex items-center justify-center`}>
+            <div className={`${inter.className} snap-start shrink-0 pl-4 pr-12 self-stretch flex items-center justify-center`}>
               <Link
                 href="/products"
                 className="group flex items-center gap-2 rounded-full bg-[#640C0C] px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 whitespace-nowrap"

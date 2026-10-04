@@ -11,14 +11,14 @@ const categories = [
 export default function Categories() {
   return (
     <section className="bg-black text-white py-12 lg:h-[50vh] flex flex-col justify-center">
-      <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
+      <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-12">
         <div className="mb-10 flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Categories</h2>
-          <Link href="/categories" className="text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80">
-            View All
+          <h2 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Categories</h2>
+          <Link href="/categories" className="shrink-0 text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80">
+            View All →
           </Link>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:gap-12">
           {categories.map((category) => (
             <Link 

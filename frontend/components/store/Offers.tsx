@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 
-const SECTION_TITLE = "Offers & New Arrivals";
-const SECTION_SUBTITLE = "Explore the deal before it goes off.";
+const SECTION_TITLE = "Latest Drops & Deals";
 
 const offerPosters = [
   {
@@ -47,25 +46,24 @@ export default function Offers() {
     <section className="bg-black text-white py-12">
       <div className="mx-auto w-full max-w-350 px-6 lg:px-12">
 
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="inline-block h-1 w-6 rounded-full bg-[#640C0C]" />
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-[#640C0C]">
-                Limited Time
-              </span>
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-block h-1 w-6 rounded-full bg-[#640C0C]" />
+            <span className="text-[10px] sm:text-xs lg:text-sm font-semibold uppercase tracking-widest text-[#640C0C]">
+              Limited Time
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
               {SECTION_TITLE}
             </h2>
-            <p className="mt-1 text-sm text-white/50">{SECTION_SUBTITLE}</p>
+            <Link
+              href="/offers"
+              className="shrink-0 text-xs sm:text-sm lg:text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+            >
+              View All →
+            </Link>
           </div>
-          <Link
-            href="/offers"
-            className="shrink-0 text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-75 sm:pb-0.5"
-          >
-            View All →
-          </Link>
         </div>
 
 
