@@ -49,7 +49,7 @@ export default function Categories() {
   return (
     <section className="bg-black text-white py-12 relative">
       <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-12 relative">
-        <h2 className="mb-8 text-2xl font-bold tracking-tight sm:text-3xl">Categories</h2>
+        <h2 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Categories</h2>
 
         <div className="relative group">
           <div className={`pointer-events-none absolute left-0 top-0 z-10 h-full w-12 sm:w-20 bg-gradient-to-r from-black via-black/80 to-transparent transition-opacity duration-300 ${canScrollLeft ? 'opacity-100' : 'opacity-0'}`} />
