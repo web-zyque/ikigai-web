@@ -31,6 +31,7 @@ export default function Categories() {
                   src={category.image}
                   alt={category.name}
                   fill
+                  sizes="(max-width: 640px) 42vw, (max-width: 1024px) 28vw, 20vw"
                   className="object-contain mix-blend-screen transition-transform duration-500 group-hover:scale-110"
                 />
               </div>

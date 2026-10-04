@@ -91,6 +91,7 @@ export default function BestSellers() {
                     src={product.image}
                     alt={product.name}
                     fill
+                    //sizes="(max-width: 640px) 47vw, (max-width: 1024px) 33vw, 20vw"
                     className="object-contain mix-blend-screen p-4"
                   />
                 </div>
