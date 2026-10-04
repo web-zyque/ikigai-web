@@ -22,9 +22,16 @@ const allProducts: Product[] = Array.from({ length: 25 }).map((_, i) => ({
       : `LED Lighting Kit ${i + 1}`,
   price: `₹${(1299 + i * 150).toLocaleString()}`,
   image:
-    i % 2 === 0
-      ? "/images/category_brakes.jpg"
-      : "/images/category_suspension.jpg",
+    i % 5 === 0
+      ? `/images/category_brakes.jpg`
+      : i % 5 === 1
+      ? `/images/category_suspension.jpg`
+      : i % 5 === 2
+      ? `/images/category_engine.jpg`
+      : i % 5 === 3
+      ? `/images/category_wheels.jpg`
+      : `/images/category_lighting.jpg`,
+    
   category:
     i % 5 === 0
       ? "brakes"
