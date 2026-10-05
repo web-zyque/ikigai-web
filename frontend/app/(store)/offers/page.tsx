@@ -96,7 +96,7 @@ export default function OffersPage() {
                     </span>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex items-end justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                             Latest Drops & Deals
