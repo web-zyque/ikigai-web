@@ -71,43 +71,37 @@ export default function RecentOrdersTable({
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
       case "Ready to Ship":
+      case "Delivered":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-800/40 bg-emerald-950/40 px-2.5 py-1 text-xs font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
             {status}
           </span>
         );
       case "Processing":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-700/60 bg-neutral-800/80 px-2.5 py-1 text-xs font-medium text-neutral-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-white/60">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
             {status}
           </span>
         );
       case "Pending Verification":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-red-800/50 bg-red-950/40 px-2.5 py-1 text-xs font-medium text-red-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#640C0C]/50 bg-[#640C0C]/25 px-3 py-1 text-xs font-medium text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" />
             {status}
           </span>
         );
       case "Pending Dispatch":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-800/40 bg-amber-950/40 px-2.5 py-1 text-xs font-medium text-amber-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            {status}
-          </span>
-        );
-      case "Delivered":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-800/40 bg-emerald-950/40 px-2.5 py-1 text-xs font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/90">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
             {status}
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-medium text-neutral-300">
+          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/60">
             {status}
           </span>
         );
@@ -115,31 +109,31 @@ export default function RecentOrdersTable({
   };
 
   return (
-    <div className="rounded-xl border border-neutral-800/80 bg-[#111317] overflow-hidden shadow-sm">
+    <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
       {/* Table Header Section */}
-      <div className="border-b border-neutral-800/80 px-6 py-4">
-        <h2 className="text-base font-semibold text-white">{title}</h2>
-        <p className="mt-0.5 text-xs text-neutral-400">{subtitle}</p>
+      <div className="border-b border-white/5 px-6 py-5 bg-[#121212]">
+        <h2 className="text-base font-bold tracking-tight text-white">{title}</h2>
+        <p className="mt-1 text-xs text-white/60">{subtitle}</p>
       </div>
 
       {/* Table Content */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-neutral-800/60 bg-neutral-900/40 text-neutral-400">
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Order #</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Customer</th>
-              <th className="px-6 py-3 font-medium">Product</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Total</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Status</th>
+            <tr className="border-b border-white/5 bg-[#0a0a0a] text-white/40">
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Order #</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Customer</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider">Product</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Total</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800/50">
+          <tbody className="divide-y divide-white/5">
             {orders.length === 0 ? (
               <tr>
                 <td
                   colSpan={5}
-                  className="px-6 py-8 text-center text-xs text-neutral-400"
+                  className="px-6 py-8 text-center text-xs text-white/40"
                 >
                   No recent orders found.
                 </td>
@@ -148,21 +142,21 @@ export default function RecentOrdersTable({
               orders.map((order) => (
                 <tr
                   key={order.id}
-                  className="transition-colors hover:bg-neutral-800/40"
+                  className="transition-colors hover:bg-white/[0.02]"
                 >
-                  <td className="px-6 py-3.5 font-medium text-neutral-200 whitespace-nowrap">
+                  <td className="px-6 py-4 font-mono font-medium text-white/70 whitespace-nowrap">
                     {order.id}
                   </td>
-                  <td className="px-6 py-3.5 font-medium text-white whitespace-nowrap">
+                  <td className="px-6 py-4 font-medium text-white whitespace-nowrap">
                     {order.customer}
                   </td>
-                  <td className="px-6 py-3.5 text-neutral-300 min-w-[200px]">
+                  <td className="px-6 py-4 text-[13px] font-medium text-white/90 min-w-[220px]">
                     {order.product}
                   </td>
-                  <td className="px-6 py-3.5 font-semibold text-neutral-100 whitespace-nowrap">
+                  <td className="px-6 py-4 font-bold text-[#640C0C] whitespace-nowrap text-sm">
                     {order.total}
                   </td>
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(order.status)}
                   </td>
                 </tr>
@@ -173,11 +167,11 @@ export default function RecentOrdersTable({
       </div>
 
       {/* Table Footer */}
-      <div className="flex items-center justify-between border-t border-neutral-800/70 bg-neutral-900/30 px-6 py-3 text-xs">
-        <span className="text-neutral-400">
+      <div className="flex items-center justify-between border-t border-white/5 bg-[#0a0a0a] px-6 py-3.5 text-xs text-white/40">
+        <span>
           Showing {orders.length} transaction{orders.length === 1 ? "" : "s"}
         </span>
-        <span className="text-neutral-500">{refreshText}</span>
+        <span className="text-white/40">{refreshText}</span>
       </div>
     </div>
   );

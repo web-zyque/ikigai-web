@@ -152,28 +152,28 @@ export default function ProductsInventoryTable({
     switch (status) {
       case "In Stock":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-800/40 bg-emerald-950/40 px-2.5 py-1 text-xs font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
             {status}
           </span>
         );
       case "Low Stock":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-800/40 bg-amber-950/40 px-2.5 py-1 text-xs font-medium text-amber-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/90">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
             {status}
           </span>
         );
       case "Out of Stock":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-red-800/50 bg-red-950/40 px-2.5 py-1 text-xs font-medium text-red-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#640C0C]/50 bg-[#640C0C]/25 px-3 py-1 text-xs font-medium text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" />
             {status}
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-xs font-medium text-neutral-300">
+          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/60">
             {status}
           </span>
         );
@@ -181,33 +181,33 @@ export default function ProductsInventoryTable({
   };
 
   return (
-    <div className="rounded-xl border border-neutral-800/80 bg-[#111317] overflow-hidden shadow-sm animate-in fade-in duration-200">
+    <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm animate-in fade-in duration-300">
       {/* Category Header with Back to Overview */}
-      <div className="flex flex-col gap-3.5 border-b border-neutral-800/80 px-6 py-5 bg-[#111317]">
+      <div className="flex flex-col gap-4 border-b border-white/5 px-6 py-6 bg-[#121212]">
         {onBackToOverview && (
           <div>
             <button
               type="button"
               onClick={onBackToOverview}
-              className="group inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4 text-red-500 transition-transform duration-150 group-hover:-translate-x-1" />
-              <span>Back to Inventory Overview</span>
+              <ArrowLeft className="h-3.5 w-3.5 text-[#640C0C] transition-transform duration-200 group-hover:-translate-x-1" />
+              <span>Back to Overview</span>
             </button>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-lg md:text-xl font-bold tracking-tight text-white">{title}</h2>
+              <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
               {badgeText && (
-                <span className="rounded-md bg-neutral-800/80 px-2.5 py-0.5 text-xs font-semibold text-neutral-200 border border-neutral-700/60">
+                <span className="rounded-full bg-white/10 border border-white/15 px-3 py-0.5 text-xs font-semibold text-white/90">
                   {badgeText}
                 </span>
               )}
             </div>
-            {subtitle && <p className="mt-1 text-xs text-neutral-400">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-xs text-white/60">{subtitle}</p>}
           </div>
         </div>
       </div>
@@ -216,21 +216,21 @@ export default function ProductsInventoryTable({
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-neutral-800/60 bg-neutral-900/40 text-neutral-400">
-              <th className="px-6 py-3 font-medium">Product</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Category</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">SKU</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Price</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Stock</th>
-              <th className="px-6 py-3 font-medium whitespace-nowrap">Status</th>
+            <tr className="border-b border-white/5 bg-[#0a0a0a] text-white/40">
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider">Product</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Category</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">SKU</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Price</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Stock</th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800/50">
+          <tbody className="divide-y divide-white/5">
             {products.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
-                  className="px-6 py-8 text-center text-xs text-neutral-400"
+                  className="px-6 py-8 text-center text-xs text-white/40"
                 >
                   No inventory products found in this category.
                 </td>
@@ -239,24 +239,24 @@ export default function ProductsInventoryTable({
               products.map((product) => (
                 <tr
                   key={product.id}
-                  className="transition-colors hover:bg-neutral-800/40"
+                  className="transition-colors hover:bg-white/[0.02]"
                 >
-                  <td className="px-6 py-3.5 font-medium text-white min-w-[220px]">
+                  <td className="px-6 py-4 font-medium text-white min-w-[220px] text-[13px]">
                     {product.name}
                   </td>
-                  <td className="px-6 py-3.5 text-neutral-300 whitespace-nowrap">
+                  <td className="px-6 py-4 text-white/70 whitespace-nowrap">
                     {product.category}
                   </td>
-                  <td className="px-6 py-3.5 font-mono text-neutral-400 whitespace-nowrap">
+                  <td className="px-6 py-4 font-mono text-white/40 whitespace-nowrap">
                     {product.sku}
                   </td>
-                  <td className="px-6 py-3.5 font-semibold text-neutral-100 whitespace-nowrap">
+                  <td className="px-6 py-4 font-bold text-[#640C0C] whitespace-nowrap text-sm">
                     {product.price}
                   </td>
-                  <td className="px-6 py-3.5 font-medium text-neutral-200 whitespace-nowrap">
+                  <td className="px-6 py-4 font-semibold text-white/90 whitespace-nowrap">
                     {product.stock}
                   </td>
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(product.status)}
                   </td>
                 </tr>
@@ -267,11 +267,11 @@ export default function ProductsInventoryTable({
       </div>
 
       {/* Table Footer */}
-      <div className="flex items-center justify-between border-t border-neutral-800/70 bg-neutral-900/30 px-6 py-3 text-xs">
-        <span className="text-neutral-400">
+      <div className="flex items-center justify-between border-t border-white/5 bg-[#0a0a0a] px-6 py-3.5 text-xs text-white/40">
+        <span>
           Showing {products.length} of 12 catalogued products
         </span>
-        <span className="text-neutral-500">{footerText}</span>
+        <span className="text-white/40">{footerText}</span>
       </div>
     </div>
   );

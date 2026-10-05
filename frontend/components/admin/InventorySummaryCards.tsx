@@ -68,35 +68,34 @@ export default function InventorySummaryCards({
 }: InventorySummaryCardsProps) {
   const getIconStyles = (type: InventoryCardType) => {
     switch (type) {
-      case "in_stock":
-        return "bg-emerald-950/40 text-emerald-400 ring-1 ring-emerald-800/50";
-      case "low_stock":
-        return "bg-amber-950/40 text-amber-400 ring-1 ring-amber-800/50";
       case "out_of_stock":
-        return "bg-red-950/40 text-red-400 ring-1 ring-red-800/50";
+        return "bg-[#640C0C]/20 border border-[#640C0C]/40 text-white";
+      case "low_stock":
+        return "bg-white/10 border border-white/20 text-white/90";
+      case "in_stock":
+        return "bg-white/5 border border-white/10 text-white/80";
       case "total":
       default:
-        return "bg-neutral-800/80 text-neutral-400 ring-1 ring-neutral-700/60";
+        return "bg-white/5 border border-white/10 text-white/70";
     }
   };
 
   const getAccentDot = (type: InventoryCardType) => {
     switch (type) {
-      case "in_stock":
-        return <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />;
-      case "low_stock":
-        return <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />;
       case "out_of_stock":
-        return <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />;
+        return <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" />;
+      case "low_stock":
+        return <span className="h-1.5 w-1.5 rounded-full bg-white/70" />;
+      case "in_stock":
+        return <span className="h-1.5 w-1.5 rounded-full bg-white/60" />;
       case "total":
       default:
-        return <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />;
+        return <span className="h-1.5 w-1.5 rounded-full bg-white/40" />;
     }
   };
 
   return (
-    /* 2x2 Grid matching the user's sketch: 2 cards per row on medium/large screens */
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {cards.map((card) => {
         const Icon = card.icon;
         const isSelected = selectedType === card.type;
@@ -115,22 +114,12 @@ export default function InventorySummaryCards({
             }}
             className="group relative cursor-pointer outline-none"
           >
-            {/* Subtle RED LAYER BEHIND the card appearing on hover or when selected */}
+            {/* Card Surface */}
             <div
-              aria-hidden="true"
-              className={`pointer-events-none absolute inset-0 -z-10 rounded-xl bg-red-600/30 transition-all duration-200 ease-out ${
+              className={`relative flex h-full flex-col justify-between rounded-[20px] bg-[#121212] p-6 transition-all duration-300 ${
                 isSelected
-                  ? "translate-y-1.5 opacity-100 blur-[3px]"
-                  : "opacity-0 group-hover:translate-y-1.5 group-hover:opacity-100 group-hover:blur-[3px]"
-              }`}
-            />
-
-            {/* Main Card Surface with slight pop/lift on hover and subtle selected border */}
-            <div
-              className={`relative flex h-full flex-col justify-between rounded-xl bg-[#111317] p-5 md:p-6 transition-all duration-200 ease-out ${
-                isSelected
-                  ? "-translate-y-1 border-2 border-red-500/70 shadow-[0_12px_28px_-6px_rgba(220,38,38,0.3)] ring-1 ring-red-500/30"
-                  : "border border-neutral-800/80 group-hover:-translate-y-1 group-hover:border-red-600/40 group-hover:shadow-[0_12px_28px_-6px_rgba(220,38,38,0.22)]"
+                  ? "-translate-y-1 border border-[#640C0C] ring-1 ring-[#640C0C]/60 shadow-[0_12px_32px_-8px_rgba(100,12,12,0.4)]"
+                  : "border border-white/5 hover:-translate-y-1 hover:border-[#640C0C]/40 hover:shadow-[0_12px_28px_-8px_rgba(100,12,12,0.25)]"
               }`}
             >
               <div>
@@ -138,18 +127,18 @@ export default function InventorySummaryCards({
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     {getAccentDot(card.type)}
-                    <span className="text-xs font-semibold tracking-wider text-neutral-400">
+                    <span className="text-xs uppercase tracking-wider text-white/40 font-medium">
                       {card.title}
                     </span>
                     {isSelected && (
-                      <span className="ml-1.5 rounded-full bg-red-600/20 px-2 py-0.5 text-[10px] font-semibold text-red-400 border border-red-500/30">
+                      <span className="ml-1.5 rounded-full bg-[#640C0C]/25 border border-[#640C0C]/50 px-2 py-0.5 text-[10px] font-semibold text-white">
                         Active
                       </span>
                     )}
                   </div>
 
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors duration-200 ${getIconStyles(
+                    className={`grid h-10 w-10 place-items-center rounded-xl transition-colors duration-200 ${getIconStyles(
                       card.type
                     )}`}
                   >
@@ -163,26 +152,26 @@ export default function InventorySummaryCards({
                 </div>
 
                 {/* Description */}
-                <p className="mt-1.5 text-xs text-neutral-400">
+                <p className="mt-2 text-xs text-white/60">
                   {card.description}
                 </p>
               </div>
 
               {/* Card Footer / Action Hint */}
-              <div className="mt-6 border-t border-neutral-800/60 pt-3">
+              <div className="mt-6 border-t border-white/5 pt-4">
                 <div
                   className={`flex items-center justify-between text-xs transition-colors ${
                     isSelected
-                      ? "text-red-400 font-medium"
-                      : "text-neutral-400 group-hover:text-neutral-200"
+                      ? "text-[#640C0C] font-semibold"
+                      : "text-white/40 group-hover:text-white/80"
                   }`}
                 >
                   <span>{isSelected ? "Currently viewing this category" : card.footer}</span>
                   <ArrowRight
                     className={`h-3.5 w-3.5 transition-transform ${
                       isSelected
-                        ? "text-red-400 translate-x-1"
-                        : "text-neutral-500 group-hover:translate-x-1 group-hover:text-neutral-300"
+                        ? "text-[#640C0C] translate-x-1"
+                        : "text-white/40 group-hover:translate-x-1 group-hover:text-white"
                     }`}
                   />
                 </div>

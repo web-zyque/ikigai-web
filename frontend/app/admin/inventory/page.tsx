@@ -133,7 +133,7 @@ export default function ProductsInventoryPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#090a0c] text-neutral-100 antialiased selection:bg-red-500/30 selection:text-red-200">
+    <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
       {/* Reused Fixed Desktop / Mobile Sidebar */}
       <AdminSidebar
         mobileOpen={mobileOpen}
@@ -148,7 +148,7 @@ export default function ProductsInventoryPage() {
           onToggleMobile={() => setMobileOpen((prev) => !prev)}
         />
 
-        <main className="flex-1 p-5 md:p-6 lg:p-8 space-y-6 max-w-7xl w-full">
+        <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
           {/* Top Wide Banner: Add Product */}
           <InventoryHeader onAddProduct={() => setIsAddModalOpen(true)} />
 
@@ -156,14 +156,14 @@ export default function ProductsInventoryPage() {
               When in Overview (selectedCategory === null): Show ONLY the 4 summary cards.
               When a Card is Clicked (selectedCategory !== null): The 4 cards DISAPPEAR, and ONLY the dedicated category view appears! */}
           {selectedCategory === null ? (
-            <div className="animate-in fade-in duration-200">
+            <div className="animate-in fade-in duration-300">
               <InventorySummaryCards
                 cards={dynamicCards}
                 onSelectCard={(type) => setSelectedCategory(type)}
               />
             </div>
           ) : (
-            <div className="animate-in fade-in duration-200">
+            <div className="animate-in fade-in duration-300">
               <ProductsInventoryTable
                 products={filteredProducts}
                 title={categoryMeta.title}
