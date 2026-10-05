@@ -87,17 +87,7 @@ export default function OffersPage() {
     const router = useRouter()
     return (
         <main className="min-h-screen bg-black text-white">
-            <section className="mx-auto w-full max-w-350 px-6 pt-12 pb-8 lg:px-12 lg:pt-16">
-                <button
-                    onClick={() => router.back()}
-                    className="group mb-8 inline-flex items-center gap-2 text-sm font-medium text-white/60 transition-colors hover:text-white sm:mb-10"
-                >
-                    <span className="text-lg transition-transform duration-300 group-hover:-translate-x-1">
-                        ←
-                    </span>
-                    Back
-                </button>
-                
+            <section className="mx-auto w-full max-w-350 px-6 pt-12 pb-8 lg:px-12 lg:pt-16">     
                 <div className="mb-2 flex items-center gap-2">
                     <span className="inline-block h-1 w-6 rounded-full bg-[#640C0C]" />
 
