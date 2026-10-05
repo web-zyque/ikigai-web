@@ -50,34 +50,31 @@ const DEFAULT_CARDS: MetricCard[] = [
 
 export default function SummaryCards({ cards = DEFAULT_CARDS }: SummaryCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
 
         return (
           <div
             key={card.title}
-            className="group relative cursor-default rounded-xl border border-neutral-800/80 bg-[#111317] p-5 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-red-600/40 hover:shadow-[0_8px_24px_-6px_rgba(220,38,38,0.18)]"
+            className="group relative cursor-default rounded-[20px] bg-[#121212] border border-white/5 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#640C0C]/40"
           >
-            {/* Subtle red ambient glow layer behind the card */}
-            <div className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-b from-red-600/[0.04] to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-
             <div className="flex items-start justify-between">
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-neutral-400">
+                <span className="text-xs uppercase tracking-wider text-white/40 font-medium">
                   {card.title}
                 </span>
-                <span className="mt-2 text-2xl font-bold tracking-tight text-white lg:text-3xl">
+                <span className="mt-3 text-3xl font-bold tracking-tight text-white lg:text-4xl">
                   {card.value}
                 </span>
               </div>
 
               {/* Icon Container */}
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors duration-200 ${
+                className={`grid h-10 w-10 place-items-center rounded-xl transition-colors duration-200 ${
                   card.isAttention
-                    ? "bg-red-950/40 text-red-400 ring-1 ring-red-800/50 group-hover:bg-red-900/50 group-hover:text-red-300"
-                    : "bg-neutral-800/80 text-neutral-400 ring-1 ring-neutral-700/60 group-hover:text-red-400 group-hover:ring-red-900/40"
+                    ? "bg-[#640C0C]/20 border border-[#640C0C]/40 text-white"
+                    : "bg-white/5 border border-white/10 text-white/70 group-hover:text-white group-hover:border-white/20"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -86,14 +83,14 @@ export default function SummaryCards({ cards = DEFAULT_CARDS }: SummaryCardsProp
 
             {/* Bottom subtitle / subtle badge */}
             {card.badge && (
-              <div className="mt-3 flex items-center gap-1.5 pt-1 text-xs">
+              <div className="mt-4 flex items-center gap-1.5 pt-2 border-t border-white/5 text-xs">
                 {card.isAttention ? (
-                  <span className="inline-flex items-center gap-1 font-medium text-red-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="inline-flex items-center gap-1.5 font-medium text-white/80">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" />
                     {card.badge}
                   </span>
                 ) : (
-                  <span className="text-neutral-500">{card.badge}</span>
+                  <span className="text-white/60">{card.badge}</span>
                 )}
               </div>
             )}

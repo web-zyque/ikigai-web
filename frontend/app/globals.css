@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Ikigai Design System Canonical Tokens */
+  --ik-bg: #000000;
+  --ik-surface: #121212;
+  --ik-surface-2: #0a0a0a;
+  --ik-border: rgba(255, 255, 255, 0.08);
+  --ik-accent: #640C0C;
+  --ik-accent-hover: #7a1010;
+  --ik-text-primary: #ffffff;
+  --ik-text-secondary: rgba(255, 255, 255, 0.70);
+  --ik-text-muted: rgba(255, 255, 255, 0.40);
+  --ik-overlay-light: rgba(255, 255, 255, 0.10);
+
+  /* Global mappings */
+  --background: #000000;
+  --foreground: #ffffff;
 }
 
 @theme inline {
@@ -10,17 +23,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ik-bg: var(--ik-bg);
+  --color-ik-surface: var(--ik-surface);
+  --color-ik-surface-2: var(--ik-surface-2);
+  --color-ik-border: var(--ik-border);
+  --color-ik-accent: var(--ik-accent);
+  --color-ik-accent-hover: var(--ik-accent-hover);
+  --color-ik-text-primary: var(--ik-text-primary);
+  --color-ik-text-secondary: var(--ik-text-secondary);
+  --color-ik-text-muted: var(--ik-text-muted);
+  --color-ik-overlay-light: var(--ik-overlay-light);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ik-bg);
+  color: var(--ik-text-primary);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
