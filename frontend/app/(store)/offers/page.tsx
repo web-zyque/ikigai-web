@@ -98,7 +98,7 @@ export default function OffersPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                        <h1 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
                             Latest Drops & Deals
                         </h1>
 
@@ -107,7 +107,7 @@ export default function OffersPage() {
                         </p>
                     </div>
 
-                    <span className="text-xs text-white/40 sm:text-sm">
+                    <span className="shrink-0 text-xs text-white/40 sm:text-sm">
                         {offers.length} Offers
                     </span>
                 </div>
