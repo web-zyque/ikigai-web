@@ -142,7 +142,7 @@ export function AuthForm({
                 <Label htmlFor="password">Password</Label>
                 {isLogin && (
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="text-xs text-white/60 hover:text-white transition-colors"
                   >
                     Forgot password?
