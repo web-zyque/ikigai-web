@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import { AuthButton } from "./AuthButton";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -36,12 +37,7 @@ export default function Hero() {
         </nav>
 
         <div className="flex items-center gap-3 text-xs">
-          <Link
-            href="/login"
-            className="rounded-full border border-white/15 bg-ik-accent px-5 py-2 font-medium text-white transition-colors hover:bg-ik-accent/90 sm:block"
-          >
-            Login
-          </Link>
+          <AuthButton />
         </div>
       </header>
 
