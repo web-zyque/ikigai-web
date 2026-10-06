@@ -54,14 +54,14 @@ export default function Offers() {
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
               {SECTION_TITLE}
             </h2>
             <Link
               href="/offers"
-              className="shrink-0 text-xs sm:text-sm lg:text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+              className="shrink-0 text-sm sm:text-xl lg:text-xl font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
             >
-              View All →
+              View All
             </Link>
           </div>
         </div>

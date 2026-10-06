@@ -52,10 +52,10 @@ export default function BestSellers() {
     <section className="bg-black text-white py-12 relative">
       <div className="mx-auto w-full max-w-[1400px] px-6 lg:px-12 relative">
         <div className="mb-8 flex items-center justify-between">
-          <h2 className="mb-8 text-xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
           <Link
             href="/products"
-            className="text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+            className="shrink-0 text-sm sm:text-xl lg:text-xl font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
           >
             View All
           </Link>
