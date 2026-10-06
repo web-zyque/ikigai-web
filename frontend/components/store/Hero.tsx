@@ -49,20 +49,21 @@ export default function Hero() {
 
         <div className="relative z-10 max-w-xl">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
-            Find your{" "}
+            Ready to Build{" "}<br />
             <span className="bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
-              Perfect
+              Something
             </span>
             <br />
-            Ride Today!
+            Extraordinary?
           </h1>
 
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/70">
-            Through innovative design and strategic thinking, we create brands
-            that spark connections, inspire loyalty and elevate your message
+            From performance upgrades and exterior transformations to precision
+            interiors and custom builds, every detail is shaped with one purpose -
+            to make the machine feel like yours.
           </p>
 
-          <div className="mt-8 flex w-full max-w-[300px] items-center overflow-hidden rounded-full bg-white/10 pl-4 pr-1 py-1 backdrop-blur-md border border-white/20 transition-colors focus-within:border-white/40 focus-within:bg-white/15">
+          <div className="mt-10 flex w-full max-w-[370px] items-center overflow-hidden rounded-full bg-white/10 pl-4 pr-1 py-1 backdrop-blur-md border border-white/20 transition-colors focus-within:border-white/40 focus-within:bg-white/15">
             <input
               type="text"
               placeholder="Search accessories, parts..."
