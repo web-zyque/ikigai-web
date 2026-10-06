@@ -188,7 +188,7 @@ export function AuthForm({
                   disabled={sendOtpMutation.isPending || phone.length < 6}
                   className="px-4"
                 >
-                  {sendOtpMutation.isPending ? "Sending..." : "Verify"}
+                  {sendOtpMutation.isPending ? "Sending..." : "GET OTP"}
                 </Button>
               )}
             </div>
