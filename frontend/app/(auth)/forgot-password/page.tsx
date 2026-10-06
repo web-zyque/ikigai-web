@@ -1,5 +1,5 @@
 export default function ForgotPasswordPage() {
-    return (
+    return (   
         <>
             <h1>Forgot Password Page</h1>
         </>
