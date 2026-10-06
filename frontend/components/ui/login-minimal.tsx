@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { motion } from "motion/react";
 import { Phone, Lock, User, ShieldCheck } from "lucide-react";
+import { useSendOtp, useVerifyOtp, useSignup, useLogin } from "@/hooks/auth";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
@@ -32,20 +33,97 @@ export function AuthForm({
 }: React.ComponentProps<"form">) {
   const [isLogin, setIsLogin] = React.useState(true);
   const [otpSent, setOtpSent] = React.useState(false);
+  const [otpVerified, setOtpVerified] = React.useState(false);
   const [phone, setPhone] = React.useState("");
+  const [fullName, setFullName] = React.useState("");
+  const [otp, setOtp] = React.useState("");
+  const [password, setPassword] = React.useState("");
 
-  const handleVerify = () => {
+  const sendOtpMutation = useSendOtp();
+  const verifyOtpMutation = useVerifyOtp();
+  const signupMutation = useSignup();
+  const loginMutation = useLogin();
+
+  const handleVerify = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (phone.length > 5) {
-      setOtpSent(true);
+      try {
+        await sendOtpMutation.mutateAsync({ phone });
+        setOtpSent(true);
+      } catch (error) {
+        // Error is handled in the mutation, just don't set otpSent
+      }
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (otp.length === 6) {
+      try {
+        await verifyOtpMutation.mutateAsync({ phone, otp });
+        setOtpVerified(true);
+      } catch (error) {
+        // Error is handled in the mutation
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isLogin) {
+      // Login
+      if (phone && password) {
+        try {
+          await loginMutation.mutateAsync({ phone, password });
+        } catch (error) {
+          // Error is handled in the mutation
+        }
+      }
+    } else {
+     
+      if (fullName && phone && otp && password && otpVerified) {
+        try {
+          await signupMutation.mutateAsync({ fullName, phone, otp, password });
+        } catch (error) {
+          // Error is handled in the mutation
+        }
+      }
     }
   };
 
   const toggleMode = (e: React.MouseEvent) => {
     e.preventDefault();
+    
+    sendOtpMutation.reset();
+    verifyOtpMutation.reset();
+    signupMutation.reset();
+    loginMutation.reset();
+    
     setIsLogin(!isLogin);
     setOtpSent(false);
+    setOtpVerified(false);
     setPhone("");
+    setFullName("");
+    setOtp("");
+    setPassword("");
   };
+
+  const currentError = isLogin 
+    ? loginMutation.error?.message 
+    : (!otpSent 
+        ? sendOtpMutation.error?.message 
+        : (!otpVerified 
+            ? verifyOtpMutation.error?.message 
+            : signupMutation.error?.message));
+
+  const isPending = isLogin 
+    ? loginMutation.isPending 
+    : (!otpSent 
+        ? sendOtpMutation.isPending 
+        : (!otpVerified 
+            ? verifyOtpMutation.isPending 
+            : signupMutation.isPending));
 
   return (
     <div className={cn("flex flex-col gap-6 w-full", className)}>
@@ -67,7 +145,7 @@ export function AuthForm({
           </p>
         </div>
 
-        <form className="grid gap-4" {...props}>
+        <form className="grid gap-4" onSubmit={handleSubmit} {...props}>
           {!isLogin && (
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
@@ -78,6 +156,8 @@ export function AuthForm({
                   type="text"
                   placeholder="John Doe"
                   className="pl-10"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   required
                 />
               </div>
@@ -96,6 +176,7 @@ export function AuthForm({
                   className="pl-10"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  disabled={isPending}
                   required
                 />
               </div>
@@ -104,35 +185,75 @@ export function AuthForm({
                   type="button" 
                   variant="outline"
                   onClick={handleVerify}
+                  disabled={sendOtpMutation.isPending || phone.length < 6}
                   className="px-4"
                 >
-                  Verify
+                  {sendOtpMutation.isPending ? "Sending..." : "Verify"}
                 </Button>
               )}
             </div>
           </div>
 
-          {!isLogin && otpSent && (
+          {!isLogin && otpSent && !otpVerified && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="space-y-4 overflow-hidden"
+            >
+              <div className="text-xs text-white/60 text-center">
+                Enter the verification code sent to <span className="font-medium text-white">{phone}</span>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="otp">Verification Code</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <ShieldCheck className="absolute left-3 top-3 h-5 w-5 text-white/40" />
+                    <Input
+                      id="otp"
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      className="pl-10"
+                      value={otp}
+                      onChange={(e) => {
+                        setOtp(e.target.value);
+
+                        if (verifyOtpMutation.error) {
+                          verifyOtpMutation.reset();
+                        }
+                      }}
+                      disabled={isPending}
+                      required
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={handleVerifyOtp}
+                    disabled={verifyOtpMutation.isPending || otp.length !== 6}
+                    className="px-4"
+                  >
+                    {verifyOtpMutation.isPending ? "Verifying..." : "Verify"}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLogin && otpSent && otpVerified && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="space-y-2 overflow-hidden"
             >
-              <Label htmlFor="otp">Verification Code</Label>
-              <div className="relative">
-                <ShieldCheck className="absolute left-3 top-3 h-5 w-5 text-white/40" />
-                <Input
-                  id="otp"
-                  type="text"
-                  placeholder="Enter OTP"
-                  className="pl-10"
-                  required
-                />
+              <div className="flex items-center gap-2 text-sm text-green-400 bg-green-400/10 border border-green-400/20 rounded-lg px-3 py-2">
+                <ShieldCheck className="h-4 w-4" />
+                Phone number verified successfully
               </div>
             </motion.div>
           )}
 
-          {(isLogin || (!isLogin && otpSent)) && (
+          {(isLogin || (!isLogin && otpVerified)) && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -156,15 +277,37 @@ export function AuthForm({
                   type="password"
                   placeholder="Enter your password"
                   className="pl-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isPending}
                   required
                 />
               </div>
             </motion.div>
           )}
 
-          <Button type="submit" className="w-full mt-2 h-11 text-base">
-            {isLogin ? "Log In" : "Sign Up"}
-          </Button>
+          {currentError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2"
+            >
+              {currentError}
+            </motion.div>
+          )}
+
+          {(isLogin || (!isLogin && otpVerified)) && (
+            <Button 
+              type="submit" 
+              className="w-full mt-2 h-11 text-base"
+              disabled={isPending || (!isLogin && !password)}
+            >
+              {isLogin 
+                ? (loginMutation.isPending ? "Logging In..." : "Log In")
+                : (signupMutation.isPending ? "Creating..." : "Sign Up")
+              }
+            </Button>
+          )}
 
           <p className="text-sm text-white/60 text-center mt-4">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
