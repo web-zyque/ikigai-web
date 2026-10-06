@@ -10,7 +10,7 @@ export function useLogout() {
     mutationFn: authService.logout,
     onSuccess: () => {
       qc.clear(); 
-      router.push('/login');
+      router.push('/');
     },
   });
 }
