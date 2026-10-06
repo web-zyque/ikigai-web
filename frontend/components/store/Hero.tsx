@@ -38,7 +38,7 @@ export default function Hero() {
         <div className="flex items-center gap-3 text-xs">
           <Link
             href="/login"
-            className="rounded-full order border-white/25 bg-ik-accent px-5 py-2 font-medium text-white transition-colors hover:bg-ik-accent/90 sm:block"
+            className="rounded-full border border-white/15 bg-ik-accent px-5 py-2 font-medium text-white transition-colors hover:bg-ik-accent/90 sm:block"
           >
             Login
           </Link>
