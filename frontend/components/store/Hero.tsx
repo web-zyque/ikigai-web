@@ -38,15 +38,9 @@ export default function Hero() {
         <div className="flex items-center gap-3 text-xs">
           <Link
             href="/login"
-            className="rounded-full border border-white/25 px-5 py-2 transition-colors hover:bg-white/10"
+            className="rounded-full order border-white/25 bg-ik-accent px-5 py-2 font-medium text-white transition-colors hover:bg-ik-accent/90 sm:block"
           >
             Login
-          </Link>
-          <Link
-            href="/contact"
-            className="hidden rounded-full bg-[#e9dede] px-5 py-2 font-medium text-black transition-colors hover:bg-white sm:block"
-          >
-            Contact us
           </Link>
         </div>
       </header>
