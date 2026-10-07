@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import Navbar from "@/components/store/Navbar";
 import ProductsList from "@/components/store/ProductsList";
 
 export const metadata: Metadata = {
@@ -19,7 +18,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <div className="min-h-screen bg-black">
-      <Navbar />
       <Suspense>
         <ProductsList initialCategory={activeCategory} />
       </Suspense>

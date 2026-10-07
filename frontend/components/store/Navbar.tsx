@@ -1,7 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import { AuthButton } from "./AuthButton";
+import { useCart } from "@/context/CartContext";
+import { useMe } from "@/hooks/auth";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -16,6 +21,27 @@ const socials = [
   { name: "LinkedIn", icon: FaLinkedin, href: "" },
   { name: "Facebook", icon: FaFacebook, href: "" },
 ];
+
+function CartIcon() {
+  const { cartItems } = useCart();
+  const { data: user, isLoading, error } = useMe();
+  const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  if (isLoading || error || !user) {
+    return null;
+  }
+
+  return (
+    <Link href="/cart" className="relative group flex h-10 w-10 items-center justify-center rounded-full bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
+      <img src="/shopping-bag.svg" alt="cart" className="h-4 w-4 brightness-0 invert opacity-90 transition-opacity" />
+      {itemCount > 0 && (
+        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#640C0C] text-[9px] font-bold text-white shadow-sm shadow-black">
+          {itemCount}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 export default function Navbar() {
   return (
@@ -34,19 +60,9 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3 text-xs">
-          <Link
-            href="/login"
-            className="rounded-full border border-white/25 px-5 py-2 transition-colors hover:bg-white/10 text-white"
-          >
-            Login
-          </Link>
-          <Link
-            href="/contact"
-            className="hidden rounded-full bg-[#e9dede] px-5 py-2 font-medium text-black transition-colors hover:bg-white sm:block"
-          >
-            Contact us
-          </Link>
+        <div className="flex items-center gap-4 text-xs">
+          <CartIcon />
+          <AuthButton />
         </div>
       </div>
     </header>
