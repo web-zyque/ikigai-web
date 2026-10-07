@@ -1,3 +1,10 @@
+"use client"
+
+import { useState } from "react"
+import PrivacyPolicyModal from "./PrivacyPolicyModal"
+import TermsConditionsModal from "./TermsConditionsModal"
+
+
 import Image from "next/image";
 import Link from "next/link";
 import { FaInstagram, FaFacebook, FaYoutube } from "react-icons/fa";
@@ -18,7 +25,12 @@ const socials = [
   { name: "YouTube", icon: FaYoutube, href: "#" },
 ];
 
+
+
+
 export default function Footer() {
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
   return (
     <footer className="bg-black py-16 h-[15vh] text-white border-t border-white/5">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-10 px-6">
@@ -57,9 +69,42 @@ export default function Footer() {
           })}
         </ul>
 
-        <div className="mt-4 text-center text-xs text-white/30">
-          © {new Date().getFullYear()} IKIGAI Accessories. All rights reserved.
+        <div className="mt-4 mb-4 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-center text-xs text-white/30">
+          <span>
+            © {new Date().getFullYear()} IKIGAI Accessories. All rights reserved.
+          </span>
+
+          <span>·</span>
+
+          <span>See our</span>
+
+          <button
+            type="button"
+            onClick={() => setPrivacyOpen(true)}
+            className="text-white/50 underline underline-offset-2 transition-colors hover:text-white"
+          >
+            Privacy Policy
+          </button>
+
+          <span>and</span>
+
+          <button
+            type="button"
+            onClick={() => setTermsOpen(true)}
+            className="text-white/50 underline underline-offset-2 transition-colors hover:text-white"
+          >
+            Terms & Conditions
+          </button>
         </div>
+        <PrivacyPolicyModal
+          open={privacyOpen}
+          onClose={() => setPrivacyOpen(false)}
+        />
+
+        <TermsConditionsModal
+          open={termsOpen}
+          onClose={() => setTermsOpen(false)}
+        />
       </div>
     </footer>
   );
