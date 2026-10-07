@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import AdminSidebar from "@/components/admin/Sidebar";
 import AdminHeader from "@/components/admin/Header";
 import SummaryCards from "@/components/admin/SummaryCards";
+import OrdersOverviewChart from "@/components/admin/OrdersOverviewChart";
 import RecentOrdersTable from "@/components/admin/RecentOrdersTable";
 
 export default function AdminDashboardPage() {
@@ -22,10 +23,13 @@ export default function AdminDashboardPage() {
         <AdminHeader onToggleMobile={() => setMobileOpen((prev) => !prev)} />
 
         <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* Dashboard Summary Cards */}
+          {/* 1. Existing Dashboard Summary Cards */}
           <SummaryCards />
 
-          {/* Recent Orders Section */}
+          {/* 2. Orders Analytics / Orders Overview Graph */}
+          <OrdersOverviewChart />
+
+          {/* 3. Existing Recent Orders Section */}
           <RecentOrdersTable />
         </main>
       </div>

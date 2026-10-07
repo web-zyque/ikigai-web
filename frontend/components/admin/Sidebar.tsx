@@ -9,7 +9,6 @@ import {
   Package,
   ShoppingCart,
   Users,
-  UserCheck,
   BarChart3,
   Settings,
   X,
@@ -33,7 +32,6 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Products & Inventory", icon: Package, href: "/admin/inventory" },
   { label: "Orders", icon: ShoppingCart },
   { label: "Customers", icon: Users },
-  { label: "Staff", icon: UserCheck },
   { label: "Reports", icon: BarChart3 },
   { label: "Settings", icon: Settings },
 ];

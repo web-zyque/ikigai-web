@@ -9,15 +9,14 @@ import {
   AlertTriangle,
   AlertCircle,
   Trash2,
-  Tag,
-  CircleDollarSign,
-  Car,
 } from "lucide-react";
+import { InventoryProduct } from "./ProductsInventoryTable";
 
 export interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (product: Record<string, unknown>) => void;
+  initialProduct?: InventoryProduct | null;
 }
 
 type TabType = "general" | "images" | "pricing" | "specs";
@@ -26,6 +25,7 @@ export default function AddProductModal({
   isOpen,
   onClose,
   onSuccess,
+  initialProduct,
 }: AddProductModalProps) {
   const mainImageInputId = useId();
   const additionalImagesInputId = useId();
@@ -34,22 +34,24 @@ export default function AddProductModal({
   const [activeTab, setActiveTab] = useState<TabType>("general");
 
   // Form State - 1. Basic Info
-  const [productName, setProductName] = useState("");
-  const [sku, setSku] = useState("");
-  const [category, setCategory] = useState("Lighting");
+  const [productName, setProductName] = useState(initialProduct?.name || "");
+  const [sku, setSku] = useState(initialProduct?.sku || "");
+  const [category, setCategory] = useState(initialProduct?.category || "Lighting");
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
   // 2. Images State
-  const [mainImage, setMainImage] = useState<string | null>(null);
+  const [mainImage, setMainImage] = useState<string | null>(initialProduct?.image || null);
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
 
   // 3. Pricing & Inventory State
-  const [sellingPrice, setSellingPrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState(
+    initialProduct?.price ? String(initialProduct.price).replace(/[^0-9]/g, "") : ""
+  );
   const [mrpPrice, setMrpPrice] = useState("");
   const [discount, setDiscount] = useState("");
   const [taxGst, setTaxGst] = useState("18% GST");
-  const [stockQuantity, setStockQuantity] = useState<number | "">("");
+  const [stockQuantity, setStockQuantity] = useState<number | "">(initialProduct?.stock ?? "");
   const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
 
   // 4. Product Details (Vehicle & Specs)
@@ -59,7 +61,9 @@ export default function AddProductModal({
   const [dimensions, setDimensions] = useState("");
   const [warranty, setWarranty] = useState("1 Year Replacement");
   const [material, setMaterial] = useState("");
-  const [productStatus, setProductStatus] = useState<"Active" | "Draft" | "Out of Stock">("Active");
+  const [productStatus, setProductStatus] = useState<"Active" | "Draft" | "Out of Stock">(
+    initialProduct?.status === "Out of Stock" ? "Out of Stock" : "Active"
+  );
 
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -120,9 +124,52 @@ export default function AddProductModal({
     setAdditionalImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // Submit Handler
+  // Step Navigation Handlers
+  const handleNext = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (activeTab === "general") {
+      if (!productName.trim()) newErrors.productName = "Product name is required";
+      if (!sku.trim()) newErrors.sku = "SKU is required";
+      if (!category.trim()) newErrors.category = "Category is required";
+      if (Object.keys(newErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...newErrors }));
+        return;
+      }
+      setActiveTab("images");
+    } else if (activeTab === "images") {
+      if (!mainImage) newErrors.mainImage = "Main product image is required";
+      if (Object.keys(newErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...newErrors }));
+        return;
+      }
+      setActiveTab("pricing");
+    } else if (activeTab === "pricing") {
+      if (!sellingPrice.trim()) newErrors.sellingPrice = "Selling price is required";
+      if (stockQuantity === "") newErrors.stockQuantity = "Stock quantity is required";
+      if (Object.keys(newErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...newErrors }));
+        return;
+      }
+      setActiveTab("specs");
+    }
+  };
+
+  const handleBack = () => {
+    if (activeTab === "specs") setActiveTab("pricing");
+    else if (activeTab === "pricing") setActiveTab("images");
+    else if (activeTab === "images") setActiveTab("general");
+  };
+
+  // Final Submit Handler (Only executes on Step 4 - specs)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard: Final save/update can ONLY execute on Step 4 (specs)
+    if (activeTab !== "specs") {
+      return;
+    }
+
     const newErrors: Record<string, string> = {};
 
     if (!productName.trim()) newErrors.productName = "Product name is required";
@@ -189,10 +236,10 @@ export default function AddProductModal({
   }, [isOpen, onClose]);
 
   const tabs = [
-    { id: "general", label: "General", icon: Tag, hasError: hasGeneralErrors },
-    { id: "images", label: "Images", icon: ImageIcon, hasError: hasImageErrors },
-    { id: "pricing", label: "Pricing & Stock", icon: CircleDollarSign, hasError: hasPricingErrors },
-    { id: "specs", label: "Vehicle & Specs", icon: Car, hasError: false },
+    { id: "general", step: 1, label: "General", hasError: hasGeneralErrors },
+    { id: "images", step: 2, label: "Images", hasError: hasImageErrors },
+    { id: "pricing", step: 3, label: "Pricing & Stock", hasError: hasPricingErrors },
+    { id: "specs", step: 4, label: "Vehicle & Specs", hasError: false },
   ] as const;
 
   if (!isOpen) return null;
@@ -213,10 +260,12 @@ export default function AddProductModal({
           <div>
             <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-[#640C0C]" />
-              Add Product
+              {initialProduct ? "Edit Product" : "Add Product"}
             </h2>
             <p className="text-xs text-white/40 mt-0.5">
-              Quickly configure automotive specifications, pricing &amp; fitment
+              {initialProduct
+                ? "Update automotive specifications, pricing & fitment"
+                : "Quickly configure automotive specifications, pricing & fitment"}
             </p>
           </div>
           <button
@@ -230,9 +279,8 @@ export default function AddProductModal({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center border-b border-white/5 bg-[#0e0e0e] px-6 gap-2 overflow-x-auto">
+        <div className="flex items-center justify-center border-b border-white/5 bg-[#0e0e0e] px-4 sm:px-6 gap-1 sm:gap-4 overflow-x-auto">
           {tabs.map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeTab === tab.id;
 
             return (
@@ -240,13 +288,21 @@ export default function AddProductModal({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${
+                className={`relative flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
                   isActive
                     ? "border-[#640C0C] text-white"
                     : "border-transparent text-white/60 hover:text-white"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${isActive ? "text-[#640C0C]" : "text-white/40"}`} />
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                    isActive
+                      ? "bg-[#640C0C] text-white shadow-sm"
+                      : "bg-white/10 text-white/60"
+                  }`}
+                >
+                  {tab.step}
+                </span>
                 <span>{tab.label}</span>
                 {tab.hasError && (
                   <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" title="Requires attention" />
@@ -662,22 +718,40 @@ export default function AddProductModal({
             )}
           </div>
 
-          {/* Bottom Actions: Cancel and Save */}
+          {/* Bottom Actions */}
           <div className="flex items-center justify-end gap-3 border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
+            {activeTab !== "general" && (
+              <button
+                key="btn-back"
+                type="button"
+                onClick={handleBack}
+                className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Back
+              </button>
+            )}
 
-            <button
-              type="submit"
-              className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity shadow-md cursor-pointer"
-            >
-              Save Product
-            </button>
+            {activeTab !== "specs" ? (
+              <button
+                key="btn-next"
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleNext();
+                }}
+                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white transition-all shadow-md cursor-pointer"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                key="btn-save"
+                type="submit"
+                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white transition-all shadow-md cursor-pointer"
+              >
+                {initialProduct ? "Save Changes" : "Save Product"}
+              </button>
+            )}
           </div>
         </form>
       </div>

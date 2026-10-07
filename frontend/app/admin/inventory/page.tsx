@@ -1,135 +1,152 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import AdminSidebar from "@/components/admin/Sidebar";
 import AdminHeader from "@/components/admin/Header";
 import InventoryHeader from "@/components/admin/InventoryHeader";
-import InventorySummaryCards, {
-  InventoryCardType,
-  InventoryMetricCard,
-} from "@/components/admin/InventorySummaryCards";
+import type { StockFilterType } from "@/components/admin/InventorySummaryCards";
 import ProductsInventoryTable, {
   ALL_DEMO_PRODUCTS,
   InventoryProduct,
   InventoryStatus,
 } from "@/components/admin/ProductsInventoryTable";
 import AddProductModal from "@/components/admin/AddProductModal";
-import { Package, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 
 export default function ProductsInventoryPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
+  const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null);
 
-  // Products state initialized with the 12 realistic automotive accessory products
+  // Products state initialized with the realistic automotive catalog products
   const [productsList, setProductsList] = useState<InventoryProduct[]>(ALL_DEMO_PRODUCTS);
 
-  // Derive counts dynamically for complete backend scalability
-  const totalCount = productsList.length;
-  const inStockCount = productsList.filter((p) => p.status === "In Stock").length;
-  const lowStockCount = productsList.filter((p) => p.status === "Low Stock").length;
-  const outOfStockCount = productsList.filter((p) => p.status === "Out of Stock").length;
+  // 1. Stock Status Filter State: "all" | "low_stock" | "stock_out"
+  const [stockFilter, setStockFilter] = useState<StockFilterType>("all");
 
-  const dynamicCards: InventoryMetricCard[] = [
-    {
-      type: "total",
-      title: "TOTAL PRODUCT",
-      value: totalCount,
-      description: "All active car accessories catalogued",
-      footer: "Explore entire catalog",
-      icon: Package,
-    },
-    {
-      type: "in_stock",
-      title: "IN STOCK",
-      value: inStockCount,
-      description: "Healthy inventory levels above threshold",
-      footer: "Filter by in-stock items",
-      icon: CheckCircle2,
-    },
-    {
-      type: "low_stock",
-      title: "LOW STOCK",
-      value: lowStockCount,
-      description: "Requires restock soon (≤ 5 units left)",
-      footer: "View items requiring restock",
-      icon: AlertTriangle,
-    },
-    {
-      type: "out_of_stock",
-      title: "OUT OF STOCK",
-      value: outOfStockCount,
-      description: "Zero units remaining • Critical attention",
-      footer: "View depleted items",
-      icon: AlertCircle,
-    },
-  ];
+  // 2. Product Search State (Name, Category, SKU)
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Filter products based on selected category
-  const getFilteredProducts = () => {
-    switch (selectedCategory) {
-      case "in_stock":
-        return productsList.filter((p) => p.status === "In Stock");
-      case "low_stock":
-        return productsList.filter((p) => p.status === "Low Stock");
-      case "out_of_stock":
-        return productsList.filter((p) => p.status === "Out of Stock");
-      case "total":
-      default:
-        return productsList;
-    }
+  // 3. Pagination State (Max 15 products per page)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const PAGE_SIZE = 15;
+
+  // Real-time stock counts for the 3 compact filter cards
+  const counts = useMemo(() => {
+    return {
+      all: productsList.length,
+      lowStock: productsList.filter(
+        (p) => p.status === "Low Stock" || (p.stock > 0 && p.stock <= 5)
+      ).length,
+      stockOut: productsList.filter(
+        (p) => p.status === "Out of Stock" || p.stock === 0
+      ).length,
+    };
+  }, [productsList]);
+
+  // Handle stock filter change (resets pagination to page 1)
+  const handleFilterChange = (newFilter: StockFilterType) => {
+    setStockFilter(newFilter);
+    setCurrentPage(1);
   };
 
-  const filteredProducts = getFilteredProducts();
-
-  const getCategoryMeta = () => {
-    switch (selectedCategory) {
-      case "in_stock":
-        return {
-          title: "IN STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products currently available above the low-stock threshold",
-        };
-      case "low_stock":
-        return {
-          title: "LOW STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products requiring restock soon",
-        };
-      case "out_of_stock":
-        return {
-          title: "OUT OF STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products with zero available inventory",
-        };
-      case "total":
-      default:
-        return {
-          title: "TOTAL PRODUCTS",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: `Complete catalogue of ${productsList.length} automobile accessories and fitments`,
-        };
-    }
+  // Handle search query change (resets pagination to page 1)
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
   };
 
-  const categoryMeta = getCategoryMeta();
+  // Reset filters handler
+  const handleResetFilters = () => {
+    setStockFilter("all");
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
 
-  // Add Product submission handler
-  const handleAddProductSuccess = (newProductData: Record<string, unknown>) => {
-    const rawPrice = String(newProductData.sellingPrice || "").trim();
+  // Filter products based on stockFilter AND searchQuery (Product Name, Category, SKU)
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return productsList.filter((product) => {
+      // 1. Stock Status filter condition
+      if (stockFilter === "low_stock") {
+        const isLowStock =
+          product.status === "Low Stock" || (product.stock > 0 && product.stock <= 5);
+        if (!isLowStock) return false;
+      } else if (stockFilter === "stock_out") {
+        const isStockOut = product.status === "Out of Stock" || product.stock === 0;
+        if (!isStockOut) return false;
+      }
+
+      // 2. Search query filter across Name, Category, SKU
+      if (query) {
+        const matchesName = product.name.toLowerCase().includes(query);
+        const matchesCategory = product.category.toLowerCase().includes(query);
+        const matchesSku = product.sku.toLowerCase().includes(query);
+
+        if (!matchesName && !matchesCategory && !matchesSku) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [productsList, stockFilter, searchQuery]);
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + PAGE_SIZE);
+
+  // Save (Add or Edit) Product submission handler
+  const handleSaveProductSuccess = (productData: Record<string, unknown>) => {
+    const rawPrice = String(productData.sellingPrice || "").trim();
     const formattedPrice = rawPrice.startsWith("₹") ? rawPrice : `₹${rawPrice}`;
 
-    const newProduct: InventoryProduct = {
-      id: `prod-${Date.now()}`,
-      name: String(newProductData.productName || "New Accessory"),
-      category: String(newProductData.category || "Other Accessories"),
-      sku: String(newProductData.sku || `SKU-${Date.now()}`),
-      price: formattedPrice,
-      stock: Number(newProductData.stockQuantity || 0),
-      status: (newProductData.stockStatus as InventoryStatus) || "In Stock",
-    };
+    if (editingProduct) {
+      // Update existing product
+      setProductsList((prev) =>
+        prev.map((item) =>
+          item.id === editingProduct.id
+            ? {
+                ...item,
+                name: String(productData.productName || item.name),
+                category: String(productData.category || item.category),
+                sku: String(productData.sku || item.sku),
+                price: formattedPrice || item.price,
+                stock: Number(productData.stockQuantity ?? item.stock),
+                status: (productData.stockStatus as InventoryStatus) || item.status,
+                image: (productData.mainImage as string) || item.image,
+              }
+            : item
+        )
+      );
+      setEditingProduct(null);
+    } else {
+      // Add new product
+      const newProduct: InventoryProduct = {
+        id: `prod-${Date.now()}`,
+        name: String(productData.productName || "New Accessory"),
+        category: String(productData.category || "Other Accessories"),
+        sku: String(productData.sku || `SKU-${Date.now()}`),
+        price: formattedPrice,
+        stock: Number(productData.stockQuantity || 0),
+        status: (productData.stockStatus as InventoryStatus) || "In Stock",
+        image: (productData.mainImage as string) || "/images/category_lighting.jpg",
+      };
 
-    setProductsList((prev) => [newProduct, ...prev]);
+      setProductsList((prev) => [newProduct, ...prev]);
+    }
+  };
+
+  const handleEditProduct = (prod: InventoryProduct) => {
+    setEditingProduct(prod);
+    setIsAddModalOpen(true);
+  };
+
+  const handleOpenAddModal = () => {
+    setEditingProduct(null);
+    setIsAddModalOpen(true);
   };
 
   return (
@@ -148,40 +165,44 @@ export default function ProductsInventoryPage() {
           onToggleMobile={() => setMobileOpen((prev) => !prev)}
         />
 
-        <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
+        <main className="flex-1 px-6 lg:px-12 py-8 space-y-6 max-w-7xl w-full">
           {/* Top Wide Banner: Add Product */}
-          <InventoryHeader onAddProduct={() => setIsAddModalOpen(true)} />
+          <InventoryHeader onAddProduct={handleOpenAddModal} />
 
-          {/* VIEW SWITCHING:
-              When in Overview (selectedCategory === null): Show ONLY the 4 summary cards.
-              When a Card is Clicked (selectedCategory !== null): The 4 cards DISAPPEAR, and ONLY the dedicated category view appears! */}
-          {selectedCategory === null ? (
-            <div className="animate-in fade-in duration-300">
-              <InventorySummaryCards
-                cards={dynamicCards}
-                onSelectCard={(type) => setSelectedCategory(type)}
-              />
-            </div>
-          ) : (
-            <div className="animate-in fade-in duration-300">
-              <ProductsInventoryTable
-                products={filteredProducts}
-                title={categoryMeta.title}
-                badgeText={categoryMeta.badgeText}
-                subtitle={categoryMeta.subtitle}
-                onBackToOverview={() => setSelectedCategory(null)}
-              />
-            </div>
-          )}
+          {/* Products & Inventory Section with Integrated Cards and Search */}
+          <div className="animate-in fade-in duration-300">
+            <ProductsInventoryTable
+              products={paginatedProducts}
+              totalFilteredCount={filteredProducts.length}
+              totalCount={productsList.length}
+              currentPage={safeCurrentPage}
+              pageSize={PAGE_SIZE}
+              onPageChange={(page) => setCurrentPage(page)}
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              onResetFilters={handleResetFilters}
+              activeFilter={stockFilter}
+              onFilterChange={handleFilterChange}
+              counts={counts}
+              onEditProduct={handleEditProduct}
+            />
+          </div>
         </main>
       </div>
 
-      {/* Add Product Modal */}
-      <AddProductModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleAddProductSuccess}
-      />
+      {/* Add / Edit Product Modal */}
+      {isAddModalOpen && (
+        <AddProductModal
+          key={editingProduct ? editingProduct.id : "new-product"}
+          isOpen={isAddModalOpen}
+          initialProduct={editingProduct}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingProduct(null);
+          }}
+          onSuccess={handleSaveProductSuccess}
+        />
+      )}
     </div>
   );
 }
