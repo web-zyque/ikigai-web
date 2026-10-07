@@ -1,15 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { AuthButton } from "./AuthButton";
-
-const navLinks = [
-  { label: "Home", href: "/" },
-  { label: "Products", href: "/products" },
-  { label: "About us", href: "/about" },
-  { label: "Contact us", href: "/contact" },
-];
 
 const socials = [
   { name: "Instagram", icon: FaInstagram, href: "" },
@@ -20,28 +11,8 @@ const socials = [
 
 export default function Hero() {
   return (
-    <section className="relative isolate h-screen overflow-hidden bg-black text-white">
-
-      <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-12">
-        <Link href="/" className="flex items-center gap-2 text-xl font-bold">
-          <Image src="/images/logo.png" alt="IKIGAI" height={32} width={32} />
-          IKIGAI
-        </Link>
-
-        <nav className="hidden gap-10 text-xs text-white/80 md:flex">
-          {navLinks.map((l) => (
-            <Link key={l.label} href={l.href} className="transition-colors hover:text-white">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-3 text-xs">
-          <AuthButton />
-        </div>
-      </header>
-
-      <div className="relative mx-auto grid h-[calc(100vh-88px)] max-w-7xl items-center gap-10 px-6 lg:grid-cols-2 lg:px-12">
+    <section className="relative isolate min-h-[calc(100vh-80px)] overflow-hidden bg-black text-white">
+      <div className="relative mx-auto grid min-h-[calc(100vh-80px)] max-w-7xl items-center gap-10 px-6 lg:grid-cols-2 lg:px-12 py-10 lg:py-0">
 
         <div className="relative z-10 max-w-xl">
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl">

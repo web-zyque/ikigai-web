@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-import { ShoppingCart } from "lucide-react";
 import { Inter } from "next/font/google";
+import { useCart } from "@/context/CartContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +19,7 @@ const products = Array.from({ length: 10 }).map((_, i) => ({
 }));
 
 export default function BestSellers() {
+  const { cartItems, addToCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -88,41 +89,57 @@ export default function BestSellers() {
             className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pt-4 pb-4 items-stretch"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
-              >
-                <div className="relative w-full aspect-3/4 bg-[#0a0a0a] shrink-0 p-4">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
-                  />
-                </div>
+            {products.map((product) => {
+              const isAdded = cartItems.some(item => item.id === product.id);
+              
+              const handleAddToCart = () => {
+                if (isAdded) return;
+                addToCart({
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  image: product.image,
+                });
+              };
 
-                <div className="flex flex-col p-4 grow-0 sm:grow">
+              return (
+                <div
+                  key={product.id}
+                  className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
+                >
+                  <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
+                    />
+                  </div>
 
-                  <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
+                  <div className="flex flex-col p-4 grow-0 sm:grow">
+                    <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
+                      {product.name}
+                    </h3>
+                    <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
 
-                  <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans">
-                    <button className="flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90">
-                      Buy Now
-                    </button>
-                    <button
-                      aria-label="Add to cart"
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-                    >
-                      <ShoppingCart className="h-4 w-4 text-white/80" />
-                    </button>
+                    <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
+                      <button className={`flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90`}>
+                        Buy Now
+                      </button>
+                      {!isAdded && (
+                        <button
+                          onClick={handleAddToCart}
+                          aria-label="Add to cart"
+                          className="grid h-10 w-14 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+                        >
+                          <img src="/shopping-bag.svg" alt="cart" className="h-5 w-5 brightness-0 invert opacity-80" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className={`${inter.className} snap-start shrink-0 pl-4 pr-12 self-stretch flex items-center justify-center`}>
               <Link
