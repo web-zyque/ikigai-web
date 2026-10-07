@@ -48,7 +48,7 @@ export default function NotFound() {
                             className="inline-flex w-auto items-center justify-center gap-2 rounded-full bg-[#640C0C] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 sm:w-auto"
                         >
                             <Home className="h-4 w-4" />
-                            Back Home
+                            Home Page
                         </Link>
 
                     </div>
