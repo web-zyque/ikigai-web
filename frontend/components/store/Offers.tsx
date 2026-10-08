@@ -59,7 +59,7 @@ export default function Offers() {
             </h2>
             <Link
               href="/offers"
-              className="shrink-0 text-sm sm:text-xl lg:text-xl font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+              className="shrink-0 text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
             >
               View All
             </Link>

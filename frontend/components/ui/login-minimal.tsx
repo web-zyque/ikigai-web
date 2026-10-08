@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { motion } from "motion/react";
 import { Phone, Lock, User, ShieldCheck } from "lucide-react";
 import { useSendOtp, useVerifyOtp, useSignup, useLogin } from "@/hooks/auth";
+import PrivacyPolicyModal from "@/components/store/PrivacyPolicyModal";
+import TermsConditionsModal from "@/components/store/TermsConditionsModal";
+import { useState } from "react";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
@@ -44,6 +47,9 @@ export function AuthForm({
   const signupMutation = useSignup();
   const loginMutation = useLogin();
 
+  const [termsOpen, setTermsOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+
   const handleVerify = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (phone.length > 5) {
@@ -70,7 +76,7 @@ export function AuthForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isLogin) {
       // Login
       if (phone && password) {
@@ -81,7 +87,7 @@ export function AuthForm({
         }
       }
     } else {
-     
+
       if (fullName && phone && otp && password && otpVerified) {
         try {
           await signupMutation.mutateAsync({ fullName, phone, otp, password });
@@ -94,12 +100,12 @@ export function AuthForm({
 
   const toggleMode = (e: React.MouseEvent) => {
     e.preventDefault();
-    
+
     sendOtpMutation.reset();
     verifyOtpMutation.reset();
     signupMutation.reset();
     loginMutation.reset();
-    
+
     setIsLogin(!isLogin);
     setOtpSent(false);
     setOtpVerified(false);
@@ -109,21 +115,22 @@ export function AuthForm({
     setPassword("");
   };
 
-  const currentError = isLogin 
-    ? loginMutation.error?.message 
-    : (!otpSent 
-        ? sendOtpMutation.error?.message 
-        : (!otpVerified 
-            ? verifyOtpMutation.error?.message 
-            : signupMutation.error?.message));
+  const currentError = isLogin
+    ? loginMutation.error?.message
+    : (!otpSent
+      ? sendOtpMutation.error?.message
+      : (!otpVerified
+        ? verifyOtpMutation.error?.message
+        : signupMutation.error?.message));
 
-  const isPending = isLogin 
-    ? loginMutation.isPending 
-    : (!otpSent 
-        ? sendOtpMutation.isPending 
-        : (!otpVerified 
-            ? verifyOtpMutation.isPending 
-            : signupMutation.isPending));
+  const isPending = isLogin
+    ? loginMutation.isPending
+    : (!otpSent
+      ? sendOtpMutation.isPending
+      : (!otpVerified
+        ? verifyOtpMutation.isPending
+        : signupMutation.isPending));
+
 
   return (
     <div className={cn("flex flex-col gap-6 w-full", className)}>
@@ -181,8 +188,8 @@ export function AuthForm({
                 />
               </div>
               {!isLogin && !otpSent && (
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   variant="outline"
                   onClick={handleVerify}
                   disabled={sendOtpMutation.isPending || phone.length < 6}
@@ -195,7 +202,7 @@ export function AuthForm({
           </div>
 
           {!isLogin && otpSent && !otpVerified && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="space-y-4 overflow-hidden"
@@ -203,7 +210,7 @@ export function AuthForm({
               <div className="text-xs text-white/60 text-center">
                 Enter the verification code sent to <span className="font-medium text-white">{phone}</span>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="otp">Verification Code</Label>
                 <div className="flex gap-2">
@@ -226,8 +233,8 @@ export function AuthForm({
                       required
                     />
                   </div>
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     variant="outline"
                     onClick={handleVerifyOtp}
                     disabled={verifyOtpMutation.isPending || otp.length !== 6}
@@ -241,7 +248,7 @@ export function AuthForm({
           )}
 
           {!isLogin && otpSent && otpVerified && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="space-y-2 overflow-hidden"
@@ -254,7 +261,7 @@ export function AuthForm({
           )}
 
           {(isLogin || (!isLogin && otpVerified)) && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-2"
@@ -297,17 +304,45 @@ export function AuthForm({
           )}
 
           {(isLogin || (!isLogin && otpVerified)) && (
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full mt-2 h-11 text-base"
               disabled={isPending || (!isLogin && !password)}
             >
-              {isLogin 
+              {isLogin
                 ? (loginMutation.isPending ? "Logging In..." : "Log In")
                 : (signupMutation.isPending ? "Creating..." : "Sign Up")
               }
             </Button>
           )}
+
+          <p className="text-center text-xs leading-relaxed text-white/40">
+            By continuing, you agree to our{" "}<br />
+            <button
+              type="button"
+              onClick={() => setTermsOpen(true)}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white"
+            >
+              Terms & Conditions
+            </button>{" "}
+            and{" "}
+            <button
+              type="button"
+              onClick={() => setPrivacyOpen(true)}
+              className="text-white/70 underline underline-offset-2 transition-colors hover:text-white"
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
+          <PrivacyPolicyModal
+            open={privacyOpen}
+            onClose={() => setPrivacyOpen(false)}
+          />
+          <TermsConditionsModal
+            open={termsOpen}
+            onClose={() => setTermsOpen(false)}
+          />
 
           <p className="text-sm text-white/60 text-center mt-4">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
@@ -319,6 +354,7 @@ export function AuthForm({
               {isLogin ? "Sign up" : "Log in"}
             </a>
           </p>
+
         </form>
       </motion.div>
     </div>

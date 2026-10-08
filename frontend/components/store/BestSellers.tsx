@@ -56,7 +56,7 @@ export default function BestSellers() {
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Best Selling Products</h2>
           <Link
             href="/products"
-            className="shrink-0 text-sm sm:text-xl lg:text-xl font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
+            className="shrink-0 text-sm font-semibold text-[#640C0C] transition-opacity hover:opacity-80"
           >
             View All
           </Link>
@@ -91,7 +91,7 @@ export default function BestSellers() {
           >
             {products.map((product) => {
               const isAdded = cartItems.some(item => item.id === product.id);
-              
+
               const handleAddToCart = () => {
                 if (isAdded) return;
                 addToCart({
