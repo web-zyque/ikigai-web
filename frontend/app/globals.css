@@ -56,3 +56,25 @@ body {
   background: rgba(255, 255, 255, 0.35);
 }
 
+.policy-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #640c0c #0a0a0a;
+}
+
+.policy-scrollbar::-webkit-scrollbar {
+  width: 7px;
+}
+
+.policy-scrollbar::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.policy-scrollbar::-webkit-scrollbar-thumb {
+  background: #640c0c;
+  border-radius: 9999px;
+  border: 2px solid #0a0a0a;
+}
+
+.policy-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7a1010;
+}
