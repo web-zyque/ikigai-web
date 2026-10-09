@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useId } from "react";
+import React, { useState, useId, useEffect } from "react";
 import {
   X,
   Upload,
@@ -12,7 +12,10 @@ import {
   Tag,
   CircleDollarSign,
   Car,
+  Loader2,
 } from "lucide-react";
+import { useCategories, useCreateProduct } from "@/hooks/use-products";
+import { useUploadImage } from "@/hooks/use-upload";
 
 export interface AddProductModalProps {
   isOpen: boolean;
@@ -30,41 +33,60 @@ export default function AddProductModal({
   const mainImageInputId = useId();
   const additionalImagesInputId = useId();
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState<TabType>("general");
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const createProductMutation = useCreateProduct();
+  const uploadImageMutation = useUploadImage();
 
-  // Form State - 1. Basic Info
+  const [activeTab, setActiveTab] = useState<TabType>("general");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [productName, setProductName] = useState("");
   const [sku, setSku] = useState("");
-  const [category, setCategory] = useState("Lighting");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
-  // 2. Images State
-  const [mainImage, setMainImage] = useState<string | null>(null);
-  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [mainImageUrl, setMainImageUrl] = useState<string | null>(null);
+  const [additionalImageFiles, setAdditionalImageFiles] = useState<File[]>([]);
+  const [additionalImageUrls, setAdditionalImageUrls] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState<Set<number>>(new Set());
 
-  // 3. Pricing & Inventory State
   const [sellingPrice, setSellingPrice] = useState("");
   const [mrpPrice, setMrpPrice] = useState("");
   const [discount, setDiscount] = useState("");
-  const [taxGst, setTaxGst] = useState("18% GST");
+  const [taxGst, setTaxGst] = useState("18");
   const [stockQuantity, setStockQuantity] = useState<number | "">("");
   const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
 
-  // 4. Product Details (Vehicle & Specs)
   const [vehicleCompatibility, setVehicleCompatibility] = useState("");
-  const [productType, setProductType] = useState("Aftermarket Upgrade");
+  const [productType, setProductType] = useState("");
   const [color, setColor] = useState("");
   const [dimensions, setDimensions] = useState("");
-  const [warranty, setWarranty] = useState("1 Year Replacement");
+  const [warranty, setWarranty] = useState("");
   const [material, setMaterial] = useState("");
-  const [productStatus, setProductStatus] = useState<"Active" | "Draft" | "Out of Stock">("Active");
+  const [productStatus, setProductStatus] = useState<"active" | "draft">("active");
 
-  // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Compute stock status automatically based on quantity
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategoryId) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
+
+  useEffect(() => {
+    const selling = parseFloat(sellingPrice) || 0;
+    const mrp = parseFloat(mrpPrice) || 0;
+    
+    if (selling > 0 && mrp > selling) {
+      const calculatedDiscount = ((mrp - selling) / mrp) * 100;
+      setDiscount(calculatedDiscount.toFixed(1));
+    } else {
+      setDiscount("");
+    }
+  }, [sellingPrice, mrpPrice]);
+
   const getComputedStockStatus = () => {
     if (stockQuantity === "" || stockQuantity === 0 || Number(stockQuantity) <= 0) {
       return {
@@ -92,89 +114,188 @@ export default function AddProductModal({
 
   const computedStock = getComputedStockStatus();
 
-  // Check which tabs have validation errors
-  const hasGeneralErrors = !!(errors.productName || errors.sku || errors.category);
+  const hasGeneralErrors = !!(errors.productName || errors.sku || errors.categoryId);
   const hasImageErrors = !!errors.mainImage;
   const hasPricingErrors = !!(errors.sellingPrice || errors.stockQuantity);
 
-  // Handle Main Image Upload
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      setMainImage(url);
+      setMainImageFile(file);
+      
+      const previewUrl = URL.createObjectURL(file);
+      setMainImageUrl(previewUrl);
       setErrors((prev) => ({ ...prev, mainImage: "" }));
     }
   };
 
-  // Handle Additional Images
-  const handleAdditionalImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdditionalImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
+      setAdditionalImageFiles((prev) => [...prev, ...filesArray]);
+      
+      // Create preview URLs
       const newUrls = filesArray.map((f) => URL.createObjectURL(f));
-      setAdditionalImages((prev) => [...prev, ...newUrls]);
+      setAdditionalImageUrls((prev) => [...prev, ...newUrls]);
     }
   };
 
   const removeAdditionalImage = (indexToRemove: number) => {
-    setAdditionalImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setAdditionalImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setAdditionalImageUrls((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // Upload all images and return their URLs
+  const uploadAllImages = async () => {
+    const imagePromises: Promise<string>[] = [];
+    
+    // Upload main image
+    if (mainImageFile) {
+      imagePromises.push(
+        uploadImageMutation.mutateAsync(mainImageFile).then(result => result.url)
+      );
+    }
+    
+    // Upload additional images
+    for (const file of additionalImageFiles) {
+      imagePromises.push(
+        uploadImageMutation.mutateAsync(file).then(result => result.url)
+      );
+    }
+    
+    return Promise.all(imagePromises);
   };
 
   // Submit Handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: Record<string, string> = {};
+    setIsSubmitting(true);
+    
+    try {
+      const newErrors: Record<string, string> = {};
 
-    if (!productName.trim()) newErrors.productName = "Product name is required";
-    if (!sku.trim()) newErrors.sku = "SKU is required";
-    if (!category.trim()) newErrors.category = "Category is required";
-    if (!sellingPrice.trim()) newErrors.sellingPrice = "Selling price is required";
-    if (stockQuantity === "") newErrors.stockQuantity = "Stock quantity is required";
-    if (!mainImage) newErrors.mainImage = "Main product image is required";
+      if (!productName.trim()) newErrors.productName = "Product name is required";
+      if (!sku.trim()) newErrors.sku = "SKU is required";
+      if (!selectedCategoryId) newErrors.categoryId = "Category is required";
+      if (!sellingPrice.trim()) newErrors.sellingPrice = "Selling price is required";
+      if (stockQuantity === "") newErrors.stockQuantity = "Stock quantity is required";
+      if (!mainImageFile) newErrors.mainImage = "Main product image is required";
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      // Auto-switch to the first tab that has an error
-      if (newErrors.productName || newErrors.sku || newErrors.category) {
-        setActiveTab("general");
-      } else if (newErrors.mainImage) {
-        setActiveTab("images");
-      } else if (newErrors.sellingPrice || newErrors.stockQuantity) {
-        setActiveTab("pricing");
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        // Auto-switch to the first tab that has an error
+        if (newErrors.productName || newErrors.sku || newErrors.categoryId) {
+          setActiveTab("general");
+        } else if (newErrors.mainImage) {
+          setActiveTab("images");
+        } else if (newErrors.sellingPrice || newErrors.stockQuantity) {
+          setActiveTab("pricing");
+        }
+        return;
       }
-      return;
+
+      // Upload all images first
+      const uploadedUrls = await uploadAllImages();
+      
+      // Prepare image data
+      const images = [
+        {
+          imageUrl: uploadedUrls[0], // Main image
+          isMainImage: true,
+          altText: productName,
+        },
+        // Additional images
+        ...uploadedUrls.slice(1).map(url => ({
+          imageUrl: url,
+          isMainImage: false,
+          altText: productName,
+        })),
+      ];
+
+      // Prepare vehicle compatibility array
+      const vehicleCompatibilityArray = vehicleCompatibility
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+
+      const productData = {
+        name: productName.trim(),
+        sku: sku.trim(),
+        categoryId: selectedCategoryId,
+        brand: brand.trim() || undefined,
+        description: description.trim() || undefined,
+        sellingPrice: parseFloat(sellingPrice),
+        mrpPrice: mrpPrice ? parseFloat(mrpPrice) : undefined,
+        gstPercentage: parseFloat(taxGst),
+        stockQuantity: Number(stockQuantity),
+        lowStockThreshold,
+        publicationStatus: productStatus,
+        vehicleCompatibility: vehicleCompatibilityArray.length > 0 ? vehicleCompatibilityArray : undefined,
+        productType: productType.trim() || undefined,
+        color: color.trim() || undefined,
+        dimensions: dimensions.trim() || undefined,
+        warranty: warranty.trim() || undefined,
+        material: material.trim() || undefined,
+        images,
+      };
+
+      const result = await createProductMutation.mutateAsync(productData);
+      
+      // Call success callback with the created product
+      onSuccess?.({
+        id: result.id,
+        productName: result.name,
+        sku: result.sku,
+        category: result.category.name,
+        sellingPrice: result.sellingPrice,
+        stockQuantity: result.stockQuantity,
+        stockStatus: result.inventoryStatus === 'in_stock' ? 'In Stock' : 
+                   result.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock',
+        price: `₹${result.sellingPrice}`,
+      });
+      
+      onClose();
+    } catch (error: any) {
+      console.error('Failed to create product:', error);
+      setErrors({ submit: error.message || 'Failed to create product' });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const newProduct = {
-      productName,
-      sku,
-      category,
-      brand,
-      description,
-      mainImage,
-      additionalImages,
-      sellingPrice,
-      mrpPrice,
-      discount,
-      taxGst,
-      stockQuantity: Number(stockQuantity),
-      lowStockThreshold,
-      stockStatus: computedStock.label,
-      vehicleCompatibility,
-      productType,
-      color,
-      dimensions,
-      warranty,
-      material,
-      productStatus,
-    };
-
-    onSuccess?.(newProduct);
-    onClose();
   };
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setProductName("");
+      setSku("");
+      setSelectedCategoryId("");
+      setBrand("");
+      setDescription("");
+      setMainImageFile(null);
+      setMainImageUrl(null);
+      setAdditionalImageFiles([]);
+      setAdditionalImageUrls([]);
+      setSellingPrice("");
+      setMrpPrice("");
+      setDiscount("");
+      setTaxGst("18");
+      setStockQuantity("");
+      setLowStockThreshold(5);
+      setVehicleCompatibility("");
+      setProductType("");
+      setColor("");
+      setDimensions("");
+      setWarranty("");
+      setMaterial("");
+      setProductStatus("active");
+      setErrors({});
+      setActiveTab("general");
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
   // Close modal on Escape key and lock body scroll
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -301,24 +422,29 @@ export default function AddProductModal({
                     <label className="block font-medium text-white/80 mb-1.5">
                       Category <span className="text-[#640C0C]">*</span>
                     </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white focus:border-[#640C0C] focus:outline-none transition-colors"
-                    >
-                      <option value="Lighting" className="bg-[#121212] text-white">Lighting</option>
-                      <option value="Fog Lamps" className="bg-[#121212] text-white">Fog Lamps</option>
-                      <option value="Headlights" className="bg-[#121212] text-white">Headlights</option>
-                      <option value="Tail Lights" className="bg-[#121212] text-white">Tail Lights</option>
-                      <option value="Horns" className="bg-[#121212] text-white">Horns</option>
-                      <option value="Seat Covers" className="bg-[#121212] text-white">Seat Covers</option>
-                      <option value="Car Perfumes" className="bg-[#121212] text-white">Car Perfumes</option>
-                      <option value="Android Stereos" className="bg-[#121212] text-white">Android Stereos</option>
-                      <option value="Roof Light Bars" className="bg-[#121212] text-white">Roof Light Bars</option>
-                      <option value="Mirror Covers" className="bg-[#121212] text-white">Mirror Covers</option>
-                      <option value="Exterior Accessories" className="bg-[#121212] text-white">Exterior Accessories</option>
-                      <option value="Other Accessories" className="bg-[#121212] text-white">Other Accessories</option>
-                    </select>
+                    {categoriesLoading ? (
+                      <div className="flex items-center space-x-2 text-white/60 text-xs">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Loading categories...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedCategoryId}
+                        onChange={(e) => {
+                          setSelectedCategoryId(e.target.value);
+                          if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white focus:border-[#640C0C] focus:outline-none transition-colors"
+                      >
+                        <option value="" className="bg-[#121212] text-white">Select a category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id} className="bg-[#121212] text-white">
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {errors.categoryId && <p className="text-[#640C0C] text-[11px] mt-1">{errors.categoryId}</p>}
                   </div>
 
                   <div>
@@ -355,16 +481,18 @@ export default function AddProductModal({
                     <label className="block font-medium text-white/80 mb-1.5">
                       Main Product Image <span className="text-[#640C0C]">*</span>
                     </label>
-                    {mainImage ? (
+                    {mainImageUrl ? (
                       <div className="relative rounded-xl border border-white/10 bg-[#0a0a0a] p-3 flex items-center gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={mainImage}
+                          src={mainImageUrl}
                           alt="Main Preview"
-                          className="h-20 w-20 rounded-lg object-contain bg-[#121212] border border-white/5"
+                          className="h-20 w-20 rounded-lg object-cover bg-[#121212] border border-white/5"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">Main Photo Uploaded</p>
+                          <p className="text-xs font-semibold text-white truncate">
+                            {mainImageFile?.name || "Main Photo Uploaded"}
+                          </p>
                           <label
                             htmlFor={mainImageInputId}
                             className="text-[11px] text-[#640C0C] hover:text-[#7a1010] cursor-pointer block mt-1 font-medium"
@@ -374,7 +502,10 @@ export default function AddProductModal({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setMainImage(null)}
+                          onClick={() => {
+                            setMainImageFile(null);
+                            setMainImageUrl(null);
+                          }}
                           className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-[#640C0C] transition-colors"
                           title="Remove image"
                         >
@@ -428,15 +559,15 @@ export default function AddProductModal({
                       />
                     </label>
 
-                    {additionalImages.length > 0 && (
+                    {additionalImageUrls.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3">
-                        {additionalImages.map((imgUrl, idx) => (
+                        {additionalImageUrls.map((imgUrl, idx) => (
                           <div key={idx} className="relative group">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={imgUrl}
                               alt={`Alternate ${idx + 1}`}
-                              className="h-12 w-12 rounded-lg object-contain bg-[#121212] border border-white/10"
+                              className="h-12 w-12 rounded-lg object-cover bg-[#121212] border border-white/10"
                             />
                             <button
                               type="button"
@@ -476,13 +607,15 @@ export default function AddProductModal({
                       Selling Price (₹) <span className="text-[#640C0C]">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="number"
+                      step="0.01"
+                      min="0"
                       value={sellingPrice}
                       onChange={(e) => {
                         setSellingPrice(e.target.value);
                         if (errors.sellingPrice) setErrors((prev) => ({ ...prev, sellingPrice: "" }));
                       }}
-                      placeholder="2,499"
+                      placeholder="2499"
                       className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
                     />
                     {errors.sellingPrice && <p className="text-[#640C0C] text-[11px] mt-1">{errors.sellingPrice}</p>}
@@ -491,10 +624,12 @@ export default function AddProductModal({
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">Original / MRP (₹)</label>
                     <input
-                      type="text"
+                      type="number"
+                      step="0.01"
+                      min="0"
                       value={mrpPrice}
                       onChange={(e) => setMrpPrice(e.target.value)}
-                      placeholder="3,499"
+                      placeholder="3499"
                       className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
                     />
                   </div>
@@ -504,19 +639,23 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={discount}
-                      onChange={(e) => setDiscount(e.target.value)}
-                      placeholder="25%"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      readOnly
+                      placeholder="Auto-calculated"
+                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a]/50 px-3.5 py-2.5 text-xs text-white/70 placeholder:text-white/40 cursor-not-allowed"
+                      title="Automatically calculated from MRP and selling price"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Tax / GST</label>
+                    <label className="block font-medium text-white/80 mb-1.5">GST (%)</label>
                     <input
-                      type="text"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
                       value={taxGst}
                       onChange={(e) => setTaxGst(e.target.value)}
-                      placeholder="18% GST"
+                      placeholder="18"
                       className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
                     />
                   </div>
@@ -552,7 +691,7 @@ export default function AddProductModal({
                       className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
                     />
                     <span className="text-[10px] text-white/40 mt-1 block">
-                      Quantity &le; this threshold triggers &quot;Low Stock&quot;.
+                      Quantity ≤ this threshold triggers &quot;Low Stock&quot;.
                     </span>
                   </div>
                 </div>
@@ -574,6 +713,9 @@ export default function AddProductModal({
                       placeholder="e.g. Hyundai Creta 2020–2024, Kia Seltos 2019–2024"
                       className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
                     />
+                    <span className="text-[10px] text-white/40 mt-1 block">
+                      Separate multiple vehicles with commas.
+                    </span>
                   </div>
 
                   <div>
@@ -635,7 +777,7 @@ export default function AddProductModal({
                   <div className="md:col-span-2 pt-2">
                     <label className="block font-medium text-white/80 mb-2">Publishing Status</label>
                     <div className="flex flex-wrap gap-3">
-                      {(["Active", "Draft", "Out of Stock"] as const).map((status) => (
+                      {(["active", "draft"] as const).map((status) => (
                         <label
                           key={status}
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 cursor-pointer transition-all ${
@@ -652,10 +794,13 @@ export default function AddProductModal({
                             onChange={() => setProductStatus(status)}
                             className="accent-[#640C0C]"
                           />
-                          <span className="text-xs font-medium">{status}</span>
+                          <span className="text-xs font-medium capitalize">{status}</span>
                         </label>
                       ))}
                     </div>
+                    <span className="text-[10px] text-white/40 mt-1 block">
+                      Draft products won&apos;t be visible to customers until published as Active.
+                    </span>
                   </div>
                 </div>
               </div>
@@ -664,19 +809,26 @@ export default function AddProductModal({
 
           {/* Bottom Actions: Cancel and Save */}
           <div className="flex items-center justify-end gap-3 border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
+            {errors.submit && (
+              <p className="text-[#640C0C] text-xs mr-auto">{errors.submit}</p>
+            )}
+            
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
+              disabled={isSubmitting}
+              className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity shadow-md cursor-pointer"
+              disabled={isSubmitting || categoriesLoading}
+              className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Save Product
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? 'Creating Product...' : 'Save Product'}
             </button>
           </div>
         </form>

@@ -9,22 +9,33 @@ import InventorySummaryCards, {
   InventoryMetricCard,
 } from "@/components/admin/InventorySummaryCards";
 import ProductsInventoryTable, {
-  ALL_DEMO_PRODUCTS,
   InventoryProduct,
   InventoryStatus,
 } from "@/components/admin/ProductsInventoryTable";
 import AddProductModal from "@/components/admin/AddProductModal";
 import { Package, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { useProducts } from "@/hooks/use-products";
 
 export default function ProductsInventoryPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
 
-  // Products state initialized with the 12 realistic automotive accessory products
-  const [productsList, setProductsList] = useState<InventoryProduct[]>(ALL_DEMO_PRODUCTS);
+  const { data: productsData, isLoading, refetch } = useProducts({
+    limit: 100,
+  });
 
-  // Derive counts dynamically for complete backend scalability
+  const productsList: InventoryProduct[] = productsData?.products.map(product => ({
+    id: product.id,
+    name: product.name,
+    category: product.category.name,
+    sku: product.sku,
+    price: `₹${parseFloat(product.sellingPrice).toFixed(2)}`,
+    stock: product.stockQuantity,
+    status: product.inventoryStatus === 'in_stock' ? 'In Stock' :
+            product.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock'
+  })) || [];
+
   const totalCount = productsList.length;
   const inStockCount = productsList.filter((p) => p.status === "In Stock").length;
   const lowStockCount = productsList.filter((p) => p.status === "Low Stock").length;
@@ -65,7 +76,6 @@ export default function ProductsInventoryPage() {
     },
   ];
 
-  // Filter products based on selected category
   const getFilteredProducts = () => {
     switch (selectedCategory) {
       case "in_stock":
@@ -114,23 +124,32 @@ export default function ProductsInventoryPage() {
 
   const categoryMeta = getCategoryMeta();
 
-  // Add Product submission handler
-  const handleAddProductSuccess = (newProductData: Record<string, unknown>) => {
-    const rawPrice = String(newProductData.sellingPrice || "").trim();
-    const formattedPrice = rawPrice.startsWith("₹") ? rawPrice : `₹${rawPrice}`;
-
-    const newProduct: InventoryProduct = {
-      id: `prod-${Date.now()}`,
-      name: String(newProductData.productName || "New Accessory"),
-      category: String(newProductData.category || "Other Accessories"),
-      sku: String(newProductData.sku || `SKU-${Date.now()}`),
-      price: formattedPrice,
-      stock: Number(newProductData.stockQuantity || 0),
-      status: (newProductData.stockStatus as InventoryStatus) || "In Stock",
-    };
-
-    setProductsList((prev) => [newProduct, ...prev]);
+  const handleAddProductSuccess = () => {
+    refetch();
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-black text-white">
+        <AdminSidebar
+          mobileOpen={mobileOpen}
+          onCloseMobile={() => setMobileOpen(false)}
+        />
+        <div className="flex flex-1 flex-col min-w-0">
+          <AdminHeader
+            title="Products & Inventory"
+            onToggleMobile={() => setMobileOpen((prev) => !prev)}
+          />
+          <main className="flex-1 px-6 lg:px-12 py-8 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-white/60">Loading products...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
