@@ -30,7 +30,7 @@ export interface SidebarProps {
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-  { label: "Products & Inventory", icon: Package, href: "/admin/inventory" },
+  { label: "Products", icon: Package, href: "/admin/products" },
   { label: "Orders", icon: ShoppingCart },
   { label: "Customers", icon: Users },
   { label: "Staff", icon: UserCheck },
