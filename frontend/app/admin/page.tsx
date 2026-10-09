@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import AdminSidebar from "@/components/admin/Sidebar";
+import AdminSidebar from "@/components/admin/sidebar/Sidebar";
 import AdminHeader from "@/components/admin/Header";
 import SummaryCards from "@/components/admin/SummaryCards";
 import RecentOrdersTable from "@/components/admin/RecentOrdersTable";
