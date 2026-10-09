@@ -180,7 +180,6 @@ export default function ContactPageC() {
             </div>
           </aside>
 
-          {/* Contact form */}
           <div className="rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5 sm:p-8 lg:p-10">
             <div className="mb-8">
               <h2 className="text-xl font-bold sm:text-2xl">

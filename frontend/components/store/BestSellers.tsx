@@ -15,7 +15,7 @@ const products = Array.from({ length: 10 }).map((_, i) => ({
     ? `Premium Part ${i + 1}`
     : `Premium Performance Part ${i + 1} with Extra Long Title to Test the Two Line Clamping Behavior`,
   price: `₹${(299 + i * 50).toLocaleString()}`,
-  image: i % 2 === 0 ? "/images/category_brakes.jpg" : "/images/category_suspension.jpg",
+  image: i % 2 === 0 ? "/images/category_air-intake.jpg" : "/images/category_suspension.jpg",
 }));
 
 export default function BestSellers() {

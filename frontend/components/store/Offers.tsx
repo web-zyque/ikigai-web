@@ -8,7 +8,7 @@ const offerPosters = [
   {
     id: 1,
     title: "Brake System Sale — Up to 33% Off",
-    image: "/images/category_brakes.jpg",
+    image: "/images/category_exterior.jpg",
     href: "/offers/brake-system-sale",
     badge: "Sale",
   },
@@ -22,7 +22,7 @@ const offerPosters = [
   {
     id: 3,
     title: "Engine Performance — K&N Intake 30% Off",
-    image: "/images/category_engine.jpg",
+    image: "/images/category_exhaust.jpg",
     href: "/offers/engine-performance-deals",
     badge: "Hot",
   },

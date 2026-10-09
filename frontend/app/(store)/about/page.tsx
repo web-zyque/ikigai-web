@@ -92,9 +92,7 @@ function Counter({
 export default function AboutPage() {
     return (
         <main className="min-h-screen overflow-hidden bg-black text-white">
-            {/* Hero Section */}
             <section className="relative isolate overflow-hidden border-b border-white/5">
-                {/* Background Image */}
                 <div className="absolute inset-0 -z-20">
                     <Image
                         src="/images/hero-about.png"
@@ -113,8 +111,6 @@ export default function AboutPage() {
                         className="block md:hidden object-cover object-center"
                     />
                 </div>
-
-                {/* Dark overlays */}
                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black via-black/85 to-black/40" />
                 <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black via-transparent to-black/30" />
 
@@ -167,15 +163,12 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Who We Are */}
             <section
                 id="about"
                 className="relative overflow-hidden bg-black py-16 text-white sm:py-20 lg:py-24"
             >
                 <div className="mx-auto max-w-7xl px-6 lg:px-12">
                     <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
-
-                        {/* Left: About Content */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
@@ -216,7 +209,6 @@ export default function AboutPage() {
                                 </p>
                             </div>
 
-                            {/* Services */}
                             <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                                 {[
                                     "Performance Engineering",
@@ -235,8 +227,6 @@ export default function AboutPage() {
                                     </div>
                                 ))}
                             </div>
-
-                            {/* Statistics */}
                             <div className="mt-10 border-t border-white/10 pt-7 sm:mt-12 sm:pt-8">
                                 <div className="grid grid-cols-3 gap-3 sm:gap-5">
                                     {stats.map((stat) => (
@@ -256,8 +246,6 @@ export default function AboutPage() {
                                 </div>
                             </div>
                         </motion.div>
-
-                        {/* Right: Chassis Image */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
@@ -299,7 +287,6 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Our Values */}
             <section className="border-y border-white/5 bg-[#050505] py-16 sm:py-20 lg:py-24">
                 <div className="mx-auto max-w-7xl px-6 lg:px-12">
                     <div className="mx-auto max-w-2xl text-center">
@@ -330,37 +317,36 @@ export default function AboutPage() {
                                     key={value.title}
                                     className="group rounded-[20px] border border-white/10 bg-[#0a0a0a] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/15 sm:p-8"
                                 >
-                                    <div className="mb-7 flex items-center justify-between">
-                                        <div className="grid h-12 w-12 place-items-center rounded-full border border-white/10 bg-[#121212]">
+                                    <div className="mb-7 flex items-center gap-3">
+                                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-[#121212]">
                                             <Icon className="h-5 w-5 text-[#640C0C]" />
                                         </div>
 
-                                        <span className="text-xs font-medium tracking-widest text-white/20">
+                                        <h3 className="text-lg font-semibold text-white">
+                                            {value.title}
+                                        </h3>
+
+                                        <span className="ml-auto shrink-0 text-xs font-medium tracking-widest text-white/20">
                                             0{index + 1}
                                         </span>
                                     </div>
 
-                                    <h3 className="text-lg font-semibold">
-                                        {value.title}
-                                    </h3>
-
-                                    <p className="mt-3 text-sm leading-relaxed text-white/45">
+                                    <p className="text-sm leading-relaxed text-white/45">
                                         {value.description}
                                     </p>
                                 </div>
-                            )
+                            );
                         })}
                     </div>
                 </div>
             </section>
 
-            {/* Our Approach */}
             <section className="py-16 sm:py-20 lg:py-28">
                 <div className="mx-auto max-w-7xl px-6 lg:px-12">
                     <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0a0a0a] p-6 sm:p-10 lg:p-16">
                         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#640C0C]/10 blur-3xl" />
 
-                        <div className="relative max-w-3xl">
+                        <div className="relative max-w-5xl">
                             <div className="mb-3 flex items-center gap-2">
                                 <span className="h-1 w-6 rounded-full bg-[#640C0C]" />
 
@@ -376,17 +362,29 @@ export default function AboutPage() {
                                 </span>
                             </h2>
 
-                            <div className="mt-6 space-y-4 text-sm leading-7 text-white/50 sm:text-base">
+                            <div className="mt-6 space-y-5 leading-7 text-white/50 text-base">
                                 <p>
-                                    Every driver has a different vision for their vehicle.
-                                    Our approach is simple: make it easier to explore
-                                    accessories, understand product details, and find options
-                                    that suit your preferences.
+                                    Every driver has a different vision for their vehicle. Our approach is
+                                    simple: make it easier to explore automotive accessories, understand
+                                    product details, and discover options that match your preferences.
                                 </p>
 
                                 <p>
-                                    We believe choosing the right accessories should feel
-                                    straightforward, informed, and enjoyable.
+                                    From subtle interior upgrades to bold exterior modifications, the right
+                                    accessories help bring your vision to life. We aim to make exploring
+                                    products easier by presenting clear information, useful categories,
+                                    and options for different styles.
+                                </p>
+
+                                <p>
+                                    At Ikigai, we believe personalising your car should be an enjoyable
+                                    experience. Whether you want to enhance its appearance, improve everyday
+                                    comfort, or add your own distinctive touch, we want to help you find
+                                    accessories that suit your needs.
+                                </p>
+
+                                <p className="font-medium text-white/75">
+                                    Our goal is simple: help every driver find their style, one detail at a time.
                                 </p>
                             </div>
                         </div>
@@ -394,7 +392,6 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Call to Action */}
             <section className="border-t border-white/5 bg-[#050505] py-16 sm:py-20 lg:py-24">
                 <div className="mx-auto max-w-7xl px-6 text-center lg:px-12">
                     <div className="mb-3 flex items-center justify-center gap-2">

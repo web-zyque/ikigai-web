@@ -67,8 +67,6 @@ export default function ProductsList({ initialCategory }: ProductsListProps) {
   return (
     <div className={`${inter.className} bg-black text-white`}>
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12 flex gap-10 lg:gap-14 items-start">
-
-        {/* ── Filter column: sticks at top-0, has its own internal scroll ── */}
         <div
           className="filter-scroll hidden lg:block sticky top-0 h-screen overflow-y-auto overflow-x-hidden shrink-0 w-52 pt-10 pb-12 pr-2"
           style={{
@@ -79,7 +77,6 @@ export default function ProductsList({ initialCategory }: ProductsListProps) {
           <FilterSidebar activeCategory={initialCategory} />
         </div>
 
-        {/* ── Products column: normal flow, driven by main page scroll ── */}
         <main className="flex-1 min-w-0 pt-10 pb-16">
           <div className="mb-8">
             <div className="flex items-end justify-between">

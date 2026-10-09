@@ -12,7 +12,7 @@ export default function CartPage() {
   const { data: user, isLoading } = useMe();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discount = subtotal > 0 ? 0 : 0; // Adjust discount logic as needed
+  const discount = subtotal > 0 ? 0 : 0; 
   const deliveryFee = subtotal > 0 ? 15.00 : 0;
   const total = subtotal - discount + deliveryFee;
 
@@ -50,7 +50,6 @@ export default function CartPage() {
     <div className="min-h-screen bg-black">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left Side: Cart Items */}
           <div className="flex-1 bg-[#121212] rounded-[16px] border border-white/5 p-5 md:p-6">
             <div className="hidden md:grid grid-cols-12 gap-4 text-white/50 text-xs mb-4 border-b border-white/10 pb-2">
               <div className="col-span-6">Product</div>
@@ -98,7 +97,6 @@ export default function CartPage() {
             )}
           </div>
 
-          {/* Right Side: Order Summary */}
           <div className="w-full lg:w-80 flex flex-col gap-5">
             <div className="bg-[#121212] rounded-[16px] border border-white/5 p-5">
               <h2 className="text-lg font-bold text-white mb-5">Order Summary</h2>

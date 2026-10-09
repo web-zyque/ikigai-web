@@ -7,7 +7,6 @@ import Image from "next/image";
 import { use } from "react";
 import { Package, Check, Truck, MapPin, Download, Undo2, AlertCircle } from "lucide-react";
 
-// Mock data to match what we might fetch for this ID
 const getMockOrder = (id: string) => ({
   id,
   date: "January 8, 2024 at 9:48 pm",
@@ -28,7 +27,7 @@ const getMockOrder = (id: string) => ({
       description: "Apple M2 chip with 8-core CPU and 8-core GPU. 256GB SSD storage.",
       quantity: 3,
       price: 500.00,
-      image: "/images/category_brakes.jpg", // Using existing mock images
+      image: "/images/category_brakes.jpg", 
     }
   ],
   summary: {
@@ -45,7 +44,7 @@ const getMockOrder = (id: string) => ({
     placed: "Jan 8, 2024 9:48 PM",
     confirmed: "Jan 9, 2024 10:00 AM",
     shipped: "Jan 10, 2024 2:30 PM",
-    delivered: null, // null means not yet reached
+    delivered: null, 
   }
 });
 
@@ -80,7 +79,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  // Determine current timeline step index
   const steps = [
     { key: 'placed', label: 'Order placed', icon: Package },
     { key: 'confirmed', label: 'Order confirmed', icon: Check },
@@ -94,7 +92,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     <div className="min-h-screen bg-black text-white pb-20">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 pt-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Order {order.id}</h1>
@@ -116,10 +113,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
 
         <div className="flex flex-col lg:flex-row gap-6">
           
-          {/* Left Column */}
           <div className="flex-1 flex flex-col gap-6">
-            
-            {/* Order Items / Product Details */}
+
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6 md:p-8">
               <h2 className="text-lg font-bold mb-6">Product Details</h2>
               <div className="space-y-6">
@@ -142,12 +137,10 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
 
-            {/* Timeline */}
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6 md:p-8 overflow-hidden">
               <h2 className="text-lg font-bold mb-8">Order Status</h2>
               <div className="relative flex justify-between items-start mb-4">
-                
-                {/* Connecting Line */}
+
                 <div className="absolute left-12 right-12 top-[11px] h-[10px] bg-white/10 z-0 rounded-full">
                   <div 
                     className="absolute left-0 top-0 h-full bg-[#22c55e] transition-all duration-500 rounded-full" 
@@ -155,7 +148,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   ></div>
                 </div>
 
-                {/* Steps */}
                 {steps.map((step, index) => {
                   const isCompleted = index <= currentStepIndex;
                   return (
@@ -178,7 +170,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                  <p className="text-xs text-white/50">{order.timeline[steps[Math.max(currentStepIndex, 0)].key as keyof typeof order.timeline]}</p>
               </div>
 
-              {/* Delivery Info Row */}
               {(order.status.toLowerCase() === 'shipped' || order.status.toLowerCase() === 'delivered') && order.tracking && (
                 <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-start gap-4">
                   <div className="text-left flex flex-col">
@@ -193,7 +184,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
               )}
             </div>
 
-            {/* Order Summary */}
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6 md:p-8">
               <h2 className="text-lg font-bold mb-6">Order Summary</h2>
               <div className="space-y-4 text-sm">
@@ -219,10 +209,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0">
             
-            {/* Customer & Shipping Info Single Card */}
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6">
               <h2 className="text-lg font-bold mb-8">Customer Info</h2>
               

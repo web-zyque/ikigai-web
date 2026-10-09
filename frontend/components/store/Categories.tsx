@@ -6,14 +6,16 @@ import { useRef, useState, useEffect } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 const categories = [
-  { name: "Brakes", slug: "brakes", image: "/images/category_brakes.jpg", count: 12 },
+  { name: "Exhaust", slug: "exhaust", image: "/images/category_exhaust.jpg", count: 6 },
   { name: "Suspension", slug: "suspension", image: "/images/category_suspension.jpg", count: 8 },
+    { name: "Alloy Wheels", slug: "alloy-wheels", image: "/images/category_wheels.jpg", count: 7 },
   { name: "Engine", slug: "engine", image: "/images/category_engine.jpg", count: 4 },
-  { name: "Tires", slug: "performance-tires", image: "/images/category_tires.jpg", count: 15 },
-  { name: "Exhaust", slug: "exhaust", image: "/images/category_suspension.jpg", count: 6 },
+  { name: "Lighting", slug: "lighting", image: "/images/category_lighting.jpg", count: 7 },
+  { name: "Brakes", slug: "brakes", image: "/images/category_brakes.jpg", count: 12 },
   { name: "Cooling", slug: "cooling", image: "/images/category_engine.jpg", count: 5 },
-  { name: "Electrical", slug: "electrical", image: "/images/category_brakes.jpg", count: 9 },
-  { name: "Alloy Wheels", slug: "alloy-wheels", image: "/images/category_tires.jpg", count: 7 },
+  { name: "Tires", slug: "performance-tires", image: "/images/category_tires.jpg", count: 15 },
+  { name: "Electrical", slug: "electrical", image: "/images/category_exterior.jpg", count: 9 },
+
 ];
 
 export default function Categories() {

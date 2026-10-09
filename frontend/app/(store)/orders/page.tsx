@@ -50,7 +50,6 @@ export default function OrdersPage() {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -68,7 +67,7 @@ export default function OrdersPage() {
   };
 
   const navigateToOrder = (id: string, e: React.MouseEvent) => {
-    // If click was inside the dropdown, don't navigate
+
     if (openDropdownId === id) return;
     router.push(`/orders/${id}`);
   };
@@ -126,7 +125,7 @@ export default function OrdersPage() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3 self-start md:self-auto w-full md:w-auto">
-            {/* Search Box on the Left of the Tab Switcher */}
+
             <div className="relative w-full sm:w-64 shrink-0 group">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 transition-colors group-focus-within:text-white" />
               <input 
@@ -138,7 +137,6 @@ export default function OrdersPage() {
               />
             </div>
 
-            {/* Tab Switcher on the Right */}
             <div className="flex bg-[#121212] border border-white/10 p-1 rounded-full w-full sm:w-auto shrink-0 shadow-inner">
               {["All", "Delivered", "Cancelled"].map(tab => (
                 <button
@@ -158,8 +156,7 @@ export default function OrdersPage() {
         </div>
 
         <div className="bg-[#121212] rounded-[20px] border border-white/5">
-          
-          {/* Desktop Table Header */}
+
           <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/10 text-xs font-medium text-white/50 bg-white/5 uppercase tracking-wider rounded-t-[20px]">
             <div className="col-span-3">Order ID</div>
             <div className="col-span-5">Product Name</div>
@@ -168,7 +165,6 @@ export default function OrdersPage() {
             <div className="col-span-1 text-center">Action</div>
           </div>
 
-          {/* Orders List */}
           <div className="divide-y divide-white/10" ref={dropdownRef}>
             {filteredOrders.length === 0 ? (
               <div className="p-12 text-center">
@@ -181,8 +177,7 @@ export default function OrdersPage() {
                   onClick={(e) => navigateToOrder(order.id, e)}
                   className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center px-6 py-5 hover:bg-white/[0.04] transition-colors relative cursor-pointer last:rounded-b-[20px]"
                 >
-                  
-                  {/* Mobile-only Order ID & Date layout */}
+
                   <div className="md:hidden flex justify-between items-center mb-2">
                     <span className="text-xs text-white/50">{order.id}</span>
                     <span className="text-xs text-white/50">{order.date}</span>
@@ -203,7 +198,6 @@ export default function OrdersPage() {
                     {order.date}
                   </div>
 
-                  {/* Mobile Status row */}
                   <div className="md:hidden flex justify-end items-center mt-2 border-t border-white/5 pt-3">
                     <div className={`text-sm ${getStatusColor(order.status)}`}>
                       {order.status}
@@ -225,7 +219,6 @@ export default function OrdersPage() {
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {/* Dropdown Menu */}
                     {openDropdownId === order.id && (
                       <div 
                         className="absolute right-8 md:right-10 top-12 md:top-auto md:mt-10 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl shadow-black/80 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-150"

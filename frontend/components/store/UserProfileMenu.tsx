@@ -69,7 +69,7 @@ export function UserProfileMenu({ user }: UserProfileMenuProps) {
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/10 bg-ik-surface shadow-lg backdrop-blur-sm"
+          className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/10 bg-ik-surface shadow-lg backdrop-blur-sm z-50"
         >
           <div className="border-b border-white/10 px-4 py-3">
             <p className="text-sm font-medium text-white">{user.fullName}</p>
