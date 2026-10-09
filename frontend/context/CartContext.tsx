@@ -29,8 +29,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("cart");
     if (saved) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCartItems(JSON.parse(saved));
-      } catch (e) {}
+      } catch {
+        // ignore JSON parse error
+      }
     }
   }, []);
 
