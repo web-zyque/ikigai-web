@@ -72,8 +72,8 @@ export default function FAQ() {
                             <div
                                 key={faq.question}
                                 className={`overflow-hidden rounded-2xl border transition-colors duration-300 ${isOpen
-                                        ? "border-white/15 bg-[#0a0a0a]"
-                                        : "border-white/5 bg-[#0a0a0a] hover:border-white/10"
+                                    ? "border-white/15 bg-[#0a0a0a]"
+                                    : "border-white/5 bg-[#0a0a0a] hover:border-white/10"
                                     }`}
                             >
                                 <button
@@ -93,8 +93,8 @@ export default function FAQ() {
 
                                     <span
                                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${isOpen
-                                                ? "rotate-180 border-[#640C0C]/50 bg-[#640C0C]/10 text-[#640C0C]"
-                                                : "border-white/10 bg-[#121212] text-white/50"
+                                            ? "rotate-180 border-[#640C0C]/50 bg-[#640C0C]/10 text-[#640C0C]"
+                                            : "border-white/10 bg-[#121212] text-white/50"
                                             }`}
                                     >
                                         <ChevronDown className="h-4 w-4" />
@@ -120,16 +120,18 @@ export default function FAQ() {
                     })}
                 </div>
                 <div className="order-3 self-start rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5 sm:p-6 lg:col-start-1 lg:row-start-2">
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#121212]">
-                        <MessageCircle
-                            className="h-5 w-5 text-[#640C0C]"
-                            strokeWidth={1.7}
-                        />
-                    </div>
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#121212]">
+                            <MessageCircle
+                                className="h-5 w-5 text-[#640C0C]"
+                                strokeWidth={1.7}
+                            />
+                        </div>
 
-                    <h3 className="text-base font-semibold text-white">
-                        Still have questions?
-                    </h3>
+                        <h3 className="text-base font-semibold text-white">
+                            Still have questions?
+                        </h3>
+                    </div>
 
                     <p className="mt-2 text-sm leading-relaxed text-white/45">
                         Need help finding the right part? Get in touch with our
