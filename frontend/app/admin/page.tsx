@@ -3,24 +3,16 @@
 import React, { useState } from "react";
 import { Menu } from "lucide-react";
 
+import { useMobileMenu } from "@/app/admin/layout";
 import SummaryCards from "@/components/admin/SummaryCards";
 import RecentOrdersTable from "@/components/admin/RecentOrdersTable";
-import AdminSidebar from "@/components/admin/sidebar/Sidebar";
 import OrdersOverviewChart from "@/components/admin/dashboard/OrdersOverviewChart";
 
 export default function AdminDashboardPage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { setMobileOpen } = useMobileMenu();
 
   return (
-    <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
-      {/* Fixed Desktop / Off-canvas Mobile Sidebar */}
-      <AdminSidebar
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+    <>
         <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
@@ -47,7 +39,6 @@ export default function AdminDashboardPage() {
           {/* 3. Existing Recent Orders Section */}
           <RecentOrdersTable />
         </main>
-      </div>
-    </div>
+    </>
   );
 }

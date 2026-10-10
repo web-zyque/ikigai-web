@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import AdminSidebar from "@/components/admin/sidebar/Sidebar";
+import { useMobileMenu } from "@/app/admin/layout";
 import InventorySummaryCards, {
   InventoryCardType,
   InventoryMetricCard,
@@ -15,7 +15,7 @@ import { Package, CheckCircle2, AlertTriangle, AlertCircle, Menu } from "lucide-
 import { useProducts } from "@/hooks/use-products";
 
 export default function ProductsInventoryPage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
 
@@ -128,36 +128,19 @@ export default function ProductsInventoryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-black text-white">
-        <AdminSidebar
-          mobileOpen={mobileOpen}
-          onCloseMobile={() => setMobileOpen(false)}
-        />
-        <div className="flex flex-1 flex-col min-w-0">
- 
-          <main className="flex-1 px-6 lg:px-12 py-8 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-white/60">Loading products...</p>
-            </div>
-          </main>
+      <main className="flex-1 px-6 lg:px-12 py-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-white/60">Loading products...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
-      {/* Reused Fixed Desktop / Mobile Sidebar */}
-      <AdminSidebar
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
-        {/* Reused Top Header */}
-        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
+    <>
+      {/* Reused Top Header */}
+      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -206,7 +189,6 @@ export default function ProductsInventoryPage() {
             </div>
           )}
         </main>
-      </div>
 
       {/* Add Product Modal */}
       <AddProductModal
@@ -214,6 +196,6 @@ export default function ProductsInventoryPage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleAddProductSuccess}
       />
-    </div>
+    </>
   );
 }
