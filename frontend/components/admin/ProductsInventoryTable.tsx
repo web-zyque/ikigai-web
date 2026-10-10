@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { ArrowLeft } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowLeft, Search } from "lucide-react";
 
 export type InventoryStatus = "In Stock" | "Low Stock" | "Out of Stock";
 
@@ -22,6 +22,8 @@ export interface ProductsInventoryTableProps {
   badgeText?: string;
   footerText?: string;
   onBackToOverview?: () => void;
+  activeTab?: string | null;
+  onTabChange?: (tab: string | null) => void;
 }
 
 export const ALL_DEMO_PRODUCTS: InventoryProduct[] = [
@@ -147,7 +149,11 @@ export default function ProductsInventoryTable({
   badgeText,
   footerText = "Stock updated 2m ago",
   onBackToOverview,
+  activeTab,
+  onTabChange,
 }: ProductsInventoryTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const getStatusBadge = (status: InventoryStatus) => {
     switch (status) {
       case "In Stock":
@@ -184,31 +190,45 @@ export default function ProductsInventoryTable({
     <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm animate-in fade-in duration-300">
       {/* Category Header with Back to Overview */}
       <div className="flex flex-col gap-4 border-b border-white/5 px-6 py-6 bg-[#121212]">
-        {onBackToOverview && (
-          <div>
-            <button
-              type="button"
-              onClick={onBackToOverview}
-              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 text-[#640C0C] transition-transform duration-200 group-hover:-translate-x-1" />
-              <span>Back to Overview</span>
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
-              {badgeText && (
-                <span className="rounded-full bg-white/10 border border-white/15 px-3 py-0.5 text-xs font-semibold text-white/90">
-                  {badgeText}
-                </span>
-              )}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <h2 className="text-lg font-bold tracking-tight text-white whitespace-nowrap">{title}</h2>
+            
+            {/* Search Bar */}
+            <div className="relative w-64 md:w-80">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+              <input
+                type="text"
+                placeholder="Search by name or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-md border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 focus:border-[#640C0C]/50 focus:outline-none focus:ring-1 focus:ring-[#640C0C]/50 transition-all"
+              />
             </div>
-            {subtitle && <p className="mt-1 text-xs text-white/60">{subtitle}</p>}
           </div>
+
+          {/* Filter Tabs */}
+          {onTabChange && (
+            <div className="flex items-center gap-1 rounded-lg bg-white/5 p-1 overflow-x-auto no-scrollbar">
+              {["All", "In Stock", "Low Stock", "Out of Stock"].map((tab) => {
+                const tabValue = tab === "All" ? null : tab === "In Stock" ? "in_stock" : tab === "Low Stock" ? "low_stock" : "out_of_stock";
+                const isActive = activeTab === tabValue;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => onTabChange(tabValue)}
+                    className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "bg-white text-black shadow-sm"
+                        : "text-white/60 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -226,17 +246,27 @@ export default function ProductsInventoryTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {products.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-8 text-center text-xs text-white/40"
-                >
-                  No inventory products found in this category.
-                </td>
-              </tr>
-            ) : (
-              products.map((product) => (
+            {(() => {
+              const filteredList = products.filter(
+                (p) =>
+                  p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+
+              if (filteredList.length === 0) {
+                return (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-xs text-white/40"
+                    >
+                      No inventory products found matching your search.
+                    </td>
+                  </tr>
+                );
+              }
+
+              return filteredList.map((product) => (
                 <tr
                   key={product.id}
                   className="transition-colors hover:bg-white/[0.02]"
@@ -260,8 +290,8 @@ export default function ProductsInventoryTable({
                     {getStatusBadge(product.status)}
                   </td>
                 </tr>
-              ))
-            )}
+              ));
+            })()}
           </tbody>
         </table>
       </div>
