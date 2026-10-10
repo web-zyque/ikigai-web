@@ -383,16 +383,7 @@ export default function ProductsInventoryTable({
         )}
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          {/* Left: 3 Compact Filter Cards */}
-          {counts && (
-            <InventorySummaryCards
-              activeFilter={activeFilter}
-              onFilterChange={onFilterChange}
-              counts={counts}
-            />
-          )}
-
-          {/* Right: Integrated Product Search Field */}
+          {/* Left: Integrated Product Search Field */}
           {onSearchChange && (
             <div className="relative w-full sm:w-72 md:w-80">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
@@ -415,6 +406,15 @@ export default function ProductsInventoryTable({
                 </button>
               )}
             </div>
+          )}
+
+          {/* Right: 3 Compact Filter Cards */}
+          {counts && (
+            <InventorySummaryCards
+              activeFilter={activeFilter}
+              onFilterChange={onFilterChange}
+              counts={counts}
+            />
           )}
         </div>
       </div>

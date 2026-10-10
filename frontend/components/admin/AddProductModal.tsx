@@ -29,6 +29,8 @@ export default function AddProductModal({
 }: AddProductModalProps) {
   const mainImageInputId = useId();
   const additionalImagesInputId = useId();
+  const tabsNavRef = React.useRef<HTMLDivElement | null>(null);
+  const activeTabRef = React.useRef<HTMLButtonElement | null>(null);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<TabType>("general");
@@ -36,7 +38,7 @@ export default function AddProductModal({
   // Form State - 1. Basic Info
   const [productName, setProductName] = useState(initialProduct?.name || "");
   const [sku, setSku] = useState(initialProduct?.sku || "");
-  const [category, setCategory] = useState(initialProduct?.category || "Lighting");
+  const [category, setCategory] = useState(initialProduct?.category || "");
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
@@ -67,6 +69,49 @@ export default function AddProductModal({
 
   // Validation Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (fieldName: string) => {
+    setErrors((prev) => {
+      if (!prev[fieldName]) return prev;
+      const updated = { ...prev };
+      delete updated[fieldName];
+      return updated;
+    });
+  };
+
+  // Step validation helpers
+  const validateGeneralStep = (): Record<string, string> => {
+    const stepErrors: Record<string, string> = {};
+    if (!productName.trim()) stepErrors.productName = "Product name is required";
+    if (!sku.trim()) stepErrors.sku = "Product SKU is required";
+    if (!category.trim()) stepErrors.category = "Category is required";
+    return stepErrors;
+  };
+
+  const validateImagesStep = (): Record<string, string> => {
+    const stepErrors: Record<string, string> = {};
+    if (!mainImage) stepErrors.mainImage = "Main product image is required";
+    return stepErrors;
+  };
+
+  const validatePricingStep = (): Record<string, string> => {
+    const stepErrors: Record<string, string> = {};
+    if (!sellingPrice.trim()) {
+      stepErrors.sellingPrice = "Selling price is required";
+    } else {
+      const cleanPrice = Number(String(sellingPrice).replace(/[^0-9.]/g, ""));
+      if (isNaN(cleanPrice) || cleanPrice <= 0) {
+        stepErrors.sellingPrice = "Selling price must be greater than 0";
+      }
+    }
+
+    if (stockQuantity === "") {
+      stepErrors.stockQuantity = "Stock quantity is required";
+    } else if (Number(stockQuantity) < 0) {
+      stepErrors.stockQuantity = "Stock quantity cannot be negative";
+    }
+    return stepErrors;
+  };
 
   // Compute stock status automatically based on quantity
   const getComputedStockStatus = () => {
@@ -107,7 +152,7 @@ export default function AddProductModal({
       const file = e.target.files[0];
       const url = URL.createObjectURL(file);
       setMainImage(url);
-      setErrors((prev) => ({ ...prev, mainImage: "" }));
+      clearFieldError("mainImage");
     }
   };
 
@@ -124,35 +169,72 @@ export default function AddProductModal({
     setAdditionalImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  const stepOrder: TabType[] = ["general", "images", "pricing", "specs"];
+
   // Step Navigation Handlers
   const handleNext = () => {
-    const newErrors: Record<string, string> = {};
-
     if (activeTab === "general") {
-      if (!productName.trim()) newErrors.productName = "Product name is required";
-      if (!sku.trim()) newErrors.sku = "SKU is required";
-      if (!category.trim()) newErrors.category = "Category is required";
-      if (Object.keys(newErrors).length > 0) {
-        setErrors((prev) => ({ ...prev, ...newErrors }));
+      const stepErrors = validateGeneralStep();
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrors }));
         return;
       }
       setActiveTab("images");
     } else if (activeTab === "images") {
-      if (!mainImage) newErrors.mainImage = "Main product image is required";
-      if (Object.keys(newErrors).length > 0) {
-        setErrors((prev) => ({ ...prev, ...newErrors }));
+      const stepErrors = validateImagesStep();
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrors }));
         return;
       }
       setActiveTab("pricing");
     } else if (activeTab === "pricing") {
-      if (!sellingPrice.trim()) newErrors.sellingPrice = "Selling price is required";
-      if (stockQuantity === "") newErrors.stockQuantity = "Stock quantity is required";
-      if (Object.keys(newErrors).length > 0) {
-        setErrors((prev) => ({ ...prev, ...newErrors }));
+      const stepErrors = validatePricingStep();
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors((prev) => ({ ...prev, ...stepErrors }));
         return;
       }
       setActiveTab("specs");
     }
+  };
+
+  const handleTabClick = (targetTab: TabType) => {
+    const currentIndex = stepOrder.indexOf(activeTab);
+    const targetIndex = stepOrder.indexOf(targetTab);
+
+    // If moving backwards or staying on current tab, allow freely
+    if (targetIndex <= currentIndex) {
+      setActiveTab(targetTab);
+      return;
+    }
+
+    // If moving forwards, validate all intermediate steps up to target
+    let accumulatedErrors: Record<string, string> = {};
+    let firstInvalidTab: TabType | null = null;
+
+    for (let i = currentIndex; i < targetIndex; i++) {
+      const step = stepOrder[i];
+      let stepErrors: Record<string, string> = {};
+      if (step === "general") stepErrors = validateGeneralStep();
+      else if (step === "images") stepErrors = validateImagesStep();
+      else if (step === "pricing") stepErrors = validatePricingStep();
+
+      if (Object.keys(stepErrors).length > 0) {
+        accumulatedErrors = { ...accumulatedErrors, ...stepErrors };
+        if (!firstInvalidTab) {
+          firstInvalidTab = step;
+        }
+      }
+    }
+
+    if (Object.keys(accumulatedErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...accumulatedErrors }));
+      if (firstInvalidTab && firstInvalidTab !== activeTab) {
+        setActiveTab(firstInvalidTab);
+      }
+      return;
+    }
+
+    setActiveTab(targetTab);
   };
 
   const handleBack = () => {
@@ -165,28 +247,30 @@ export default function AddProductModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Guard: Final save/update can ONLY execute on Step 4 (specs)
+    // Guard: Pressing Enter on steps 1-3 navigates forward if valid, never submits
     if (activeTab !== "specs") {
+      handleNext();
       return;
     }
 
-    const newErrors: Record<string, string> = {};
+    const generalErrors = validateGeneralStep();
+    const imageErrors = validateImagesStep();
+    const pricingErrors = validatePricingStep();
 
-    if (!productName.trim()) newErrors.productName = "Product name is required";
-    if (!sku.trim()) newErrors.sku = "SKU is required";
-    if (!category.trim()) newErrors.category = "Category is required";
-    if (!sellingPrice.trim()) newErrors.sellingPrice = "Selling price is required";
-    if (stockQuantity === "") newErrors.stockQuantity = "Stock quantity is required";
-    if (!mainImage) newErrors.mainImage = "Main product image is required";
+    const allErrors = {
+      ...generalErrors,
+      ...imageErrors,
+      ...pricingErrors,
+    };
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (Object.keys(allErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...allErrors }));
       // Auto-switch to the first tab that has an error
-      if (newErrors.productName || newErrors.sku || newErrors.category) {
+      if (Object.keys(generalErrors).length > 0) {
         setActiveTab("general");
-      } else if (newErrors.mainImage) {
+      } else if (Object.keys(imageErrors).length > 0) {
         setActiveTab("images");
-      } else if (newErrors.sellingPrice || newErrors.stockQuantity) {
+      } else if (Object.keys(pricingErrors).length > 0) {
         setActiveTab("pricing");
       }
       return;
@@ -235,6 +319,26 @@ export default function AddProductModal({
     }
   }, [isOpen, onClose]);
 
+  // Automatically bring the active step into view when navigating between steps on mobile
+  React.useEffect(() => {
+    if (activeTabRef.current && tabsNavRef.current) {
+      const container = tabsNavRef.current;
+      const tab = activeTabRef.current;
+
+      const containerWidth = container.clientWidth;
+      const tabLeft = tab.offsetLeft;
+      const tabWidth = tab.clientWidth;
+
+      // Center the active tab in the container
+      const scrollTarget = tabLeft - containerWidth / 2 + tabWidth / 2;
+
+      container.scrollTo({
+        left: Math.max(0, scrollTarget),
+        behavior: "smooth",
+      });
+    }
+  }, [activeTab]);
+
   const tabs = [
     { id: "general", step: 1, label: "General", hasError: hasGeneralErrors },
     { id: "images", step: 2, label: "Images", hasError: hasImageErrors },
@@ -253,16 +357,16 @@ export default function AddProductModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden"
+        className="relative w-full max-w-3xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden my-auto max-h-[92dvh] sm:max-h-[90vh]"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-[#0a0a0a]">
-          <div>
-            <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#640C0C]" />
-              {initialProduct ? "Edit Product" : "Add Product"}
+        <div className="flex items-center justify-between border-b border-white/5 px-4.5 sm:px-6 py-4 sm:py-5 bg-[#0a0a0a] shrink-0">
+          <div className="min-w-0 pr-3">
+            <h2 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#640C0C] shrink-0" />
+              <span className="truncate">{initialProduct ? "Edit Product" : "Add Product"}</span>
             </h2>
-            <p className="text-xs text-white/40 mt-0.5">
+            <p className="text-xs text-white/50 mt-1 leading-relaxed">
               {initialProduct
                 ? "Update automotive specifications, pricing & fitment"
                 : "Quickly configure automotive specifications, pricing & fitment"}
@@ -272,30 +376,34 @@ export default function AddProductModal({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="grid h-9 w-9 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors"
+            className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors shrink-0 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center justify-center border-b border-white/5 bg-[#0e0e0e] px-4 sm:px-6 gap-1 sm:gap-4 overflow-x-auto">
+        <div
+          ref={tabsNavRef}
+          className="relative flex items-center justify-start sm:justify-center border-b border-white/5 bg-[#0e0e0e] px-2.5 sm:px-6 gap-1.5 sm:gap-4 overflow-x-auto scroll-smooth touch-pan-x [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden shrink-0"
+        >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
 
             return (
               <button
                 key={tab.id}
+                ref={isActive ? activeTabRef : null}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-2 px-3 sm:px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                onClick={() => handleTabClick(tab.id)}
+                className={`relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors border-b-2 shrink-0 cursor-pointer ${
                   isActive
                     ? "border-[#640C0C] text-white"
                     : "border-transparent text-white/60 hover:text-white"
                 }`}
               >
                 <span
-                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold transition-colors ${
+                  className={`flex h-4.5 w-4.5 sm:h-5 sm:w-5 items-center justify-center rounded-full text-[10px] sm:text-[11px] font-bold transition-colors shrink-0 ${
                     isActive
                       ? "bg-[#640C0C] text-white shadow-sm"
                       : "bg-white/10 text-white/60"
@@ -305,7 +413,7 @@ export default function AddProductModal({
                 </span>
                 <span>{tab.label}</span>
                 {tab.hasError && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" title="Requires attention" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse shrink-0" title="Requires attention" />
                 )}
               </button>
             );
@@ -313,8 +421,8 @@ export default function AddProductModal({
         </div>
 
         {/* Tab Content Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="p-6 text-xs min-h-[360px] max-h-[60vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="p-4 sm:p-6 text-xs flex-1 overflow-y-auto">
             {/* TAB 1: GENERAL (Basic Info) */}
             {activeTab === "general" && (
               <div className="space-y-4 animate-in fade-in duration-150">
@@ -328,10 +436,14 @@ export default function AddProductModal({
                       value={productName}
                       onChange={(e) => {
                         setProductName(e.target.value);
-                        if (errors.productName) setErrors((prev) => ({ ...prev, productName: "" }));
+                        clearFieldError("productName");
                       }}
                       placeholder="e.g. Xenon Matrix H11 LED Headlights"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.productName
+                          ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 focus:border-[#640C0C]"
+                          : "border-white/10 focus:border-[#640C0C]"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:outline-none transition-colors`}
                     />
                     {errors.productName && <p className="text-[#640C0C] text-[11px] mt-1">{errors.productName}</p>}
                   </div>
@@ -345,10 +457,14 @@ export default function AddProductModal({
                       value={sku}
                       onChange={(e) => {
                         setSku(e.target.value);
-                        if (errors.sku) setErrors((prev) => ({ ...prev, sku: "" }));
+                        clearFieldError("sku");
                       }}
                       placeholder="e.g. LED-H11-001"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.sku
+                          ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 focus:border-[#640C0C]"
+                          : "border-white/10 focus:border-[#640C0C]"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-white/40 focus:outline-none transition-colors`}
                     />
                     {errors.sku && <p className="text-[#640C0C] text-[11px] mt-1">{errors.sku}</p>}
                   </div>
@@ -359,9 +475,17 @@ export default function AddProductModal({
                     </label>
                     <select
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white focus:border-[#640C0C] focus:outline-none transition-colors"
+                      onChange={(e) => {
+                        setCategory(e.target.value);
+                        clearFieldError("category");
+                      }}
+                      className={`w-full rounded-xl border ${
+                        errors.category
+                          ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 focus:border-[#640C0C]"
+                          : "border-white/10 focus:border-[#640C0C]"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors`}
                     >
+                      <option value="" disabled className="bg-[#121212] text-white/40">Select a category...</option>
                       <option value="Lighting" className="bg-[#121212] text-white">Lighting</option>
                       <option value="Fog Lamps" className="bg-[#121212] text-white">Fog Lamps</option>
                       <option value="Headlights" className="bg-[#121212] text-white">Headlights</option>
@@ -375,6 +499,7 @@ export default function AddProductModal({
                       <option value="Exterior Accessories" className="bg-[#121212] text-white">Exterior Accessories</option>
                       <option value="Other Accessories" className="bg-[#121212] text-white">Other Accessories</option>
                     </select>
+                    {errors.category && <p className="text-[#640C0C] text-[11px] mt-1">{errors.category}</p>}
                   </div>
 
                   <div>
@@ -391,11 +516,11 @@ export default function AddProductModal({
                   <div className="md:col-span-2">
                     <label className="block font-medium text-white/80 mb-1.5">Product Description</label>
                     <textarea
-                      rows={3}
+                      rows={4}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Lumens, voltage, waterproof rating, packaging notes..."
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors leading-relaxed min-h-[96px] resize-y"
                     />
                   </div>
                 </div>
@@ -447,9 +572,13 @@ export default function AddProductModal({
                     ) : (
                       <label
                         htmlFor={mainImageInputId}
-                        className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 hover:border-[#640C0C] bg-[#0a0a0a] p-6 cursor-pointer transition-colors"
+                        className={`flex flex-col items-center justify-center rounded-xl border border-dashed ${
+                          errors.mainImage
+                            ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 bg-[#640C0C]/5"
+                            : "border-white/15 hover:border-[#640C0C] bg-[#0a0a0a]"
+                        } p-6 cursor-pointer transition-colors`}
                       >
-                        <Upload className="h-7 w-7 text-white/40 mb-2" />
+                        <Upload className={`h-7 w-7 ${errors.mainImage ? "text-[#640C0C]" : "text-white/40"} mb-2`} />
                         <span className="text-xs font-semibold text-white">Upload Main Photo</span>
                         <span className="text-[10px] text-white/40 mt-0.5">PNG, JPG, WEBP up to 5MB</span>
                         <input
@@ -536,10 +665,14 @@ export default function AddProductModal({
                       value={sellingPrice}
                       onChange={(e) => {
                         setSellingPrice(e.target.value);
-                        if (errors.sellingPrice) setErrors((prev) => ({ ...prev, sellingPrice: "" }));
+                        clearFieldError("sellingPrice");
                       }}
                       placeholder="2,499"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.sellingPrice
+                          ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 focus:border-[#640C0C]"
+                          : "border-white/10 focus:border-[#640C0C]"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:outline-none transition-colors`}
                     />
                     {errors.sellingPrice && <p className="text-[#640C0C] text-[11px] mt-1">{errors.sellingPrice}</p>}
                   </div>
@@ -589,10 +722,14 @@ export default function AddProductModal({
                       value={stockQuantity}
                       onChange={(e) => {
                         setStockQuantity(e.target.value === "" ? "" : Number(e.target.value));
-                        if (errors.stockQuantity) setErrors((prev) => ({ ...prev, stockQuantity: "" }));
+                        clearFieldError("stockQuantity");
                       }}
                       placeholder="e.g. 18"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.stockQuantity
+                          ? "border-[#640C0C] ring-1 ring-[#640C0C]/30 focus:border-[#640C0C]"
+                          : "border-white/10 focus:border-[#640C0C]"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:outline-none transition-colors`}
                     />
                     {errors.stockQuantity && <p className="text-[#640C0C] text-[11px] mt-1">{errors.stockQuantity}</p>}
                   </div>
@@ -719,16 +856,18 @@ export default function AddProductModal({
           </div>
 
           {/* Bottom Actions */}
-          <div className="flex items-center justify-end gap-3 border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
-            {activeTab !== "general" && (
+          <div className="flex items-center justify-between sm:justify-end gap-3 border-t border-white/5 bg-[#0a0a0a] px-4.5 sm:px-6 py-3.5 sm:py-4 shrink-0">
+            {activeTab !== "general" ? (
               <button
                 key="btn-back"
                 type="button"
                 onClick={handleBack}
-                className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="rounded-full border border-white/25 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
               >
                 Back
               </button>
+            ) : (
+              <div />
             )}
 
             {activeTab !== "specs" ? (
@@ -739,7 +878,7 @@ export default function AddProductModal({
                   e.preventDefault();
                   handleNext();
                 }}
-                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white transition-all shadow-md cursor-pointer"
+                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-6 sm:px-7 py-2.5 text-xs sm:text-sm font-medium text-white transition-all shadow-md cursor-pointer ml-auto sm:ml-0"
               >
                 Next
               </button>
@@ -747,7 +886,7 @@ export default function AddProductModal({
               <button
                 key="btn-save"
                 type="submit"
-                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white transition-all shadow-md cursor-pointer"
+                className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-6 sm:px-7 py-2.5 text-xs sm:text-sm font-medium text-white transition-all shadow-md cursor-pointer ml-auto sm:ml-0"
               >
                 {initialProduct ? "Save Changes" : "Save Product"}
               </button>
