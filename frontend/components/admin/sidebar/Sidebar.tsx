@@ -67,7 +67,7 @@ export default function AdminSidebar({
 
       <aside
         aria-label="Admin Sidebar"
-        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-white/5 bg-black transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 flex w-64 flex-col border-r border-white/5 bg-black transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
