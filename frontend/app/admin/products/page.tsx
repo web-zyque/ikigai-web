@@ -167,27 +167,20 @@ export default function ProductsInventoryPage() {
         </header>
 
         <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* VIEW SWITCHING:
-              When in Overview (selectedCategory === null): Show ONLY the 4 summary cards.
-              When a Card is Clicked (selectedCategory !== null): The 4 cards DISAPPEAR, and ONLY the dedicated category view appears! */}
-          {selectedCategory === null ? (
-            <div className="animate-in fade-in duration-300">
-              <InventorySummaryCards
-                cards={dynamicCards}
-                onSelectCard={(type) => setSelectedCategory(type)}
-              />
-            </div>
-          ) : (
-            <div className="animate-in fade-in duration-300">
-              <ProductsInventoryTable
-                products={filteredProducts}
-                title={categoryMeta.title}
-                badgeText={categoryMeta.badgeText}
-                subtitle={categoryMeta.subtitle}
-                onBackToOverview={() => setSelectedCategory(null)}
-              />
-            </div>
-          )}
+          {/* 1. Summary Cards */}
+          <InventorySummaryCards
+            cards={dynamicCards}
+            selectedType={selectedCategory}
+            onSelectCard={(type) => setSelectedCategory(type === selectedCategory ? null : type)}
+          />
+
+          {/* 2. Products Table */}
+          <ProductsInventoryTable
+            products={filteredProducts}
+            title={categoryMeta.title}
+            badgeText={categoryMeta.badgeText}
+            subtitle={categoryMeta.subtitle}
+          />
         </main>
 
       {/* Add Product Modal */}
