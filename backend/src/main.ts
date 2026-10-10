@@ -8,10 +8,13 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  app.enableCors({
-    origin: 'http://localhost:3000',
-    credentials: true,
-  });
+app.enableCors({
+  origin:
+    process.env.NODE_ENV === 'production'
+      ? 'https://ikigaiautomotive.vercel.app'
+      : 'http://localhost:3000',
+  credentials: true,
+});
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 
