@@ -29,34 +29,34 @@ export interface InventorySummaryCardsProps {
 const DEFAULT_INVENTORY_CARDS: InventoryMetricCard[] = [
   {
     type: "total",
-    title: "TOTAL PRODUCT",
+    title: "Total Products",
     value: 12,
-    description: "All active car accessories catalogued",
-    footer: "Explore entire catalog",
+    description: "",
+    footer: "",
     icon: Package,
   },
   {
     type: "in_stock",
-    title: "IN STOCK",
+    title: "In Stock",
     value: 6,
-    description: "Healthy inventory levels above threshold",
-    footer: "Filter by in-stock items",
+    description: "",
+    footer: "",
     icon: CheckCircle2,
   },
   {
     type: "low_stock",
-    title: "LOW STOCK",
+    title: "Low Stock",
     value: 5,
-    description: "Requires restock soon (≤ 5 units left)",
-    footer: "View items requiring restock",
+    description: "",
+    footer: "",
     icon: AlertTriangle,
   },
   {
     type: "out_of_stock",
-    title: "OUT OF STOCK",
+    title: "Out of Stock",
     value: 1,
-    description: "Zero units remaining • Critical attention",
-    footer: "View depleted items",
+    description: "",
+    footer: "",
     icon: AlertCircle,
   },
 ];
@@ -95,7 +95,7 @@ export default function InventorySummaryCards({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const isSelected = selectedType === card.type;
@@ -116,65 +116,36 @@ export default function InventorySummaryCards({
           >
             {/* Card Surface */}
             <div
-              className={`relative flex h-full flex-col justify-between rounded-[20px] bg-[#121212] p-6 transition-all duration-300 ${
+              className={`relative flex items-center gap-4 rounded-[16px] bg-[#121212] p-5 transition-all duration-300 ${
                 isSelected
-                  ? "-translate-y-1 border border-[#640C0C] ring-1 ring-[#640C0C]/60 shadow-[0_12px_32px_-8px_rgba(100,12,12,0.4)]"
-                  : "border border-white/5 hover:-translate-y-1 hover:border-[#640C0C]/40 hover:shadow-[0_12px_28px_-8px_rgba(100,12,12,0.25)]"
+                  ? "-translate-y-1 border border-[#640C0C] ring-1 ring-[#640C0C]/60 shadow-[0_8px_24px_-8px_rgba(100,12,12,0.4)]"
+                  : "border border-white/5 hover:-translate-y-1 hover:border-[#640C0C]/40 hover:shadow-[0_8px_24px_-8px_rgba(100,12,12,0.25)]"
               }`}
             >
-              <div>
-                {/* Header: Title and Icon */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    {getAccentDot(card.type)}
-                    <span className="text-xs uppercase tracking-wider text-white/40 font-medium">
-                      {card.title}
-                    </span>
-                    {isSelected && (
-                      <span className="ml-1.5 rounded-full bg-[#640C0C]/25 border border-[#640C0C]/50 px-2 py-0.5 text-[10px] font-semibold text-white">
-                        Active
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className={`grid h-10 w-10 place-items-center rounded-xl transition-colors duration-200 ${getIconStyles(
-                      card.type
-                    )}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-
-                {/* Big Value Number */}
-                <div className="mt-4 text-3xl font-bold tracking-tight text-white lg:text-4xl">
-                  {card.value}
-                </div>
-
-                {/* Description */}
-                <p className="mt-2 text-xs text-white/60">
-                  {card.description}
-                </p>
+              {/* Icon Container */}
+              <div
+                className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl transition-colors duration-200 ${getIconStyles(
+                  card.type
+                )}`}
+              >
+                <Icon className="h-5 w-5" />
               </div>
 
-              {/* Card Footer / Action Hint */}
-              <div className="mt-6 border-t border-white/5 pt-4">
-                <div
-                  className={`flex items-center justify-between text-xs transition-colors ${
-                    isSelected
-                      ? "text-[#640C0C] font-semibold"
-                      : "text-white/40 group-hover:text-white/80"
-                  }`}
-                >
-                  <span>{isSelected ? "Currently viewing this category" : card.footer}</span>
-                  <ArrowRight
-                    className={`h-3.5 w-3.5 transition-transform ${
-                      isSelected
-                        ? "text-[#640C0C] translate-x-1"
-                        : "text-white/40 group-hover:translate-x-1 group-hover:text-white"
-                    }`}
-                  />
+              {/* Content Container */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold tracking-tight text-white leading-none">
+                    {card.value}
+                  </span>
+                  {isSelected && (
+                    <span className="rounded-full bg-[#640C0C]/25 border border-[#640C0C]/50 px-1.5 py-0.5 text-[9px] uppercase font-semibold text-white">
+                      Active
+                    </span>
+                  )}
                 </div>
+                <span className="mt-1 text-sm text-white/60 font-medium">
+                  {card.title}
+                </span>
               </div>
             </div>
           </div>
