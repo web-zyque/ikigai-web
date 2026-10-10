@@ -4,14 +4,14 @@ import React, { useState, useMemo } from "react";
 import { Order, OrderStatus } from "@/types/orders.types";
 import { Menu } from "lucide-react";
 import { INITIAL_MOCK_ORDERS } from "@/data/mockOrders";
+import { useMobileMenu } from "@/app/admin/layout";
 import OrderSummaryCards, { OrderCounts } from "@/components/admin/orders/OrderSummaryCards";
-import AdminSidebar from "@/components/admin/sidebar/Sidebar";
 import OrdersTable from "@/components/admin/orders/OrdersTable";
 import OrderDetailsModal from "@/components/admin/orders/OrderDetailsModal";
 
 
 export default function OrderDashboardPage() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { setMobileOpen } = useMobileMenu();
 
   // Orders State (initialized with realistic automotive parts orders)
   const [ordersList, setOrdersList] = useState<Order[]>(INITIAL_MOCK_ORDERS);
@@ -98,16 +98,8 @@ export default function OrderDashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
-      {/* Reused Fixed Desktop / Mobile Sidebar */}
-      <AdminSidebar
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
-        {/* Reused Top Header */}
+    <>
+      {/* Reused Top Header */}
         <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
@@ -142,7 +134,6 @@ export default function OrderDashboardPage() {
             onStatusFilterChange={(st) => setStatusFilter(st)}
           />
         </main>
-      </div>
 
       {/* 3. Order Details Modal (Priority 3 & 4) */}
       <OrderDetailsModal
@@ -152,6 +143,6 @@ export default function OrderDashboardPage() {
         onUpdateStatus={handleUpdateStatus}
         onCancelOrder={handleCancelOrder}
       />
-    </div>
+    </>
   );
 }
