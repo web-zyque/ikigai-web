@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import AdminSidebar from "@/components/admin/sidebar/Sidebar";
-import AdminHeader from "@/components/admin/Header";
-import InventoryHeader from "@/components/admin/InventoryHeader";
 import InventorySummaryCards, {
   InventoryCardType,
   InventoryMetricCard,
@@ -13,7 +11,7 @@ import ProductsInventoryTable, {
   InventoryStatus,
 } from "@/components/admin/ProductsInventoryTable";
 import AddProductModal from "@/components/admin/AddProductModal";
-import { Package, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { Package, CheckCircle2, AlertTriangle, AlertCircle, Menu } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
 
 export default function ProductsInventoryPage() {
@@ -136,10 +134,7 @@ export default function ProductsInventoryPage() {
           onCloseMobile={() => setMobileOpen(false)}
         />
         <div className="flex flex-1 flex-col min-w-0">
-          <AdminHeader
-            title="Products & Inventory"
-            onToggleMobile={() => setMobileOpen((prev) => !prev)}
-          />
+ 
           <main className="flex-1 px-6 lg:px-12 py-8 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
@@ -162,15 +157,33 @@ export default function ProductsInventoryPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
         {/* Reused Top Header */}
-        <AdminHeader
-          title="Products & Inventory"
-          onToggleMobile={() => setMobileOpen((prev) => !prev)}
-        />
+        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileOpen((prev) => !prev)}
+              aria-label="Open navigation menu"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-white">Products</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer"
+            >
+              <Package className="h-4 w-4" />
+              <span>Add Product</span>
+            </button>
+          </div>
+        </header>
 
         <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* Top Wide Banner: Add Product */}
-          <InventoryHeader onAddProduct={() => setIsAddModalOpen(true)} />
-
           {/* VIEW SWITCHING:
               When in Overview (selectedCategory === null): Show ONLY the 4 summary cards.
               When a Card is Clicked (selectedCategory !== null): The 4 cards DISAPPEAR, and ONLY the dedicated category view appears! */}

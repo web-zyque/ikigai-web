@@ -14,7 +14,11 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { AdminProfile } from "../Header";
+export interface AdminProfile {
+  name: string;
+  role: string;
+  initials: string;
+}
 
 export interface NavItem {
   label: string;
