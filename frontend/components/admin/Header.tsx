@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 
 export interface AdminProfile {
   name: string;
@@ -48,35 +48,7 @@ export default function AdminHeader({
         </div>
       </div>
 
-      {/* Middle & Right: Search and Admin Profile */}
-      <div className="flex items-center gap-6">
-        {/* Search Input (Visual Only for now, backend-ready) */}
-        <div className="relative hidden w-64 md:block lg:w-72">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
-          <input
-            type="search"
-            readOnly
-            aria-label="Search dashboard"
-            placeholder="Search orders, parts, customers..."
-            className="w-full rounded-full border border-white/10 bg-[#121212] py-2 pl-9 pr-4 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
-          />
-        </div>
-
-        {/* Admin Profile Area */}
-        <div className="flex items-center gap-3 border-l border-white/5 pl-4 lg:pl-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-xs font-bold text-white shadow-md">
-            {profile.initials}
-          </div>
-          <div className="hidden flex-col sm:flex">
-            <span className="text-sm font-medium text-white">
-              {profile.name}
-            </span>
-            <span className="text-xs text-white/40">
-              {profile.role}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Empty div to maintain spacing or just remove entirely. We can just keep an empty div or nothing if we want. Wait, the header is flex justify-between. If we remove the right side, the left side stays on the left. So we don't need anything here. */ }
     </header>
   );
 }
