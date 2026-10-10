@@ -14,6 +14,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import { AdminProfile } from "../Header";
 
 export interface NavItem {
   label: string;
@@ -26,6 +27,7 @@ export interface SidebarProps {
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
   items?: NavItem[];
+  profile?: AdminProfile;
 }
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
@@ -38,10 +40,17 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Settings", icon: Settings },
 ];
 
+const DEFAULT_PROFILE: AdminProfile = {
+  name: "Admin User",
+  role: "Parts & Fitment Mgr",
+  initials: "AU",
+};
+
 export default function AdminSidebar({
   mobileOpen = false,
   onCloseMobile,
   items = DEFAULT_NAV_ITEMS,
+  profile = DEFAULT_PROFILE,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -161,14 +170,20 @@ export default function AdminSidebar({
           </nav>
         </div>
 
-        {/* System Status Indicator */}
-        <div className="border-t border-white/5 p-4">
-          <div className="flex items-center justify-between rounded-xl bg-[#121212] border border-white/5 px-3.5 py-2.5 text-xs text-white/70">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#640C0C] shadow-[0_0_8px_#640C0C]" />
-              <span className="font-medium text-white/70">Console Active</span>
+        {/* Admin Profile & System Status Indicator */}
+        <div className="border-t border-white/5 p-4 flex flex-col gap-4">
+          <div className="flex items-center gap-3 px-1">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-xs font-bold text-white shadow-md">
+              {profile.initials}
             </div>
-            <span className="text-[10px] text-white/40 uppercase tracking-wider">v2.0</span>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-medium text-white truncate">
+                {profile.name}
+              </span>
+              <span className="text-xs text-white/40 truncate">
+                {profile.role}
+              </span>
+            </div>
           </div>
         </div>
       </aside>
