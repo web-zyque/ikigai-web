@@ -9,21 +9,65 @@ import InventorySummaryCards, {
 import ProductsInventoryTable, {
   InventoryProduct,
   InventoryStatus,
+  ALL_DEMO_PRODUCTS,
 } from "@/components/admin/ProductsInventoryTable";
 import AddProductModal from "@/components/admin/AddProductModal";
+import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
 import { Package, CheckCircle2, AlertTriangle, AlertCircle, Menu } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
+import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
+import { ProductResponse } from "@/types/products.types";
+import { productsApi } from "@/services/products.service";
 
 export default function ProductsInventoryPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+  const [localAddedProducts, setLocalAddedProducts] = useState<InventoryProduct[]>([]);
+  const [localFullProducts, setLocalFullProducts] = useState<Record<string, ProductResponse>>({});
 
   const { data: productsData, isLoading, refetch } = useProducts({
     limit: 100,
   });
 
-  const productsList: InventoryProduct[] = productsData?.products.map(product => ({
+  const handleViewProduct = async (productId: string) => {
+    // 0. Check local created products first
+    if (localFullProducts[productId]) {
+      setSelectedProduct(localFullProducts[productId]);
+      setIsDetailsModalOpen(true);
+      return;
+    }
+
+    // 1. Check live productsData first
+    const foundInLive = productsData?.products?.find((p) => p.id === productId);
+    if (foundInLive) {
+      setSelectedProduct(foundInLive);
+      setIsDetailsModalOpen(true);
+      return;
+    }
+
+    // 2. Check demo products
+    const foundInDemo = DEMO_PRODUCTS_BY_ID[productId];
+    if (foundInDemo) {
+      setSelectedProduct(foundInDemo);
+      setIsDetailsModalOpen(true);
+      return;
+    }
+
+    // 3. Fallback to API getById
+    try {
+      const fetched = await productsApi.getById(productId);
+      setSelectedProduct(fetched);
+      setIsDetailsModalOpen(true);
+    } catch (err) {
+      console.error("Failed to load product details:", err);
+    }
+  };
+
+  const backendProducts: InventoryProduct[] = productsData?.products?.map(product => ({
     id: product.id,
     name: product.name,
     category: product.category.name,
@@ -33,6 +77,13 @@ export default function ProductsInventoryPage() {
     status: product.inventoryStatus === 'in_stock' ? 'In Stock' :
             product.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock'
   })) || [];
+
+  const baseProducts: InventoryProduct[] =
+    backendProducts.length > 0
+      ? backendProducts
+      : (productsData?.products ? [] : ALL_DEMO_PRODUCTS);
+
+  const productsList: InventoryProduct[] = [...localAddedProducts, ...baseProducts];
 
   const totalCount = productsList.length;
   const inStockCount = productsList.filter((p) => p.status === "In Stock").length;
@@ -122,7 +173,24 @@ export default function ProductsInventoryPage() {
 
   const categoryMeta = getCategoryMeta();
 
-  const handleAddProductSuccess = () => {
+  const handleAddProductSuccess = (product?: Record<string, unknown>) => {
+    if (product) {
+      const newProduct: InventoryProduct = {
+        id: (product.id as string) || `prod-${Date.now()}`,
+        name: (product.productName as string) || (product.name as string) || "New Product",
+        category: (product.category as string) || "Accessories",
+        sku: (product.sku as string) || "",
+        price: (product.price as string) || `₹${product.sellingPrice}`,
+        stock: Number(product.stockQuantity) || 0,
+        status: (product.stockStatus as InventoryStatus) || "In Stock",
+      };
+      setLocalAddedProducts((prev) => [newProduct, ...prev]);
+
+      if (product.rawProduct) {
+        const raw = product.rawProduct as ProductResponse;
+        setLocalFullProducts((prev) => ({ ...prev, [raw.id]: raw }));
+      }
+    }
     refetch();
   };
 
@@ -180,8 +248,19 @@ export default function ProductsInventoryPage() {
             title={categoryMeta.title}
             badgeText={categoryMeta.badgeText}
             subtitle={categoryMeta.subtitle}
+            onViewProduct={handleViewProduct}
           />
         </main>
+
+      {/* Product Details Modal */}
+      <ProductDetailsModal
+        product={selectedProduct}
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedProduct(null);
+        }}
+      />
 
       {/* Add Product Modal */}
       <AddProductModal
