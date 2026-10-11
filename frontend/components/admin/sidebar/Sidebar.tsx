@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  Users,
   UserCheck,
   BarChart3,
   Settings,
@@ -38,10 +37,9 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
   { label: "Products", icon: Package, href: "/admin/products" },
   { label: "Orders", icon: ShoppingCart, href: "/admin/orders" },
-  { label: "Customers", icon: Users },
-  { label: "Staff", icon: UserCheck },
-  { label: "Reports", icon: BarChart3 },
-  { label: "Settings", icon: Settings },
+  { label: "Staff", icon: UserCheck, href: "/admin/staff" },
+  { label: "Reports", icon: BarChart3, href: "/admin/reports" },
+  { label: "Settings", icon: Settings, href: "/admin/settings" },
 ];
 
 const DEFAULT_PROFILE: AdminProfile = {
