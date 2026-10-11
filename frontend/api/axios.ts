@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { clearAuthSession } from "@/lib/auth-storage";
 
 export class ApiError extends Error {
   constructor(
@@ -23,6 +24,9 @@ api.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ message?: string | string[] }>) => {
     const status = err.response?.status ?? 0;
+    if (status === 401) {
+      clearAuthSession();
+    }
     const raw = err.response?.data?.message;
 
     const message = Array.isArray(raw)
