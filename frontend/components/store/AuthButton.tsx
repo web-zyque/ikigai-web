@@ -1,24 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useMe } from "@/hooks/auth";
 import { hasAuthSession } from "@/lib/auth-storage";
 import { UserProfileMenu } from "./UserProfileMenu";
 
-export function AuthButton() {
-  const [hasSession, setHasSession] = useState(false);
-  const [mounted, setMounted] = useState(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setHasSession(hasAuthSession());
-    setMounted(true);
-  }, []);
+export function AuthButton() {
+  const hasSession = useSyncExternalStore(
+    emptySubscribe,
+    () => hasAuthSession(),
+    () => false
+  );
 
   const { data: user, isLoading, error } = useMe({ enabled: hasSession });
 
-  // If user has an active session flag and is loading their profile
-  if (mounted && hasSession && isLoading) {
+  if (hasSession && isLoading) {
     return (
       <div className="h-8 w-24 animate-pulse rounded-full bg-white/10" />
     );
