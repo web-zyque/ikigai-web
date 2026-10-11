@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, Search } from "lucide-react";
 
 export type InventoryStatus = "In Stock" | "Low Stock" | "Out of Stock";
@@ -24,6 +25,7 @@ export interface ProductsInventoryTableProps {
   onBackToOverview?: () => void;
   activeTab?: string | null;
   onTabChange?: (tab: string | null) => void;
+  onViewProduct?: (productId: string) => void;
 }
 
 export const ALL_DEMO_PRODUCTS: InventoryProduct[] = [
@@ -151,8 +153,14 @@ export default function ProductsInventoryTable({
   onBackToOverview,
   activeTab,
   onTabChange,
+  onViewProduct,
 }: ProductsInventoryTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("search") || "";
+    }
+    return "";
+  });
 
   const getStatusBadge = (status: InventoryStatus) => {
     switch (status) {
@@ -272,7 +280,22 @@ export default function ProductsInventoryTable({
                   className="transition-colors hover:bg-white/[0.02]"
                 >
                   <td className="px-6 py-4 font-medium text-white min-w-[220px] text-[13px]">
-                    {product.name}
+                    {onViewProduct ? (
+                      <button
+                        type="button"
+                        onClick={() => onViewProduct(product.id)}
+                        className="text-left font-medium text-white hover:text-[#d33a3a] transition-colors focus:outline-none focus:underline underline-offset-4 cursor-pointer"
+                      >
+                        {product.name}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/admin/products/${product.id}${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ""}`}
+                        className="text-white hover:text-[#d33a3a] transition-colors focus:outline-none focus:underline underline-offset-4 cursor-pointer"
+                      >
+                        {product.name}
+                      </Link>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-white/70 whitespace-nowrap">
                     {product.category}
