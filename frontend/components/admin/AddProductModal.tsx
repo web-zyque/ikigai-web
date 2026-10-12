@@ -47,6 +47,7 @@ export default function AddProductModal({
   const uploadImageMutation = useUploadImage();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
+  const [maxUnlockedStep, setMaxUnlockedStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [productName, setProductName] = useState("");
@@ -64,7 +65,7 @@ export default function AddProductModal({
   const [sellingPrice, setSellingPrice] = useState("");
   const [mrpPrice, setMrpPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState<number | "">("");
-  const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
+  const [lowStockThreshold, setLowStockThreshold] = useState<number | "">(5);
 
   const [vehicleCompatibility, setVehicleCompatibility] = useState("");
   const [productType, setProductType] = useState("");
@@ -75,7 +76,7 @@ export default function AddProductModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 1: General validation (Product Name, SKU, Category)
+  // Step 1: General validation (All fields mandatory: Product Name, SKU, Category, Brand, Description)
   const validateGeneralStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -87,6 +88,12 @@ export default function AddProductModal({
     }
     if (!selectedCategoryId.trim()) {
       newErrors.categoryId = "Category is required";
+    }
+    if (!brand.trim()) {
+      newErrors.brand = "Brand is required";
+    }
+    if (!description.trim()) {
+      newErrors.description = "Product description is required";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -103,6 +110,8 @@ export default function AddProductModal({
       delete updated.productName;
       delete updated.sku;
       delete updated.categoryId;
+      delete updated.brand;
+      delete updated.description;
       return updated;
     });
 
@@ -128,7 +137,7 @@ export default function AddProductModal({
     return true;
   };
 
-  // Step 3: Pricing & Stock validation (Selling Price & Stock Quantity)
+  // Step 3: Pricing & Stock validation (All fields mandatory: Selling Price, MRP, Stock Quantity, Low Stock Threshold)
   const validatePricingStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -138,10 +147,22 @@ export default function AddProductModal({
       newErrors.sellingPrice = "Please enter a valid price";
     }
 
+    if (!mrpPrice.trim()) {
+      newErrors.mrpPrice = "Original / MRP price is required";
+    } else if (isNaN(parseFloat(mrpPrice)) || parseFloat(mrpPrice) < 0) {
+      newErrors.mrpPrice = "Please enter a valid price";
+    }
+
     if (stockQuantity === "" || stockQuantity === undefined || stockQuantity === null) {
       newErrors.stockQuantity = "Stock quantity is required";
     } else if (Number(stockQuantity) < 0) {
       newErrors.stockQuantity = "Stock quantity cannot be negative";
+    }
+
+    if (lowStockThreshold === "" || lowStockThreshold === undefined || lowStockThreshold === null) {
+      newErrors.lowStockThreshold = "Low stock threshold is required";
+    } else if (Number(lowStockThreshold) < 1) {
+      newErrors.lowStockThreshold = "Low stock threshold must be at least 1";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -155,19 +176,42 @@ export default function AddProductModal({
     setErrors((prev) => {
       const updated = { ...prev };
       delete updated.sellingPrice;
+      delete updated.mrpPrice;
       delete updated.stockQuantity;
+      delete updated.lowStockThreshold;
       return updated;
     });
 
     return true;
   };
 
-  // Step 4: Vehicle & Specs validation (Vehicle Compatibility is mandatory)
+  // Step 4: Vehicle & Specs validation (All fields mandatory: Compatibility, Product Type, Color, Dimensions, Warranty, Material)
   const validateSpecsStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
     if (!vehicleCompatibility.trim()) {
+      newErrors.vehicleCompatibility = "Vehicle compatibility is required";
+    }
+    if (!productType.trim()) {
+      newErrors.productType = "Product type is required";
+    }
+    if (!color.trim()) {
+      newErrors.color = "Color / finish is required";
+    }
+    if (!dimensions.trim()) {
+      newErrors.dimensions = "Size / dimensions are required";
+    }
+    if (!warranty.trim()) {
+      newErrors.warranty = "Warranty is required";
+    }
+    if (!material.trim()) {
+      newErrors.material = "Material is required";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
       setErrors((prev) => ({
         ...prev,
-        vehicleCompatibility: "Vehicle compatibility is required",
+        ...newErrors,
       }));
       return false;
     }
@@ -175,6 +219,11 @@ export default function AddProductModal({
     setErrors((prev) => {
       const updated = { ...prev };
       delete updated.vehicleCompatibility;
+      delete updated.productType;
+      delete updated.color;
+      delete updated.dimensions;
+      delete updated.warranty;
+      delete updated.material;
       return updated;
     });
 
@@ -218,33 +267,20 @@ export default function AddProductModal({
   const handleTabClick = (targetTab: TabType) => {
     if (targetTab === activeTab) return;
 
-    const currentIdx = tabIndices[activeTab];
-    const targetIdx = tabIndices[targetTab];
+    const targetStepNumber = tabIndices[targetTab] + 1;
 
-    // Always keep previous navigation working without validation blocking
-    if (targetIdx < currentIdx) {
-      setActiveTab(targetTab);
+    // Prevent direct navigation by clicking locked step indicators
+    if (targetStepNumber > maxUnlockedStep) {
       return;
     }
 
-    // Block forward jump if prerequisite steps are invalid
-    if (targetIdx >= 1) {
-      if (!validateGeneralStep()) {
-        setActiveTab("general");
-        return;
-      }
-    }
-    if (targetIdx >= 2) {
-      if (!validateImagesStep()) {
-        setActiveTab("images");
-        return;
-      }
-    }
-    if (targetIdx >= 3) {
-      if (!validatePricingStep()) {
-        setActiveTab("pricing");
-        return;
-      }
+    const currentStepNumber = tabIndices[activeTab] + 1;
+
+    // When navigating forward between unlocked steps, validate current step
+    if (targetStepNumber > currentStepNumber) {
+      if (currentStepNumber === 1 && !validateGeneralStep()) return;
+      if (currentStepNumber === 2 && !validateImagesStep()) return;
+      if (currentStepNumber === 3 && !validatePricingStep()) return;
     }
 
     setActiveTab(targetTab);
@@ -252,17 +288,27 @@ export default function AddProductModal({
 
   const handleNextFromGeneral = () => {
     if (validateGeneralStep()) {
+      setMaxUnlockedStep((prev) => Math.max(prev, 2));
       setActiveTab("images");
     }
   };
 
   const handleNextStep = () => {
     if (activeTab === "general") {
-      if (validateGeneralStep()) setActiveTab("images");
+      if (validateGeneralStep()) {
+        setMaxUnlockedStep((prev) => Math.max(prev, 2));
+        setActiveTab("images");
+      }
     } else if (activeTab === "images") {
-      if (validateImagesStep()) setActiveTab("pricing");
+      if (validateImagesStep()) {
+        setMaxUnlockedStep((prev) => Math.max(prev, 3));
+        setActiveTab("pricing");
+      }
     } else if (activeTab === "pricing") {
-      if (validatePricingStep()) setActiveTab("specs");
+      if (validatePricingStep()) {
+        setMaxUnlockedStep((prev) => Math.max(prev, 4));
+        setActiveTab("specs");
+      }
     }
   };
 
@@ -383,7 +429,7 @@ export default function AddProductModal({
     e.preventDefault();
 
     // Step 4: Validate all mandatory fields before allowing final save action
-    if (!validateAllSteps()) {
+    if (!validateSpecsStep() || !validateAllSteps()) {
       return;
     }
 
@@ -424,7 +470,7 @@ export default function AddProductModal({
         sellingPrice: parseFloat(sellingPrice),
         mrpPrice: mrpPrice ? parseFloat(mrpPrice) : undefined,
         stockQuantity: Number(stockQuantity),
-        lowStockThreshold,
+        lowStockThreshold: Number(lowStockThreshold) || 5,
         publicationStatus: 'active' as const,
         vehicleCompatibility: vehicleCompatibilityArray.length > 0 ? vehicleCompatibilityArray : undefined,
         productType: productType.trim() || undefined,
@@ -460,7 +506,7 @@ export default function AddProductModal({
         const fallbackSellingPrice = String(productData.sellingPrice);
         const fallbackStatus: 'in_stock' | 'low_stock' | 'out_of_stock' =
           productData.stockQuantity <= 0 ? 'out_of_stock' :
-          productData.stockQuantity <= lowStockThreshold ? 'low_stock' : 'in_stock';
+          productData.stockQuantity <= (Number(lowStockThreshold) || 5) ? 'low_stock' : 'in_stock';
 
         const fallbackProduct = {
           id: `prod-${Date.now()}`,
@@ -546,6 +592,7 @@ export default function AddProductModal({
       setMaterial("");
       setErrors({});
       setActiveTab("general");
+      setMaxUnlockedStep(1);
       setIsSubmitting(false);
     }
   }, [isOpen]);
@@ -610,23 +657,32 @@ export default function AddProductModal({
         <div className="flex items-center justify-start sm:justify-center border-b border-white/5 bg-[#0e0e0e] px-6 gap-6 sm:gap-8 overflow-x-auto">
           {steps.map((step) => {
             const isActive = activeTab === step.id;
+            const isUnlocked = step.stepNumber <= maxUnlockedStep;
 
             return (
               <button
                 key={step.id}
                 type="button"
-                onClick={() => handleTabClick(step.id)}
-                className={`relative flex items-center gap-2.5 pb-3.5 pt-3.5 text-xs whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                onClick={() => {
+                  if (!isUnlocked) return;
+                  handleTabClick(step.id);
+                }}
+                disabled={!isUnlocked}
+                className={`relative flex items-center gap-2.5 pb-3.5 pt-3.5 text-xs whitespace-nowrap border-b-2 transition-colors ${
                   isActive
-                    ? "border-[#640C0C] text-white font-semibold"
-                    : "border-transparent text-white/40 hover:text-white/70 font-medium"
+                    ? "border-[#640C0C] text-white font-semibold cursor-pointer"
+                    : isUnlocked
+                    ? "border-transparent text-white font-medium hover:text-white cursor-pointer"
+                    : "border-transparent text-white/35 font-medium cursor-not-allowed select-none"
                 }`}
               >
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums leading-none transition-colors ${
                     isActive
                       ? "bg-[#640C0C] text-white"
-                      : "bg-white/10 text-white/40"
+                      : isUnlocked
+                      ? "bg-white/20 text-white font-medium"
+                      : "bg-white/5 text-white/30"
                   }`}
                 >
                   <span className="translate-y-px">{step.stepNumber}</span>
@@ -646,7 +702,7 @@ export default function AddProductModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Product Name <span className="text-[#640C0C]">*</span>
+                      Product Name
                     </label>
                     <input
                       type="text"
@@ -667,7 +723,7 @@ export default function AddProductModal({
 
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Product SKU <span className="text-[#640C0C]">*</span>
+                      Product SKU
                     </label>
                     <input
                       type="text"
@@ -688,7 +744,7 @@ export default function AddProductModal({
 
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Category <span className="text-[#640C0C]">*</span>
+                      Category
                     </label>
                     <select
                       value={selectedCategoryId}
@@ -717,10 +773,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={brand}
-                      onChange={(e) => setBrand(e.target.value)}
+                      onChange={(e) => {
+                        setBrand(e.target.value);
+                        if (errors.brand) setErrors((prev) => ({ ...prev, brand: "" }));
+                      }}
                       placeholder="e.g. Redline Pro, Bosch, Philips"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.brand ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.brand && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.brand}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
@@ -728,10 +792,18 @@ export default function AddProductModal({
                     <textarea
                       rows={3}
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(e) => {
+                        setDescription(e.target.value);
+                        if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+                      }}
                       placeholder="Lumens, voltage, waterproof rating, packaging notes..."
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors resize-none"
+                      className={`w-full rounded-xl border ${
+                        errors.description ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors resize-none`}
                     />
+                    {errors.description && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.description}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -744,7 +816,7 @@ export default function AddProductModal({
                   {/* Main Image */}
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Main Product Image <span className="text-[#640C0C]">*</span>
+                      Main Product Image
                     </label>
                     {mainImageUrl ? (
                       <div className="relative rounded-xl border border-white/10 bg-[#0a0a0a] p-3 flex items-center gap-3">
@@ -873,7 +945,7 @@ export default function AddProductModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Selling Price (₹) <span className="text-[#640C0C]">*</span>
+                      Selling Price (₹)
                     </label>
                     <input
                       type="number"
@@ -887,7 +959,7 @@ export default function AddProductModal({
                       placeholder="2499"
                       className={`w-full rounded-xl border ${
                         errors.sellingPrice ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                     />
                     {errors.sellingPrice && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.sellingPrice}</p>}
                   </div>
@@ -906,11 +978,19 @@ export default function AddProductModal({
                       step="0.01"
                       min="0"
                       value={mrpPrice}
-                      onChange={(e) => setMrpPrice(e.target.value)}
+                      onChange={(e) => {
+                        setMrpPrice(e.target.value);
+                        if (errors.mrpPrice) setErrors((prev) => ({ ...prev, mrpPrice: "" }));
+                      }}
                       placeholder="3499"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.mrpPrice ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                     />
-                    {calculatedDiscountText && (
+                    {errors.mrpPrice && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.mrpPrice}</p>
+                    )}
+                    {calculatedDiscountText && !errors.mrpPrice && (
                       <p className="text-xs text-white/60 mt-1.5">
                         Discount: <span className="font-semibold text-white">{calculatedDiscountText}%</span>
                       </p>
@@ -921,7 +1001,7 @@ export default function AddProductModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Stock Quantity (Units) <span className="text-[#640C0C]">*</span>
+                      Stock Quantity (Units)
                     </label>
                     <input
                       type="number"
@@ -934,7 +1014,7 @@ export default function AddProductModal({
                       placeholder="e.g. 18"
                       className={`w-full rounded-xl border ${
                         errors.stockQuantity ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                     />
                     {errors.stockQuantity && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.stockQuantity}</p>}
                   </div>
@@ -945,10 +1025,18 @@ export default function AddProductModal({
                       type="number"
                       min="1"
                       value={lowStockThreshold}
-                      onChange={(e) => setLowStockThreshold(Number(e.target.value))}
+                      onChange={(e) => {
+                        setLowStockThreshold(e.target.value === "" ? "" : Number(e.target.value));
+                        if (errors.lowStockThreshold) setErrors((prev) => ({ ...prev, lowStockThreshold: "" }));
+                      }}
                       placeholder="5"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.lowStockThreshold ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                     />
+                    {errors.lowStockThreshold && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.lowStockThreshold}</p>
+                    )}
                     <span className="text-[10px] text-white/40 mt-1 block">
                       Quantity ≤ this threshold triggers &quot;Low Stock&quot;.
                     </span>
@@ -963,7 +1051,7 @@ export default function AddProductModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block font-medium text-white/80 mb-1.5">
-                      Vehicle Compatibility <span className="text-[#640C0C]">*</span> <span className="text-white/40 text-[11px] font-normal">(Crucial fitment info)</span>
+                      Vehicle Compatibility
                     </label>
                     <input
                       type="text"
@@ -996,10 +1084,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={productType}
-                      onChange={(e) => setProductType(e.target.value)}
+                      onChange={(e) => {
+                        setProductType(e.target.value);
+                        if (errors.productType) setErrors((prev) => ({ ...prev, productType: "" }));
+                      }}
                       placeholder="e.g. Plug-and-Play Kit"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.productType ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.productType && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.productType}</p>
+                    )}
                   </div>
 
                   <div>
@@ -1007,10 +1103,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={color}
-                      onChange={(e) => setColor(e.target.value)}
+                      onChange={(e) => {
+                        setColor(e.target.value);
+                        if (errors.color) setErrors((prev) => ({ ...prev, color: "" }));
+                      }}
                       placeholder="e.g. 6500K Pure White"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.color ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.color && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.color}</p>
+                    )}
                   </div>
 
                   <div>
@@ -1018,10 +1122,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={dimensions}
-                      onChange={(e) => setDimensions(e.target.value)}
+                      onChange={(e) => {
+                        setDimensions(e.target.value);
+                        if (errors.dimensions) setErrors((prev) => ({ ...prev, dimensions: "" }));
+                      }}
                       placeholder="e.g. H11 Socket / 32-inch Bar"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.dimensions ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.dimensions && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.dimensions}</p>
+                    )}
                   </div>
 
                   <div>
@@ -1029,10 +1141,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={warranty}
-                      onChange={(e) => setWarranty(e.target.value)}
+                      onChange={(e) => {
+                        setWarranty(e.target.value);
+                        if (errors.warranty) setErrors((prev) => ({ ...prev, warranty: "" }));
+                      }}
                       placeholder="e.g. 2 Years Replacement"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.warranty ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.warranty && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.warranty}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
@@ -1040,10 +1160,18 @@ export default function AddProductModal({
                     <input
                       type="text"
                       value={material}
-                      onChange={(e) => setMaterial(e.target.value)}
+                      onChange={(e) => {
+                        setMaterial(e.target.value);
+                        if (errors.material) setErrors((prev) => ({ ...prev, material: "" }));
+                      }}
                       placeholder="e.g. 6063 Aviation Aluminum + IP68 Seal"
-                      className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors"
+                      className={`w-full rounded-xl border ${
+                        errors.material ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
                     />
+                    {errors.material && (
+                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.material}</p>
+                    )}
                   </div>
 
                 </div>

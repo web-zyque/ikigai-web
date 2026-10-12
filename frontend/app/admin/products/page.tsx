@@ -60,10 +60,52 @@ export default function ProductsInventoryPage() {
     // 3. Fallback to API getById
     try {
       const fetched = await productsApi.getById(productId);
-      setSelectedProduct(fetched);
-      setIsDetailsModalOpen(true);
+      if (fetched) {
+        setSelectedProduct(fetched);
+        setIsDetailsModalOpen(true);
+        return;
+      }
     } catch (err) {
       console.error("Failed to load product details:", err);
+    }
+
+    // 4. Fallback to productsList item
+    const fallbackItem = productsList.find((p) => p.id === productId);
+    if (fallbackItem) {
+      setSelectedProduct({
+        id: fallbackItem.id,
+        name: fallbackItem.name,
+        sku: fallbackItem.sku,
+        category: {
+          id: fallbackItem.category.toLowerCase().replace(/\s+/g, "-"),
+          name: fallbackItem.category,
+          slug: fallbackItem.category.toLowerCase().replace(/\s+/g, "-"),
+        },
+        sellingPrice: fallbackItem.price.replace(/[^0-9.]/g, "") || "0",
+        gstPercentage: "18.00",
+        stockQuantity: fallbackItem.stock,
+        lowStockThreshold: 5,
+        inventoryStatus:
+          fallbackItem.status === "In Stock"
+            ? "in_stock"
+            : fallbackItem.status === "Low Stock"
+            ? "low_stock"
+            : "out_of_stock",
+        publicationStatus: "active",
+        images: fallbackItem.image
+          ? [
+              {
+                id: `img-${fallbackItem.id}`,
+                imageUrl: fallbackItem.image,
+                isMainImage: true,
+                displayOrder: 0,
+              },
+            ]
+          : [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setIsDetailsModalOpen(true);
     }
   };
 
@@ -245,6 +287,7 @@ export default function ProductsInventoryPage() {
           {/* 2. Products Table */}
           <ProductsInventoryTable
             products={filteredProducts}
+            totalCount={totalCount}
             title={categoryMeta.title}
             badgeText={categoryMeta.badgeText}
             subtitle={categoryMeta.subtitle}
