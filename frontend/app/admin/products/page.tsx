@@ -19,6 +19,10 @@ import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
 import { ProductResponse } from "@/types/products.types";
 import { productsApi } from "@/services/products.service";
 
+function generateProductId(): string {
+  return `prod-${Date.now()}`;
+}
+
 export default function ProductsInventoryPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -34,14 +38,12 @@ export default function ProductsInventoryPage() {
   });
 
   const handleViewProduct = async (productId: string) => {
-    // 0. Check local created products first
     if (localFullProducts[productId]) {
       setSelectedProduct(localFullProducts[productId]);
       setIsDetailsModalOpen(true);
       return;
     }
 
-    // 1. Check live productsData first
     const foundInLive = productsData?.products?.find((p) => p.id === productId);
     if (foundInLive) {
       setSelectedProduct(foundInLive);
@@ -49,7 +51,6 @@ export default function ProductsInventoryPage() {
       return;
     }
 
-    // 2. Check demo products
     const foundInDemo = DEMO_PRODUCTS_BY_ID[productId];
     if (foundInDemo) {
       setSelectedProduct(foundInDemo);
@@ -57,7 +58,6 @@ export default function ProductsInventoryPage() {
       return;
     }
 
-    // 3. Fallback to API getById
     try {
       const fetched = await productsApi.getById(productId);
       if (fetched) {
@@ -69,7 +69,6 @@ export default function ProductsInventoryPage() {
       console.error("Failed to load product details:", err);
     }
 
-    // 4. Fallback to productsList item
     const fallbackItem = productsList.find((p) => p.id === productId);
     if (fallbackItem) {
       setSelectedProduct({
@@ -218,7 +217,7 @@ export default function ProductsInventoryPage() {
   const handleAddProductSuccess = (product?: Record<string, unknown>) => {
     if (product) {
       const newProduct: InventoryProduct = {
-        id: (product.id as string) || `prod-${Date.now()}`,
+        id: (product.id as string) || generateProductId(),
         name: (product.productName as string) || (product.name as string) || "New Product",
         category: (product.category as string) || "Accessories",
         sku: (product.sku as string) || "",
@@ -249,7 +248,6 @@ export default function ProductsInventoryPage() {
 
   return (
     <>
-      {/* Reused Top Header */}
       <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
@@ -277,14 +275,12 @@ export default function ProductsInventoryPage() {
         </header>
 
         <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* 1. Summary Cards */}
           <InventorySummaryCards
             cards={dynamicCards}
             selectedType={selectedCategory}
             onSelectCard={(type) => setSelectedCategory(type === selectedCategory ? null : type)}
           />
 
-          {/* 2. Products Table */}
           <ProductsInventoryTable
             products={filteredProducts}
             totalCount={totalCount}
@@ -294,8 +290,6 @@ export default function ProductsInventoryPage() {
             onViewProduct={handleViewProduct}
           />
         </main>
-
-      {/* Product Details Modal */}
       <ProductDetailsModal
         product={selectedProduct}
         isOpen={isDetailsModalOpen}
@@ -305,7 +299,6 @@ export default function ProductsInventoryPage() {
         }}
       />
 
-      {/* Add Product Modal */}
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
