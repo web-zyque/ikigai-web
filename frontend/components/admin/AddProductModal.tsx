@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useId, useEffect } from "react";
+import React, { useState, useId, useEffect, useCallback } from "react";
 import {
   X,
   Upload,
@@ -32,6 +32,73 @@ const DEFAULT_CATEGORIES = [
   { id: "cat-exterior", name: "Exterior Accessories" },
   { id: "cat-interior", name: "Interior Accessories" },
 ];
+
+interface FallbackProductParams {
+  productData: {
+    name: string;
+    sku: string;
+    brand?: string;
+    description?: string;
+    sellingPrice: number;
+    mrpPrice?: number;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    productType?: string;
+    color?: string;
+    dimensions?: string;
+    warranty?: string;
+    material?: string;
+  };
+  selectedCategoryId: string;
+  categoryName: string;
+  images: Array<{
+    imageUrl: string;
+    isMainImage: boolean;
+    altText: string;
+  }>;
+  vehicleCompatibilityArray: string[];
+  fallbackStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+}
+
+function createFallbackProduct(params: FallbackProductParams) {
+  const timestamp = Date.now();
+  const isoTimestamp = new Date(timestamp).toISOString();
+
+  return {
+    id: `prod-${timestamp}`,
+    name: params.productData.name,
+    sku: params.productData.sku,
+    category: {
+      id: params.selectedCategoryId,
+      name: params.categoryName,
+      slug: params.selectedCategoryId,
+    },
+    brand: params.productData.brand,
+    description: params.productData.description,
+    sellingPrice: String(params.productData.sellingPrice),
+    mrpPrice: params.productData.mrpPrice ? String(params.productData.mrpPrice) : undefined,
+    gstPercentage: '18',
+    stockQuantity: params.productData.stockQuantity,
+    lowStockThreshold: params.productData.lowStockThreshold,
+    inventoryStatus: params.fallbackStatus,
+    publicationStatus: 'active' as const,
+    vehicleCompatibility: params.vehicleCompatibilityArray,
+    productType: params.productData.productType,
+    color: params.productData.color,
+    dimensions: params.productData.dimensions,
+    warranty: params.productData.warranty,
+    material: params.productData.material,
+    images: params.images.map((img, idx) => ({
+      id: `img-${idx}`,
+      imageUrl: img.imageUrl,
+      isMainImage: img.isMainImage,
+      displayOrder: idx,
+      altText: img.altText,
+    })),
+    createdAt: isoTimestamp,
+    updatedAt: isoTimestamp,
+  };
+}
 
 export default function AddProductModal({
   isOpen,
@@ -76,8 +143,7 @@ export default function AddProductModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 1: General validation (All fields mandatory: Product Name, SKU, Category, Brand, Description)
-  const validateGeneralStep = (): boolean => {
+    const validateGeneralStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!productName.trim()) {
@@ -104,7 +170,6 @@ export default function AddProductModal({
       return false;
     }
 
-    // Clear general errors if valid
     setErrors((prev) => {
       const updated = { ...prev };
       delete updated.productName;
@@ -117,8 +182,6 @@ export default function AddProductModal({
 
     return true;
   };
-
-  // Step 2: Images validation (Main Product Image required; Additional images optional)
   const validateImagesStep = (): boolean => {
     if (!mainImageFile && !mainImageUrl) {
       setErrors((prev) => ({
@@ -137,8 +200,7 @@ export default function AddProductModal({
     return true;
   };
 
-  // Step 3: Pricing & Stock validation (All fields mandatory: Selling Price, MRP, Stock Quantity, Low Stock Threshold)
-  const validatePricingStep = (): boolean => {
+    const validatePricingStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!sellingPrice.trim()) {
@@ -185,8 +247,7 @@ export default function AddProductModal({
     return true;
   };
 
-  // Step 4: Vehicle & Specs validation (All fields mandatory: Compatibility, Product Type, Color, Dimensions, Warranty, Material)
-  const validateSpecsStep = (): boolean => {
+    const validateSpecsStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!vehicleCompatibility.trim()) {
@@ -230,7 +291,6 @@ export default function AddProductModal({
     return true;
   };
 
-  // Step 4: Validate all mandatory fields before final save action
   const validateAllSteps = (): boolean => {
     const isGeneralValid = validateGeneralStep();
     const isImagesValid = validateImagesStep();
@@ -269,14 +329,12 @@ export default function AddProductModal({
 
     const targetStepNumber = tabIndices[targetTab] + 1;
 
-    // Prevent direct navigation by clicking locked step indicators
     if (targetStepNumber > maxUnlockedStep) {
       return;
     }
 
     const currentStepNumber = tabIndices[activeTab] + 1;
 
-    // When navigating forward between unlocked steps, validate current step
     if (targetStepNumber > currentStepNumber) {
       if (currentStepNumber === 1 && !validateGeneralStep()) return;
       if (currentStepNumber === 2 && !validateImagesStep()) return;
@@ -318,8 +376,6 @@ export default function AddProductModal({
     else if (activeTab === "images") setActiveTab("general");
   };
 
-  // Automatically calculate discount percentage from Original Price (MRP) and Selling Price:
-  // Discount (%) = ((Original Price − Selling Price) / Original Price) × 100
   const getCalculatedDiscount = (): string | null => {
     if (!sellingPrice.trim() || !mrpPrice.trim()) return null;
 
@@ -337,7 +393,6 @@ export default function AddProductModal({
     }
 
     const discountValue = ((original - selling) / original) * 100;
-    // Format cleanly, avoiding unnecessary decimal places: e.g. 20% or 28.6%
     return discountValue % 1 === 0 ? discountValue.toFixed(0) : discountValue.toFixed(1);
   };
 
@@ -405,7 +460,7 @@ export default function AddProductModal({
   const uploadAllImages = async () => {
     const imagePromises: Promise<string>[] = [];
     
-    // Upload main image
+ 
     if (mainImageFile) {
       imagePromises.push(
         uploadImageMutation.mutateAsync(mainImageFile).then(result => result.url)
@@ -413,8 +468,7 @@ export default function AddProductModal({
     } else if (mainImageUrl) {
       imagePromises.push(Promise.resolve(mainImageUrl));
     }
-    
-    // Upload additional images
+
     for (const file of additionalImageFiles) {
       imagePromises.push(
         uploadImageMutation.mutateAsync(file).then(result => result.url)
@@ -424,11 +478,9 @@ export default function AddProductModal({
     return Promise.all(imagePromises);
   };
 
-  // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Step 4: Validate all mandatory fields before allowing final save action
     if (!validateSpecsStep() || !validateAllSteps()) {
       return;
     }
@@ -436,18 +488,16 @@ export default function AddProductModal({
     setIsSubmitting(true);
     
     try {
-      // Upload all images first
+
       const uploadedUrls = await uploadAllImages();
-      
-      // Prepare image data
+
       const defaultImageUrl = mainImageUrl || "https://picsum.photos/800/600?random=1";
       const images = [
         {
-          imageUrl: uploadedUrls[0] || defaultImageUrl, // Main image
+          imageUrl: uploadedUrls[0] || defaultImageUrl,
           isMainImage: true,
           altText: productName,
         },
-        // Additional images
         ...uploadedUrls.slice(1).map(url => ({
           imageUrl: url,
           isMainImage: false,
@@ -455,7 +505,6 @@ export default function AddProductModal({
         })),
       ];
 
-      // Prepare vehicle compatibility array
       const vehicleCompatibilityArray = vehicleCompatibility
         .split(',')
         .map(v => v.trim())
@@ -484,7 +533,6 @@ export default function AddProductModal({
       try {
         const result = await createProductMutation.mutateAsync(productData);
         
-        // Call success callback with the created product
         onSuccess?.({
           id: result.id,
           name: result.name,
@@ -499,49 +547,22 @@ export default function AddProductModal({
           rawProduct: result,
         });
         
-        onClose();
+        handleClose();
       } catch (mutationError: unknown) {
-        // Fallback for demo/offline environment when backend API server is offline
         const categoryObj = availableCategories.find(c => c.id === selectedCategoryId);
         const fallbackSellingPrice = String(productData.sellingPrice);
         const fallbackStatus: 'in_stock' | 'low_stock' | 'out_of_stock' =
           productData.stockQuantity <= 0 ? 'out_of_stock' :
           productData.stockQuantity <= (Number(lowStockThreshold) || 5) ? 'low_stock' : 'in_stock';
 
-        const fallbackProduct = {
-          id: `prod-${Date.now()}`,
-          name: productData.name,
-          sku: productData.sku,
-          category: {
-            id: selectedCategoryId,
-            name: categoryObj?.name || 'Accessories',
-            slug: selectedCategoryId,
-          },
-          brand: productData.brand,
-          description: productData.description,
-          sellingPrice: fallbackSellingPrice,
-          mrpPrice: productData.mrpPrice ? String(productData.mrpPrice) : undefined,
-          gstPercentage: '18',
-          stockQuantity: productData.stockQuantity,
-          lowStockThreshold: productData.lowStockThreshold,
-          inventoryStatus: fallbackStatus,
-          publicationStatus: 'active' as const,
-          vehicleCompatibility: vehicleCompatibilityArray,
-          productType: productData.productType,
-          color: productData.color,
-          dimensions: productData.dimensions,
-          warranty: productData.warranty,
-          material: productData.material,
-          images: images.map((img, idx) => ({
-            id: `img-${idx}`,
-            imageUrl: img.imageUrl,
-            isMainImage: img.isMainImage,
-            displayOrder: idx,
-            altText: img.altText,
-          })),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        const fallbackProduct = createFallbackProduct({
+          productData,
+          selectedCategoryId,
+          categoryName: categoryObj?.name || 'Accessories',
+          images,
+          vehicleCompatibilityArray,
+          fallbackStatus,
+        });
 
         onSuccess?.({
           id: fallbackProduct.id,
@@ -557,7 +578,7 @@ export default function AddProductModal({
           rawProduct: fallbackProduct,
         });
 
-        onClose();
+        handleClose();
       }
     } catch (error: unknown) {
       console.error('Failed to create product:', error);
@@ -568,41 +589,42 @@ export default function AddProductModal({
     }
   };
 
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setProductName("");
-      setSku("");
-      setSelectedCategoryId("");
-      setBrand("");
-      setDescription("");
-      setMainImageFile(null);
-      setMainImageUrl(null);
-      setAdditionalImageFiles([]);
-      setAdditionalImageUrls([]);
-      setSellingPrice("");
-      setMrpPrice("");
-      setStockQuantity("");
-      setLowStockThreshold(5);
-      setVehicleCompatibility("");
-      setProductType("");
-      setColor("");
-      setDimensions("");
-      setWarranty("");
-      setMaterial("");
-      setErrors({});
-      setActiveTab("general");
-      setMaxUnlockedStep(1);
-      setIsSubmitting(false);
-    }
-  }, [isOpen]);
+  const resetForm = useCallback(() => {
+    setProductName("");
+    setSku("");
+    setSelectedCategoryId("");
+    setBrand("");
+    setDescription("");
+    setMainImageFile(null);
+    setMainImageUrl(null);
+    setAdditionalImageFiles([]);
+    setAdditionalImageUrls([]);
+    setSellingPrice("");
+    setMrpPrice("");
+    setStockQuantity("");
+    setLowStockThreshold(5);
+    setVehicleCompatibility("");
+    setProductType("");
+    setColor("");
+    setDimensions("");
+    setWarranty("");
+    setMaterial("");
+    setErrors({});
+    setActiveTab("general");
+    setMaxUnlockedStep(1);
+    setIsSubmitting(false);
+  }, []);
 
-  // Close modal on Escape key and lock body scroll
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [onClose, resetForm]);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
+        if (e.key === "Escape") handleClose();
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => {
@@ -610,7 +632,7 @@ export default function AddProductModal({
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   const steps = [
     { id: "general" as const, stepNumber: 1, label: "General" },
@@ -625,14 +647,14 @@ export default function AddProductModal({
     <div
       aria-modal="true"
       role="dialog"
-      onClick={onClose}
+      onClick={handleClose}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-3xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden"
       >
-        {/* Modal Header */}
+   
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-[#0a0a0a]">
           <div>
             <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -645,7 +667,7 @@ export default function AddProductModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close dialog"
             className="grid h-9 w-9 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors"
           >
@@ -653,7 +675,7 @@ export default function AddProductModal({
           </button>
         </div>
 
-        {/* Navigation Steps Bar */}
+
         <div className="flex items-center justify-start sm:justify-center border-b border-white/5 bg-[#0e0e0e] px-6 gap-6 sm:gap-8 overflow-x-auto">
           {steps.map((step) => {
             const isActive = activeTab === step.id;
@@ -693,10 +715,8 @@ export default function AddProductModal({
           })}
         </div>
 
-        {/* Tab Content Body */}
         <form onSubmit={handleSubmit} className="flex flex-col">
           <div className="p-6 text-xs min-h-[380px] md:min-h-[400px] max-h-[60vh] overflow-y-auto">
-            {/* TAB 1: GENERAL (Basic Info) */}
             {activeTab === "general" && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -809,11 +829,9 @@ export default function AddProductModal({
               </div>
             )}
 
-            {/* TAB 2: IMAGES */}
             {activeTab === "images" && (
               <div className="space-y-5 animate-in fade-in duration-150">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Main Image */}
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">
                       Main Product Image
@@ -880,7 +898,6 @@ export default function AddProductModal({
                     {errors.mainImage && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.mainImage}</p>}
                   </div>
 
-                  {/* Additional Images */}
                   <div>
                     <label className="block font-medium text-white/80 mb-1.5">Additional Images</label>
                     <label
@@ -925,11 +942,8 @@ export default function AddProductModal({
                 </div>
               </div>
             )}
-
-            {/* TAB 3: PRICING & INVENTORY */}
             {activeTab === "pricing" && (
               <div className="space-y-5 animate-in fade-in duration-150">
-                {/* Real-time Dynamic Stock Status Banner */}
                 <div className="flex items-center justify-between rounded-xl border border-white/5 bg-[#0a0a0a] px-4 py-3">
                   <span className="text-xs text-white/60">
                     Stock status calculates automatically:
@@ -1044,8 +1058,6 @@ export default function AddProductModal({
                 </div>
               </div>
             )}
-
-            {/* TAB 4: VEHICLE & SPECS */}
             {activeTab === "specs" && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1179,7 +1191,6 @@ export default function AddProductModal({
             )}
           </div>
 
-          {/* Bottom Actions */}
           <div className="border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
             {activeTab === "general" ? (
               <div className="flex items-center justify-end">
@@ -1218,7 +1229,7 @@ export default function AddProductModal({
                     <>
                       <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         disabled={isSubmitting}
                         className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
                       >
