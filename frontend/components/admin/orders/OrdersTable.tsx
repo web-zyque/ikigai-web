@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, X, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-import { Order, OrderStatus, PaymentStatus } from "@/types/orders.types";;
+import { Search, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Order, OrderStatus, PaymentStatus } from "@/types/orders.types";
 
 export interface OrdersTableProps {
   orders: Order[];
@@ -218,16 +218,13 @@ export default function OrdersTable({
               <th className="px-5 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
                 Order Status
               </th>
-              <th className="px-5 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap text-right">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {paginatedOrders.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={7}
                   className="px-6 py-12 text-center text-xs text-white/40"
                 >
                   <p className="text-sm font-medium text-white/70 mb-1">
@@ -257,12 +254,21 @@ export default function OrdersTable({
               paginatedOrders.map((order) => (
                 <tr
                   key={order.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onViewOrder(order)}
-                  className="transition-colors hover:bg-white/[0.04] cursor-pointer group"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onViewOrder(order);
+                    }
+                  }}
+                  aria-label={`View order #${order.id}`}
+                  className="group transition-colors hover:bg-white/[0.03] cursor-pointer select-none"
                 >
                   {/* Order ID */}
                   <td className="px-5 py-3.5 font-mono font-medium text-white/90 whitespace-nowrap">
-                    <span className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs text-white group-hover:border-[#640C0C]/50 transition-colors">
+                    <span className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-xs text-white group-hover:border-[#640C0C]/60 transition-colors">
                       #{order.id}
                     </span>
                   </td>
@@ -324,21 +330,6 @@ export default function OrdersTable({
                   {/* Order Status */}
                   <td className="px-5 py-3.5 whitespace-nowrap">
                     {getOrderStatusBadge(order.orderStatus)}
-                  </td>
-
-                  {/* Actions */}
-                  <td
-                    className="px-5 py-3.5 whitespace-nowrap text-right"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onViewOrder(order)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-[#640C0C] hover:border-[#640C0C] hover:text-white transition-colors cursor-pointer"
-                    >
-                      <Eye className="h-3 w-3" />
-                      <span>View</span>
-                    </button>
                   </td>
                 </tr>
               ))

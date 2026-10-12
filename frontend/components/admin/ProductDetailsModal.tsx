@@ -23,11 +23,20 @@ export default function ProductDetailsModal({
   onClose,
 }: ProductDetailsModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [mainImageError, setMainImageError] = useState(false);
+  const [thumbnailErrorMap, setThumbnailErrorMap] = useState<Record<string, boolean>>({});
 
-  // Reset selected image when product changes or modal opens
+  // Reset selected image and error state when product changes or modal opens
   useEffect(() => {
     setSelectedImageIndex(0);
+    setMainImageError(false);
+    setThumbnailErrorMap({});
   }, [product?.id, isOpen]);
+
+  // Reset main image error state when active thumbnail changes
+  useEffect(() => {
+    setMainImageError(false);
+  }, [selectedImageIndex]);
 
   // Lock body scroll and listen for Escape key
   useEffect(() => {
@@ -169,18 +178,29 @@ export default function ProductDetailsModal({
                 <div className="flex-1 flex flex-col gap-2.5 min-h-0">
                   {/* Main Photo Container - directly below header, uses available height */}
                   <div className="relative flex-1 min-h-[230px] sm:min-h-[240px] w-full rounded-lg bg-[#0a0a0a] border border-white/10 overflow-hidden flex items-center justify-center">
-                    <Image
-                      src={currentImage.imageUrl}
-                      alt={currentImage.altText || product.name}
-                      fill
-                      priority
-                      className="object-contain p-2.5"
-                      sizes="(max-width: 768px) 100vw, 360px"
-                    />
-                    {currentImage.isMainImage && (
-                      <span className="absolute top-2 left-2 rounded bg-black/80 backdrop-blur-md border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-white/80">
-                        Main
-                      </span>
+                    {!mainImageError && currentImage.imageUrl ? (
+                      <>
+                        <Image
+                          src={currentImage.imageUrl}
+                          alt={currentImage.altText || product.name}
+                          fill
+                          priority
+                          unoptimized
+                          onError={() => setMainImageError(true)}
+                          className="object-contain p-2.5"
+                          sizes="(max-width: 768px) 100vw, 360px"
+                        />
+                        {currentImage.isMainImage && (
+                          <span className="absolute top-2 left-2 rounded bg-black/80 backdrop-blur-md border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-white/80">
+                            Main
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6 text-center">
+                        <ImageIcon className="h-8 w-8 text-white/20 mb-2" />
+                        <p className="text-xs text-white/40">Photo preview unavailable</p>
+                      </div>
                     )}
                   </div>
 
@@ -189,25 +209,39 @@ export default function ProductDetailsModal({
                     <div className="flex items-center gap-2 overflow-x-auto shrink-0 pb-0.5">
                       {images.map((img, idx) => {
                         const isSelected = idx === selectedImageIndex;
+                        const hasThumbError = Boolean(
+                          thumbnailErrorMap[img.id || `${idx}`] || !img.imageUrl
+                        );
                         return (
                           <button
                             key={img.id || idx}
                             type="button"
                             onClick={() => setSelectedImageIndex(idx)}
-                            className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-[#0a0a0a] transition-all cursor-pointer ${
+                            className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-[#0a0a0a] transition-all cursor-pointer flex items-center justify-center ${
                               isSelected
                                 ? "border-[#640C0C] ring-1 ring-[#640C0C]"
                                 : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
                             }`}
                             title={img.altText || `View photo ${idx + 1}`}
                           >
-                            <Image
-                              src={img.imageUrl}
-                              alt={img.altText || `Thumbnail ${idx + 1}`}
-                              fill
-                              className="object-cover"
-                              sizes="44px"
-                            />
+                            {!hasThumbError ? (
+                              <Image
+                                src={img.imageUrl}
+                                alt={img.altText || `Thumbnail ${idx + 1}`}
+                                fill
+                                unoptimized
+                                onError={() =>
+                                  setThumbnailErrorMap((prev) => ({
+                                    ...prev,
+                                    [img.id || `${idx}`]: true,
+                                  }))
+                                }
+                                className="object-cover"
+                                sizes="44px"
+                              />
+                            ) : (
+                              <ImageIcon className="h-4 w-4 text-white/30" />
+                            )}
                           </button>
                         );
                       })}
