@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Inter } from "next/font/google";
@@ -19,6 +20,7 @@ const products = Array.from({ length: 10 }).map((_, i) => ({
 }));
 
 export default function BestSellers() {
+  const router = useRouter();
   const { cartItems, addToCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -92,7 +94,9 @@ export default function BestSellers() {
             {products.map((product) => {
               const isAdded = cartItems.some(item => item.id === product.id);
 
-              const handleAddToCart = () => {
+              const handleAddToCart = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (isAdded) return;
                 addToCart({
                   id: product.id,
@@ -102,10 +106,23 @@ export default function BestSellers() {
                 });
               };
 
+              const handleBuyNow = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addToCart({
+                  id: product.id,
+                  name: product.name,
+                  price: product.price,
+                  image: product.image,
+                });
+                router.push("/cart");
+              };
+
               return (
-                <div
+                <Link
                   key={product.id}
-                  className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
+                  href={`/products/${product.id}`}
+                  className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300 block`}
                 >
                   <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
                     <Image
@@ -123,7 +140,10 @@ export default function BestSellers() {
                     <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
 
                     <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
-                      <button className={`flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90`}>
+                      <button
+                        onClick={handleBuyNow}
+                        className={`flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90`}
+                      >
                         Buy Now
                       </button>
                       {!isAdded && (
@@ -137,7 +157,7 @@ export default function BestSellers() {
                       )}
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
 

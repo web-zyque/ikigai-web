@@ -5,43 +5,16 @@ import { Inter } from "next/font/google";
 import { SlidersHorizontal, X } from "lucide-react";
 import FilterSidebar, { categoryGroups } from "@/components/store/FilterSidebar";
 import ProductCard, { Product } from "@/components/store/ProductCard";
+import { STORE_PRODUCTS } from "@/lib/products-data";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const allProducts: Product[] = Array.from({ length: 25 }).map((_, i) => ({
-  id: i,
-  name:
-    i % 5 === 0
-      ? `Premium Brake Kit ${i + 1}`
-      : i % 5 === 1
-      ? `Performance Suspension ${i + 1} — Pro Series`
-      : i % 5 === 2
-      ? `Engine Tuning Module ${i + 1}`
-      : i % 5 === 3
-      ? `Alloy Wheel Set ${i + 1} — Forged`
-      : `LED Lighting Kit ${i + 1}`,
-  price: `₹${(1299 + i * 150).toLocaleString()}`,
-  image:
-    i % 5 === 0
-      ? `/images/category_brakes.jpg`
-      : i % 5 === 1
-      ? `/images/category_suspension.jpg`
-      : i % 5 === 2
-      ? `/images/category_engine.jpg`
-      : i % 5 === 3
-      ? `/images/category_wheels.jpg`
-      : `/images/category_lighting.jpg`,
-    
-  category:
-    i % 5 === 0
-      ? "brakes"
-      : i % 5 === 1
-      ? "suspension"
-      : i % 5 === 2
-      ? "engine"
-      : i % 5 === 3
-      ? "alloy-wheels"
-      : "lighting",
+const allProducts: Product[] = STORE_PRODUCTS.map((p) => ({
+  id: p.id,
+  name: p.name,
+  price: p.price,
+  image: p.image,
+  category: p.category,
 }));
 
 interface ProductsListProps {
@@ -116,7 +89,6 @@ export default function ProductsList({ initialCategory }: ProductsListProps) {
         </main>
       </div>
 
-      {/* ── Mobile filter drawer ── */}
       {mobileFilterOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div

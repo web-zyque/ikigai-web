@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 
 export interface Product {
@@ -17,11 +18,14 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
   const { cartItems, addToCart } = useCart();
 
-  const isAdded = cartItems.some(item => item.id === product.id);
+  const isAdded = cartItems.some((item) => String(item.id) === String(product.id));
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (isAdded) return;
     addToCart({
       id: product.id,
@@ -31,8 +35,23 @@ export default function ProductCard({ product }: ProductCardProps) {
     });
   };
 
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    });
+    router.push("/cart");
+  };
+
   return (
-    <div className="group/card flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300">
+    <Link
+      href={`/products/${product.id}`}
+      className="group/card flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300 block"
+    >
       <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
         <Image
           src={product.image}
@@ -47,7 +66,10 @@ export default function ProductCard({ product }: ProductCardProps) {
         </h3>
         <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
         <div className="mt-auto flex w-full gap-2 transition-all duration-300">
-          <button className={`${isAdded ? 'w-full' : 'w-[70%]'} rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}>
+          <button
+            onClick={handleBuyNow}
+            className={`${isAdded ? "w-full" : "w-[70%]"} rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}
+          >
             Buy Now
           </button>
           {!isAdded && (
@@ -61,6 +83,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
