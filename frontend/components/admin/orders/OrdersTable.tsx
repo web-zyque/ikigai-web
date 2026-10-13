@@ -92,29 +92,22 @@ export default function OrdersTable({
     switch (status) {
       case "Pending":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-            {status}
-          </span>
-        );
-      case "Confirmed":
-        return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
             {status}
           </span>
         );
       case "Processing":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-orange-500">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
             {status}
           </span>
         );
       case "Shipped":
         return (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             {status}
           </span>
         );
@@ -177,7 +170,6 @@ export default function OrdersTable({
   const orderStatusOptions: Array<{ label: string; value: "All" | OrderStatus }> = [
     { label: "All Status", value: "All" },
     { label: "Pending", value: "Pending" },
-    { label: "Confirmed", value: "Confirmed" },
     { label: "Processing", value: "Processing" },
     { label: "Shipped", value: "Shipped" },
     { label: "Delivered", value: "Delivered" },

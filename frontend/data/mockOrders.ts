@@ -71,7 +71,7 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
     totalAmount: 6798,
     paymentMethod: "Credit / Debit Card",
     paymentStatus: "Paid",
-    orderStatus: "Confirmed",
+    orderStatus: "Processing",
     notes: "Customer requested installation bracket inclusion.",
   },
   {

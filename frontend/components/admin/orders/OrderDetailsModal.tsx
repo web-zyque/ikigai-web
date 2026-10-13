@@ -55,28 +55,21 @@ export default function OrderDetailsModal({
     switch (status) {
       case "Pending":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-300">
             <Clock className="h-3 w-3" />
-            {status}
-          </span>
-        );
-      case "Confirmed":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
-            <CheckCircle2 className="h-3 w-3" />
             {status}
           </span>
         );
       case "Processing":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300">
             <RefreshCw className="h-3 w-3" />
             {status}
           </span>
         );
       case "Shipped":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
             <Package className="h-3 w-3" />
             {status}
           </span>
@@ -90,7 +83,7 @@ export default function OrderDetailsModal({
         );
       case "Cancelled":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#640C0C]/50 bg-[#640C0C]/25 px-3 py-1 text-xs font-medium text-white">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">
             <Ban className="h-3 w-3" />
             {status}
           </span>
@@ -122,8 +115,8 @@ export default function OrderDetailsModal({
         );
       case "Failed":
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#640C0C]/50 bg-[#640C0C]/25 px-2.5 py-0.5 text-xs font-semibold text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C]" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 text-xs font-semibold text-red-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
             Failed
           </span>
         );
@@ -132,7 +125,6 @@ export default function OrderDetailsModal({
 
   const statusOptions: OrderStatus[] = [
     "Pending",
-    "Confirmed",
     "Processing",
     "Shipped",
     "Delivered",
