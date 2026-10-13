@@ -150,7 +150,6 @@ export default function OrderSummaryCards({
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 {counts.total}
               </span>
-              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-blue-500 shrink-0" />
             </div>
             <span className="mt-1 text-[11px] sm:text-xs text-white/40">Total order last 365 days</span>
           </div>
@@ -161,7 +160,6 @@ export default function OrderSummaryCards({
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 {counts.pending}
               </span>
-              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-amber-500 shrink-0" />
             </div>
             <span className="mt-1 text-[11px] sm:text-xs text-white/40">Pending order last 365 days</span>
           </div>
@@ -172,7 +170,6 @@ export default function OrderSummaryCards({
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 {counts.completed}
               </span>
-              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500 shrink-0" />
             </div>
             <span className="mt-1 text-[11px] sm:text-xs text-white/40">Completed order last 365 days</span>
           </div>
@@ -183,7 +180,6 @@ export default function OrderSummaryCards({
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 {counts.cancelled}
               </span>
-              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-red-500 shrink-0" />
             </div>
             <span className="mt-1 text-[11px] sm:text-xs text-white/40">Canceled order last 365 days</span>
           </div>

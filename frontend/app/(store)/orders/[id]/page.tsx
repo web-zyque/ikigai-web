@@ -27,7 +27,7 @@ const getMockOrder = (id: string) => ({
       description: "Apple M2 chip with 8-core CPU and 8-core GPU. 256GB SSD storage.",
       quantity: 3,
       price: 500.00,
-      image: "/images/category_brakes.jpg", 
+      image: "/images/category_brakes.jpg",
     }
   ],
   summary: {
@@ -42,9 +42,9 @@ const getMockOrder = (id: string) => ({
   },
   timeline: {
     placed: "Jan 8, 2024 9:48 PM",
-    confirmed: "Jan 9, 2024 10:00 AM",
+    processing: "Jan 9, 2024 10:00 AM",
     shipped: "Jan 10, 2024 2:30 PM",
-    delivered: null, 
+    delivered: null,
   }
 });
 
@@ -81,17 +81,16 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
 
   const steps = [
     { key: 'placed', label: 'Order placed', icon: Package },
-    { key: 'confirmed', label: 'Order confirmed', icon: Check },
     { key: 'shipped', label: 'Shipped', icon: Truck },
     { key: 'delivered', label: 'Delivered', icon: MapPin },
   ];
-  
+
   const currentStepIndex = steps.findLastIndex(step => order.timeline[step.key as keyof typeof order.timeline] !== null);
 
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        
+
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 pt-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Order {order.id}</h1>
@@ -112,7 +111,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          
+
           <div className="flex-1 flex flex-col gap-6">
 
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6 md:p-8">
@@ -142,8 +141,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
               <div className="relative flex justify-between items-start mb-4">
 
                 <div className="absolute left-12 right-12 top-[11px] h-[10px] bg-white/10 z-0 rounded-full">
-                  <div 
-                    className="absolute left-0 top-0 h-full bg-[#22c55e] transition-all duration-500 rounded-full" 
+                  <div
+                    className="absolute left-0 top-0 h-full bg-[#22c55e] transition-all duration-500 rounded-full"
                     style={{ width: `${(Math.max(currentStepIndex, 0) / (steps.length - 1)) * 100}%` }}
                   ></div>
                 </div>
@@ -166,8 +165,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                 })}
               </div>
               <div className="sm:hidden mt-4 pt-4 border-t border-white/10">
-                 <p className="text-sm font-bold text-white mb-1">{steps[Math.max(currentStepIndex, 0)].label}</p>
-                 <p className="text-xs text-white/50">{order.timeline[steps[Math.max(currentStepIndex, 0)].key as keyof typeof order.timeline]}</p>
+                <p className="text-sm font-bold text-white mb-1">{steps[Math.max(currentStepIndex, 0)].label}</p>
+                <p className="text-xs text-white/50">{order.timeline[steps[Math.max(currentStepIndex, 0)].key as keyof typeof order.timeline]}</p>
               </div>
 
               {(order.status.toLowerCase() === 'shipped' || order.status.toLowerCase() === 'delivered') && order.tracking && (
@@ -210,10 +209,10 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0">
-            
+
             <div className="bg-[#121212] rounded-[20px] border border-white/5 p-6">
               <h2 className="text-lg font-bold mb-8">Customer Info</h2>
-              
+
               <div className="space-y-8">
                 <div>
                   <h3 className="text-white/40 text-xs font-bold mb-4 uppercase tracking-wider">Contact</h3>
@@ -241,7 +240,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             </div>
-            
+
           </div>
         </div>
       </div>
