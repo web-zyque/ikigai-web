@@ -14,7 +14,7 @@ export default function NotFound() {
                 <div className="w-full max-w-xl text-center">
                     <div className="relative mx-auto w-full max-w-md sm:max-w-lg">
                         <Image
-                            src="/404 Error.png"
+                            src="/images/404Error.webp"
                             alt="404 Page Not Found"
                             width={1536}
                             height={1024}
