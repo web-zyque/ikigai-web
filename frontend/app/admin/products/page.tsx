@@ -9,106 +9,21 @@ import InventorySummaryCards, {
 import ProductsInventoryTable, {
   InventoryProduct,
   InventoryStatus,
-  ALL_DEMO_PRODUCTS,
 } from "@/components/admin/ProductsInventoryTable";
 import AddProductModal from "@/components/admin/AddProductModal";
-import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
 import { Package, CheckCircle2, AlertTriangle, AlertCircle, Menu } from "lucide-react";
 import { useProducts } from "@/hooks/use-products";
-import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
-import { ProductResponse } from "@/types/products.types";
-import { productsApi } from "@/services/products.service";
-
-function generateProductId(): string {
-  return `prod-${Date.now()}`;
-}
 
 export default function ProductsInventoryPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-
-  const [localAddedProducts, setLocalAddedProducts] = useState<InventoryProduct[]>([]);
-  const [localFullProducts, setLocalFullProducts] = useState<Record<string, ProductResponse>>({});
 
   const { data: productsData, isLoading, refetch } = useProducts({
     limit: 100,
   });
 
-  const handleViewProduct = async (productId: string) => {
-    if (localFullProducts[productId]) {
-      setSelectedProduct(localFullProducts[productId]);
-      setIsDetailsModalOpen(true);
-      return;
-    }
-
-    const foundInLive = productsData?.products?.find((p) => p.id === productId);
-    if (foundInLive) {
-      setSelectedProduct(foundInLive);
-      setIsDetailsModalOpen(true);
-      return;
-    }
-
-    const foundInDemo = DEMO_PRODUCTS_BY_ID[productId];
-    if (foundInDemo) {
-      setSelectedProduct(foundInDemo);
-      setIsDetailsModalOpen(true);
-      return;
-    }
-
-    try {
-      const fetched = await productsApi.getById(productId);
-      if (fetched) {
-        setSelectedProduct(fetched);
-        setIsDetailsModalOpen(true);
-        return;
-      }
-    } catch (err) {
-      console.error("Failed to load product details:", err);
-    }
-
-    const fallbackItem = productsList.find((p) => p.id === productId);
-    if (fallbackItem) {
-      setSelectedProduct({
-        id: fallbackItem.id,
-        name: fallbackItem.name,
-        sku: fallbackItem.sku,
-        category: {
-          id: fallbackItem.category.toLowerCase().replace(/\s+/g, "-"),
-          name: fallbackItem.category,
-          slug: fallbackItem.category.toLowerCase().replace(/\s+/g, "-"),
-        },
-        sellingPrice: fallbackItem.price.replace(/[^0-9.]/g, "") || "0",
-        gstPercentage: "18.00",
-        stockQuantity: fallbackItem.stock,
-        lowStockThreshold: 5,
-        inventoryStatus:
-          fallbackItem.status === "In Stock"
-            ? "in_stock"
-            : fallbackItem.status === "Low Stock"
-            ? "low_stock"
-            : "out_of_stock",
-        publicationStatus: "active",
-        images: fallbackItem.image
-          ? [
-              {
-                id: `img-${fallbackItem.id}`,
-                imageUrl: fallbackItem.image,
-                isMainImage: true,
-                displayOrder: 0,
-              },
-            ]
-          : [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      setIsDetailsModalOpen(true);
-    }
-  };
-
-  const backendProducts: InventoryProduct[] = productsData?.products?.map(product => ({
+  const productsList: InventoryProduct[] = productsData?.products.map(product => ({
     id: product.id,
     name: product.name,
     category: product.category.name,
@@ -118,13 +33,6 @@ export default function ProductsInventoryPage() {
     status: product.inventoryStatus === 'in_stock' ? 'In Stock' :
             product.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock'
   })) || [];
-
-  const baseProducts: InventoryProduct[] =
-    backendProducts.length > 0
-      ? backendProducts
-      : (productsData?.products ? [] : ALL_DEMO_PRODUCTS);
-
-  const productsList: InventoryProduct[] = [...localAddedProducts, ...baseProducts];
 
   const totalCount = productsList.length;
   const inStockCount = productsList.filter((p) => p.status === "In Stock").length;
@@ -214,24 +122,7 @@ export default function ProductsInventoryPage() {
 
   const categoryMeta = getCategoryMeta();
 
-  const handleAddProductSuccess = (product?: Record<string, unknown>) => {
-    if (product) {
-      const newProduct: InventoryProduct = {
-        id: (product.id as string) || generateProductId(),
-        name: (product.productName as string) || (product.name as string) || "New Product",
-        category: (product.category as string) || "Accessories",
-        sku: (product.sku as string) || "",
-        price: (product.price as string) || `₹${product.sellingPrice}`,
-        stock: Number(product.stockQuantity) || 0,
-        status: (product.stockStatus as InventoryStatus) || "In Stock",
-      };
-      setLocalAddedProducts((prev) => [newProduct, ...prev]);
-
-      if (product.rawProduct) {
-        const raw = product.rawProduct as ProductResponse;
-        setLocalFullProducts((prev) => ({ ...prev, [raw.id]: raw }));
-      }
-    }
+  const handleAddProductSuccess = () => {
     refetch();
   };
 
@@ -248,6 +139,7 @@ export default function ProductsInventoryPage() {
 
   return (
     <>
+      {/* Reused Top Header */}
       <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
@@ -275,30 +167,23 @@ export default function ProductsInventoryPage() {
         </header>
 
         <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
+          {/* 1. Summary Cards */}
           <InventorySummaryCards
             cards={dynamicCards}
             selectedType={selectedCategory}
             onSelectCard={(type) => setSelectedCategory(type === selectedCategory ? null : type)}
           />
 
+          {/* 2. Products Table */}
           <ProductsInventoryTable
             products={filteredProducts}
-            totalCount={totalCount}
             title={categoryMeta.title}
             badgeText={categoryMeta.badgeText}
             subtitle={categoryMeta.subtitle}
-            onViewProduct={handleViewProduct}
           />
         </main>
-      <ProductDetailsModal
-        product={selectedProduct}
-        isOpen={isDetailsModalOpen}
-        onClose={() => {
-          setIsDetailsModalOpen(false);
-          setSelectedProduct(null);
-        }}
-      />
 
+      {/* Add Product Modal */}
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
