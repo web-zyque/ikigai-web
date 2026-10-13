@@ -69,13 +69,13 @@ export default function OrderDashboardPage() {
       prev.map((order) =>
         order.id === orderId
           ? {
-              ...order,
-              orderStatus: "Cancelled",
-              paymentStatus:
-                order.paymentStatus === "Pending"
-                  ? "Failed"
-                  : order.paymentStatus,
-            }
+            ...order,
+            orderStatus: "Cancelled",
+            paymentStatus:
+              order.paymentStatus === "Pending"
+                ? "Failed"
+                : order.paymentStatus,
+          }
           : order
       )
     );
@@ -85,55 +85,84 @@ export default function OrderDashboardPage() {
       setSelectedOrder((prev) =>
         prev
           ? {
-              ...prev,
-              orderStatus: "Cancelled",
-              paymentStatus:
-                prev.paymentStatus === "Pending"
-                  ? "Failed"
-                  : prev.paymentStatus,
-            }
+            ...prev,
+            orderStatus: "Cancelled",
+            paymentStatus:
+              prev.paymentStatus === "Pending"
+                ? "Failed"
+                : prev.paymentStatus,
+          }
           : null
       );
     }
   };
 
+  // Search Query State (synchronized with header search box)
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Date Range Filtering State
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleDateChange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // Filter orders by date range if specified
+  const dateFilteredOrders = useMemo(() => {
+    if (!startDate && !endDate) return ordersList;
+
+    return ordersList.filter((order) => {
+      const orderDate = new Date(order.createdAt).toISOString().split("T")[0];
+      if (startDate && endDate) {
+        return orderDate >= startDate && orderDate <= endDate;
+      }
+      if (startDate) {
+        return orderDate >= startDate;
+      }
+      if (endDate) {
+        return orderDate <= endDate;
+      }
+      return true;
+    });
+  }, [ordersList, startDate, endDate]);
+
   return (
     <>
-      {/* Reused Top Header */}
-        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setMobileOpen((prev) => !prev)}
-              aria-label="Open navigation menu"
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors lg:hidden"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Orders</h1>
-            </div>
-          </div>
-        </header>
+      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 max-w-7xl w-full flex flex-col justify-start">
+        {/* Mobile menu toggle button if sidebar is collapsed on mobile */}
+        <div className="lg:hidden flex items-center justify-between pb-2">
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-label="Open navigation menu"
+            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        </div>
 
-        <main className="flex-1 px-6 lg:px-12 py-8 space-y-6 max-w-7xl w-full">
-          {/* 1. Order Summary Cards (Priority 1) */}
-          <OrderSummaryCards
-            counts={counts}
-            activeStatus={statusFilter}
-            onSelectStatus={(st) => setStatusFilter(st)}
-          />
+        <OrderSummaryCards
+          counts={counts}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
 
-          {/* 2. Recent Orders Section (Priority 2) */}
-          <OrdersTable
-            orders={ordersList}
-            onViewOrder={handleViewOrder}
-            onUpdateStatus={handleUpdateStatus}
-            onCancelOrder={handleCancelOrder}
-            statusFilter={statusFilter}
-            onStatusFilterChange={(st) => setStatusFilter(st)}
-          />
-        </main>
+        <OrdersTable
+          orders={dateFilteredOrders}
+          onViewOrder={handleViewOrder}
+          onUpdateStatus={handleUpdateStatus}
+          onCancelOrder={handleCancelOrder}
+          statusFilter={statusFilter}
+          onStatusFilterChange={(st) => setStatusFilter(st)}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+        />
+      </main>
 
       {/* 3. Order Details Modal (Priority 3 & 4) */}
       <OrderDetailsModal
