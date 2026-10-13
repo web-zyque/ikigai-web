@@ -1,14 +1,7 @@
 "use client";
 
-import React from "react";
-import {
-  ShoppingCart,
-  Clock,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
-import { OrderStatus } from "@/types/orders.types";;
+import React, { useState, useRef, useEffect } from "react";
+import { Search, Calendar as CalendarIcon, X } from "lucide-react";
 
 export interface OrderCounts {
   total: number;
@@ -20,117 +13,182 @@ export interface OrderCounts {
 
 export interface OrderSummaryCardsProps {
   counts: OrderCounts;
-  activeStatus?: string;
-  onSelectStatus?: (status: "All" | OrderStatus) => void;
+  searchQuery?: string;
+  onSearchChange?: (val: string) => void;
+  startDate?: string;
+  endDate?: string;
+  onDateChange?: (start: string, end: string) => void;
 }
 
 export default function OrderSummaryCards({
   counts,
-  activeStatus = "All",
-  onSelectStatus,
+  searchQuery = "",
+  onSearchChange,
+  startDate = "",
+  endDate = "",
+  onDateChange,
 }: OrderSummaryCardsProps) {
-  const cards: Array<{
-    id: "All" | OrderStatus;
-    title: string;
-    value: number;
-    icon: React.ElementType;
-    iconColor: string;
-    activeBorderColor: string;
-  }> = [
-    {
-      id: "All",
-      title: "Total Orders",
-      value: counts.total,
-      icon: ShoppingCart,
-      iconColor: "text-white/70",
-      activeBorderColor: "border-[#640C0C]",
-    },
-    {
-      id: "Pending",
-      title: "Pending Orders",
-      value: counts.pending,
-      icon: Clock,
-      iconColor: "text-amber-400",
-      activeBorderColor: "border-amber-500/60",
-    },
-    {
-      id: "Processing",
-      title: "Processing Orders",
-      value: counts.processing,
-      icon: RefreshCw,
-      iconColor: "text-sky-400",
-      activeBorderColor: "border-sky-500/60",
-    },
-    {
-      id: "Delivered",
-      title: "Completed Orders",
-      value: counts.completed,
-      icon: CheckCircle2,
-      iconColor: "text-emerald-400",
-      activeBorderColor: "border-emerald-500/60",
-    },
-    {
-      id: "Cancelled",
-      title: "Cancelled Orders",
-      value: counts.cancelled,
-      icon: XCircle,
-      iconColor: "text-red-400",
-      activeBorderColor: "border-red-500/60",
-    },
-  ];
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formatDateLabel = () => {
+    if (startDate && endDate) {
+      return `${startDate} - ${endDate}`;
+    }
+    if (startDate) {
+      return `From ${startDate}`;
+    }
+    if (endDate) {
+      return `Until ${endDate}`;
+    }
+    return "Select date or range";
+  };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        const isActive =
-          (card.id === "All" && activeStatus === "All") ||
-          (card.id !== "All" && activeStatus === card.id);
+    <div className="w-full space-y-4">
+      {/* Top search & interactive date range picker */}
+      <div className="flex items-center justify-end gap-2.5">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            placeholder="Search"
+            aria-label="Search orders"
+            className="w-full h-9 rounded-lg bg-[#121212] border border-white/10 pl-9 pr-3 text-xs text-white placeholder-white/40 outline-none transition-colors focus:border-white/20 focus:bg-[#161616]"
+          />
+        </div>
 
-        return (
+        <div className="relative" ref={calendarRef}>
           <button
-            key={card.title}
             type="button"
-            onClick={() => onSelectStatus?.(card.id)}
-            className={`group text-left rounded-[18px] p-4 sm:p-5 transition-all duration-200 cursor-pointer outline-none relative ${
-              isActive
-                ? "bg-[#640C0C]/15 border border-[#640C0C] ring-1 ring-[#640C0C]/50 shadow-sm shadow-[#640C0C]/30"
-                : "bg-[#121212] border border-white/5 hover:border-white/15 hover:bg-[#161616]"
-            }`}
+            onClick={() => setIsCalendarOpen((prev) => !prev)}
+            className={`flex items-center gap-2 h-9 px-3.5 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${startDate || endDate
+                ? "bg-white/10 border-white/25 text-white"
+                : "bg-[#121212] border-white/10 text-white/80 hover:border-white/20"
+              }`}
           >
-            <div className="flex items-center justify-between">
+            <CalendarIcon className="h-3.5 w-3.5 text-white/40" />
+            <span>{formatDateLabel()}</span>
+            {(startDate || endDate) && (
               <span
-                className={`text-[11px] font-semibold uppercase tracking-wider transition-colors truncate pr-1 ${
-                  isActive ? "text-white" : "text-white/50 group-hover:text-white/70"
-                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDateChange?.("", "");
+                }}
+                className="hover:text-red-400 p-0.5 rounded-full"
               >
-                {card.title}
+                <X className="h-3 w-3" />
               </span>
-              <div
-                className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                  isActive
-                    ? "bg-[#640C0C]/40 text-white"
-                    : "bg-white/5 text-white/50 group-hover:text-white/80 group-hover:bg-white/10"
-                }`}
-              >
-                <Icon className={`h-3.5 w-3.5 ${card.iconColor}`} />
+            )}
+          </button>
+
+          {isCalendarOpen && (
+            <div className="absolute right-0 mt-2 p-3 bg-[#161616] border border-white/10 rounded-xl shadow-2xl z-40 w-72 space-y-3">
+              <div className="text-xs font-semibold text-white/80">Select Date / Range</div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[11px] text-white/50 block mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => onDateChange?.(e.target.value, endDate)}
+                    className="w-full h-8 rounded-md bg-[#0a0a0a] border border-white/10 px-2.5 text-xs text-white outline-none focus:border-white/30"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/50 block mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => onDateChange?.(startDate, e.target.value)}
+                    className="w-full h-8 rounded-md bg-[#0a0a0a] border border-white/10 px-2.5 text-xs text-white outline-none focus:border-white/30"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDateChange?.("", "");
+                    setIsCalendarOpen(false);
+                  }}
+                  className="text-[11px] text-white/50 hover:text-white transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCalendarOpen(false)}
+                  className="px-3 py-1 rounded bg-[#640C0C] hover:bg-[#7a1010] text-[11px] font-semibold text-white transition-colors cursor-pointer"
+                >
+                  Apply
+                </button>
               </div>
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="mt-2.5 flex items-baseline justify-between">
+      {/* Metrics line-only section: Total orders, Pending orders, Completed, Cancelled */}
+      <div className="pt-2 pb-3 border-b border-white/10">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Total orders</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
               <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                {card.value}
+                {counts.total}
               </span>
-              {isActive && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/70">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#b82525]" />
-                  Active
-                </span>
-              )}
+              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-blue-500 shrink-0" />
             </div>
-          </button>
-        );
-      })}
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Total order last 365 days</span>
+          </div>
+
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Pending orders</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {counts.pending}
+              </span>
+              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-amber-500 shrink-0" />
+            </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Pending order last 365 days</span>
+          </div>
+
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Completed</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {counts.completed}
+              </span>
+              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-emerald-500 shrink-0" />
+            </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Completed order last 365 days</span>
+          </div>
+
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Cancelled</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {counts.cancelled}
+              </span>
+              <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-red-500 shrink-0" />
+            </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Canceled order last 365 days</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
