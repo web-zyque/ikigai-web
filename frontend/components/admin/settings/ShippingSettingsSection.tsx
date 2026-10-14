@@ -47,13 +47,23 @@ export default function ShippingSettingsSection({
               min={0}
               step={10}
               value={data.shippingCharge}
-              onChange={(e) =>
-                onChange({ shippingCharge: Math.max(0, parseFloat(e.target.value) || 0) })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (value === "") {
+                  onChange({ shippingCharge: "" as unknown as number });
+                  return;
+                }
+
+                const parsed = Number(value);
+
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                  onChange({ shippingCharge: parsed });
+                }
+              }}
               placeholder="150"
-              className={`w-full h-9 rounded-lg border ${
-                errors.shippingCharge ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-              } bg-[#0a0a0a] pl-7 pr-3 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
+              className={`w-full h-9 rounded-lg border ${errors.shippingCharge ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
+                } bg-[#0a0a0a] pl-7 pr-3 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
             />
           </div>
           <p className="text-[10px] text-white/40 mt-1">
@@ -78,15 +88,25 @@ export default function ShippingSettingsSection({
               min={0}
               step={100}
               value={data.freeShippingThreshold}
-              onChange={(e) =>
-                onChange({ freeShippingThreshold: Math.max(0, parseFloat(e.target.value) || 0) })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (value === "") {
+                  onChange({ freeShippingThreshold: "" as unknown as number });
+                  return;
+                }
+
+                const parsed = Number(value);
+
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                  onChange({ freeShippingThreshold: parsed });
+                }
+              }}
               placeholder="2500"
-              className={`w-full h-9 rounded-lg border ${
-                errors.freeShippingThreshold
-                  ? "border-[#640C0C] ring-1 ring-[#640C0C]"
-                  : "border-white/10"
-              } bg-[#0a0a0a] pl-7 pr-3 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
+              className={`w-full h-9 rounded-lg border ${errors.freeShippingThreshold
+                ? "border-[#640C0C] ring-1 ring-[#640C0C]"
+                : "border-white/10"
+                } bg-[#0a0a0a] pl-7 pr-3 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
             />
           </div>
           <p className="text-[10px] text-white/40 mt-1">
