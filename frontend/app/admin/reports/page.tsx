@@ -59,7 +59,7 @@ export default function ReportsPage() {
         ]);
 
         exportToPdf({
-          title: "IKIGAI AUTO PARTS & ACCESSORIES",
+          title: "IKIGAI CUSTOMs CAR ACCESSORIES",
           subtitle: "Sales Performance & Velocity Report",
           dateRange: dateRangeLabel,
           metrics: [
@@ -221,15 +221,10 @@ export default function ReportsPage() {
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Reports</h1>
-          </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 px-6 lg:px-12 py-8 space-y-6 max-w-7xl w-full">
-        {/* Reports Header with Date Filter & Tab Switcher */}
         <ReportsHeader
           activeTab={activeTab}
           onTabChange={setActiveTab}
