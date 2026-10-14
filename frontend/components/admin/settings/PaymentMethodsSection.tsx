@@ -59,9 +59,10 @@ export default function PaymentMethodsSection({
           <button
             type="button"
             role="switch"
+            aria-label="Enable or disable UPI and QR Code payments"
             aria-checked={data.upiEnabled}
             onClick={() => onChange({ upiEnabled: !data.upiEnabled })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#640C0C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] ${
               data.upiEnabled ? "bg-[#640C0C]" : "bg-white/10"
             }`}
           >
@@ -101,9 +102,10 @@ export default function PaymentMethodsSection({
           <button
             type="button"
             role="switch"
+            aria-label="Enable or disable Cash on Delivery"
             aria-checked={data.codEnabled}
             onClick={() => onChange({ codEnabled: !data.codEnabled })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#640C0C] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212] ${
               data.codEnabled ? "bg-[#640C0C]" : "bg-white/10"
             }`}
           >
