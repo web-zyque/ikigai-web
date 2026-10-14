@@ -18,7 +18,6 @@ export default function InventoryReportView({ data }: InventoryReportViewProps) 
 
   return (
     <div className="space-y-6">
-      {/* 1. Inventory Summary Cards */}
       <div className="pt-2 pb-3 border-b border-white/10">
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
           <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
@@ -63,8 +62,7 @@ export default function InventoryReportView({ data }: InventoryReportViewProps) 
         </div>
       </div>
 
-      {/* 2. Visual Inventory Health Breakdown */}
-      <div className="rounded-[20px] border border-white/5 bg-[#121212] p-6 shadow-sm">
+      <div className="rounded-[20px] p-6 ">
         <h3 className="text-sm font-bold tracking-tight text-white">
           Inventory Stock Distribution
         </h3>
@@ -72,7 +70,6 @@ export default function InventoryReportView({ data }: InventoryReportViewProps) 
           Proportional split between in-stock, low-stock, and exhausted products
         </p>
 
-        {/* Progress bar */}
         <div className="mt-4 h-3 w-full rounded-full bg-white/5 overflow-hidden flex">
           <div
             style={{ width: `${inStockPct}%` }}
@@ -91,24 +88,22 @@ export default function InventoryReportView({ data }: InventoryReportViewProps) 
           />
         </div>
 
-        {/* Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-6 text-xs">
+        <div className="mt-3 flex flex-row items-center gap-2 text-xs">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="text-white/60">Healthy Stock ({inStockProducts} items • {inStockPct}%)</span>
+            <span className="shrink-0 h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-white/60">Healthy Stock ({inStockPct}%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="text-white/60">Low Stock Alert ({lowStockProducts} items • {lowStockPct}%)</span>
+            <span className="shrink-0 h-2 w-2 rounded-full bg-amber-500" />
+            <span className="text-white/60">Low Stock Alert ({lowStockPct}%)</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[#640C0C]" />
-            <span className="text-white/60">Out of Stock ({outOfStockProducts} items • {outOfStockPct}%)</span>
+            <span className="shrink-0 h-2 w-2 rounded-full bg-[#640C0C]" />
+            <span className="text-white/60">Out of Stock ({outOfStockPct}%)</span>
           </div>
         </div>
       </div>
 
-      {/* 3. Best-Selling Products Table */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="border-b border-white/5 px-6 py-4 bg-[#121212] flex items-center justify-between">
           <div>
