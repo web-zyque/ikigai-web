@@ -22,16 +22,15 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
     return data.salesTrends.daily;
   }, [data, timeframe]);
 
-  // Chart coordinate calculations
   const maxSales = useMemo(() => {
     const rawMax = Math.max(...points.map((p) => p.sales), 1000);
     return Math.ceil(rawMax * 1.15);
   }, [points]);
 
-  const chartWidth = 700;
-  const chartHeight = 180;
-  const paddingX = 40;
-  const paddingY = 20;
+  const chartWidth = 800;
+  const chartHeight = 220;
+  const paddingX = 35;
+  const paddingY = 25;
 
   const coords = useMemo(() => {
     if (points.length <= 1) {
@@ -71,7 +70,6 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* 1. Core Sales Metric Cards */}
       <div className="pt-2 pb-3 border-b border-white/10">
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
           <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
@@ -106,20 +104,15 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
         </div>
       </div>
 
-      {/* 2. Sales Trend Chart Visualization */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 px-6 py-4 bg-[#121212]">
           <div>
             <h3 className="text-sm sm:text-base font-bold tracking-tight text-white">
               Sales Trends &amp; Revenue Velocity
             </h3>
-            <p className="text-xs text-white/50 mt-0.5">
-              Visual trajectory of sales volume and order numbers
-            </p>
           </div>
 
-          {/* Daily / Weekly / Monthly Switcher */}
-          <div className="inline-flex rounded-lg border border-white/10 bg-[#0a0a0a] p-1 text-xs self-start sm:self-auto">
+          <div className="inline-flex rounded-lg border border-white/10 bg-[#0a0a0a] p-1 text-xs self-end sm:self-auto">
             {(["daily", "weekly", "monthly"] as const).map((mode) => (
               <button
                 key={mode}
@@ -128,11 +121,10 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
                   setTimeframe(mode);
                   setHoveredIndex(null);
                 }}
-                className={`px-3 py-1 rounded-md capitalize transition-colors cursor-pointer font-medium ${
-                  timeframe === mode
+                className={`px-3 py-1 rounded-md capitalize transition-colors cursor-pointer font-medium ${timeframe === mode
                     ? "bg-[#640C0C] text-white shadow-sm"
                     : "text-white/50 hover:text-white"
-                }`}
+                  }`}
               >
                 {mode}
               </button>
@@ -140,9 +132,7 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
           </div>
         </div>
 
-        {/* SVG Chart */}
-        <div className="p-6 relative">
-          {/* Tooltip */}
+        <div className="relative p-3 sm:p-5 md:p-6">
           {activeCoord && (
             <div
               className="absolute pointer-events-none rounded-xl border border-white/15 bg-black/95 px-3 py-2 text-xs shadow-xl z-20 transition-all -translate-x-1/2 -translate-y-full"
@@ -161,12 +151,12 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
             </div>
           )}
 
-          <div className="w-full overflow-hidden">
+         <div className="w-full min-w-0">
             <svg
               viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="w-full h-44 sm:h-52 overflow-visible"
+              className="block h-auto w-full overflow-visible"
+              style={{ aspectRatio: `${chartWidth} / ${chartHeight}` }}
             >
-              {/* Grid Horizontal Lines */}
               {[0, 0.33, 0.66, 1].map((pct, idx) => {
                 const y = chartHeight - paddingY - pct * (chartHeight - paddingY * 2);
                 return (
@@ -181,13 +171,10 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
                   />
                 );
               })}
-
-              {/* Area Under Line */}
               {areaPath && (
                 <path d={areaPath} fill="rgba(100, 12, 12, 0.18)" />
               )}
 
-              {/* Trend Line */}
               {linePath && (
                 <path
                   d={linePath}
@@ -199,7 +186,6 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
                 />
               )}
 
-              {/* Interactive Data Dots */}
               {coords.map((pt, idx) => (
                 <g key={idx}>
                   <circle
@@ -213,7 +199,6 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
                     onMouseEnter={() => setHoveredIndex(idx)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   />
-                  {/* X Axis Label */}
                   <text
                     x={pt.x}
                     y={chartHeight - 4}
@@ -231,7 +216,6 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
         </div>
       </div>
 
-      {/* 3. Sales Breakdown Table */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="border-b border-white/5 px-6 py-4 bg-[#121212]">
           <h3 className="text-sm font-bold tracking-tight text-white">

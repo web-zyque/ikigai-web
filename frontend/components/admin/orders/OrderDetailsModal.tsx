@@ -34,7 +34,6 @@ export default function OrderDetailsModal({
   onUpdateStatus,
   onCancelOrder,
 }: OrderDetailsModalProps) {
-  // Lock body scroll and listen for Escape key
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -142,7 +141,6 @@ export default function OrderDetailsModal({
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-3xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden my-auto max-h-[92vh]"
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-[#0a0a0a]">
           <div className="flex items-center gap-3.5">
             <div>
@@ -171,11 +169,8 @@ export default function OrderDetailsModal({
           </button>
         </div>
 
-        {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Top 2 Columns: Customer & Shipping Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Customer Details */}
             <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-4.5 space-y-3">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2.5 text-xs font-semibold uppercase tracking-wider text-white/50">
                 <User className="h-3.5 w-3.5 text-white/40" />
@@ -199,7 +194,6 @@ export default function OrderDetailsModal({
               </div>
             </div>
 
-            {/* Shipping Details */}
             <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-4.5 space-y-3">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2.5 text-xs font-semibold uppercase tracking-wider text-white/50">
                 <MapPin className="h-3.5 w-3.5 text-white/40" />
@@ -217,7 +211,6 @@ export default function OrderDetailsModal({
             </div>
           </div>
 
-          {/* Ordered Products Section */}
           <div className="rounded-xl border border-white/5 bg-[#0e0e0e] overflow-hidden">
             <div className="flex items-center justify-between border-b border-white/5 px-4.5 py-3 bg-[#0a0a0a]">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/50">
@@ -274,10 +267,8 @@ export default function OrderDetailsModal({
               ))}
             </div>
           </div>
-
-          {/* Payment & Order Summary */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Payment Information */}
+            
             <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-4.5 space-y-3">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2.5 text-xs font-semibold uppercase tracking-wider text-white/50">
                 <CreditCard className="h-3.5 w-3.5 text-white/40" />
@@ -301,7 +292,6 @@ export default function OrderDetailsModal({
               </div>
             </div>
 
-            {/* Price Breakdown */}
             <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-4.5 space-y-2.5 text-xs">
               <div className="flex items-center justify-between text-white/60">
                 <span>Items Subtotal</span>
@@ -324,7 +314,6 @@ export default function OrderDetailsModal({
             </div>
           </div>
 
-          {/* Order Notes (if any) */}
           {order.notes && (
             <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-4 text-xs text-white/70 flex items-start gap-2.5">
               <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
@@ -338,9 +327,7 @@ export default function OrderDetailsModal({
           )}
         </div>
 
-        {/* Footer Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
-          {/* Status Update Control */}
           <div className="flex items-center gap-2.5">
             <span className="text-xs text-white/50 font-medium">Update Status:</span>
             <select
@@ -359,7 +346,6 @@ export default function OrderDetailsModal({
             </select>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2.5 justify-end">
             {order.orderStatus !== "Cancelled" && order.orderStatus !== "Delivered" && (
               <button

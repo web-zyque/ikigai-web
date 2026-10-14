@@ -15,16 +15,13 @@ import RevenueReportView from "@/components/admin/reports/RevenueReportView";
 export default function ReportsPage() {
   const { setMobileOpen } = useMobileMenu();
 
-  // Tab & Date filter state
   const [activeTab, setActiveTab] = useState<ReportTab>("sales");
   const [dateFilter, setDateFilter] = useState<DateFilterType>("last7days");
   const [customStartDate, setCustomStartDate] = useState("2026-10-01");
   const [customEndDate, setCustomEndDate] = useState("2026-10-11");
 
-  // Get corresponding dataset
   const reportData = MOCK_REPORTS_DATA[dateFilter] || MOCK_REPORTS_DATA.last7days;
 
-  // PDF Export logic for active tab
   const handleExportPDF = () => {
     const timestamp = new Date().toISOString().split("T")[0];
     const dateRangeLabel =
@@ -59,7 +56,7 @@ export default function ReportsPage() {
         ]);
 
         exportToPdf({
-          title: "IKIGAI CUSTOMs CAR ACCESSORIES",
+          title: "IKIGAI CUSTOMS CAR ACCESSORIES",
           subtitle: "Sales Performance & Velocity Report",
           dateRange: dateRangeLabel,
           metrics: [
@@ -210,7 +207,6 @@ export default function ReportsPage() {
 
   return (
     <>
-      {/* Top Header bar with mobile menu toggle */}
       <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
         <div className="flex items-center gap-4">
           <button
@@ -224,7 +220,7 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-6 lg:px-12 py-8 space-y-6 max-w-7xl w-full">
+      <main className="flex-1 px-6 lg:px-12 py-4 space-y-6 max-w-7xl w-full">
         <ReportsHeader
           activeTab={activeTab}
           onTabChange={setActiveTab}
