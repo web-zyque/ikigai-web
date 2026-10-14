@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState, useId, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import {
   X,
   Upload,
   Image as ImageIcon,
-  CheckCircle2,
-  AlertTriangle,
+  Check,
   AlertCircle,
+  Plus,
   Trash2,
+  ChevronRight,
+  ChevronLeft,
   Loader2,
 } from "lucide-react";
 import { useCategories, useCreateProduct } from "@/hooks/use-products";
@@ -19,8 +22,6 @@ export interface AddProductModalProps {
   onClose: () => void;
   onSuccess?: (product: Record<string, unknown>) => void;
 }
-
-type TabType = "general" | "images" | "pricing" | "specs";
 
 const DEFAULT_CATEGORIES = [
   { id: "cat-lighting", name: "Lighting" },
@@ -33,71 +34,12 @@ const DEFAULT_CATEGORIES = [
   { id: "cat-interior", name: "Interior Accessories" },
 ];
 
-interface FallbackProductParams {
-  productData: {
-    name: string;
-    sku: string;
-    brand?: string;
-    description?: string;
-    sellingPrice: number;
-    mrpPrice?: number;
-    stockQuantity: number;
-    lowStockThreshold: number;
-    productType?: string;
-    color?: string;
-    dimensions?: string;
-    warranty?: string;
-    material?: string;
-  };
-  selectedCategoryId: string;
-  categoryName: string;
-  images: Array<{
-    imageUrl: string;
-    isMainImage: boolean;
-    altText: string;
-  }>;
-  vehicleCompatibilityArray: string[];
-  fallbackStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
-}
-
-function createFallbackProduct(params: FallbackProductParams) {
-  const timestamp = Date.now();
-  const isoTimestamp = new Date(timestamp).toISOString();
-
-  return {
-    id: `prod-${timestamp}`,
-    name: params.productData.name,
-    sku: params.productData.sku,
-    category: {
-      id: params.selectedCategoryId,
-      name: params.categoryName,
-      slug: params.selectedCategoryId,
-    },
-    brand: params.productData.brand,
-    description: params.productData.description,
-    sellingPrice: String(params.productData.sellingPrice),
-    mrpPrice: params.productData.mrpPrice ? String(params.productData.mrpPrice) : undefined,
-    gstPercentage: '18',
-    stockQuantity: params.productData.stockQuantity,
-    lowStockThreshold: params.productData.lowStockThreshold,
-    inventoryStatus: params.fallbackStatus,
-    publicationStatus: 'active' as const,
-    vehicleCompatibility: params.vehicleCompatibilityArray,
-    productType: params.productData.productType,
-    color: params.productData.color,
-    dimensions: params.productData.dimensions,
-    warranty: params.productData.warranty,
-    material: params.productData.material,
-    images: params.images.map((img, idx) => ({
-      id: `img-${idx}`,
-      imageUrl: img.imageUrl,
-      isMainImage: img.isMainImage,
-      displayOrder: idx,
-      altText: img.altText,
-    })),
-    createdAt: isoTimestamp,
-    updatedAt: isoTimestamp,
-  };
+export interface UploadedImageItem {
+  id: string;
+  file?: File;
+  previewUrl: string;
+  isMain: boolean;
+  variantColor?: string;
 }
 
 export default function AddProductModal({
@@ -105,412 +47,252 @@ export default function AddProductModal({
   onClose,
   onSuccess,
 }: AddProductModalProps) {
-  const mainImageInputId = useId();
-  const additionalImagesInputId = useId();
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
 
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-  const availableCategories = categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  const { data: apiCategories } = useCategories();
+  const availableCategories =
+    apiCategories && apiCategories.length > 0 ? apiCategories : DEFAULT_CATEGORIES;
+
   const createProductMutation = useCreateProduct();
   const uploadImageMutation = useUploadImage();
 
-  const [activeTab, setActiveTab] = useState<TabType>("general");
-  const [maxUnlockedStep, setMaxUnlockedStep] = useState<number>(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
+  // Step 1: Basic details
   const [productName, setProductName] = useState("");
   const [sku, setSku] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
-  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [mainImageUrl, setMainImageUrl] = useState<string | null>(null);
-  const [additionalImageFiles, setAdditionalImageFiles] = useState<File[]>([]);
-  const [additionalImageUrls, setAdditionalImageUrls] = useState<string[]>([]);
-  const [uploadingImages, setUploadingImages] = useState<Set<number>>(new Set());
+  // Step 1 Attributes / Variants
+  const [hasColorVariants, setHasColorVariants] = useState(false);
+  const [colorValues, setColorValues] = useState<string[]>(["Black", "White"]);
+  const [newColorInput, setNewColorInput] = useState("");
 
+  const [hasSizeVariants, setHasSizeVariants] = useState(false);
+  const [sizeValues, setSizeValues] = useState<string[]>(["Standard"]);
+  const [newSizeInput, setNewSizeInput] = useState("");
+
+  // Step 2: Uploaded images
+  const [uploadedImages, setUploadedImages] = useState<UploadedImageItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggingColor, setDraggingColor] = useState<string | null>(null);
+
+  // Step 3: Pricing, Inventory, Specifications & Vehicle Compatibility
   const [sellingPrice, setSellingPrice] = useState("");
   const [mrpPrice, setMrpPrice] = useState("");
-  const [stockQuantity, setStockQuantity] = useState<number | "">("");
-  const [lowStockThreshold, setLowStockThreshold] = useState<number | "">(5);
+  const [stockQuantity, setStockQuantity] = useState<number | string>("");
+  const [lowStockThreshold, setLowStockThreshold] = useState<number | string>("5");
 
   const [vehicleCompatibility, setVehicleCompatibility] = useState("");
   const [productType, setProductType] = useState("");
-  const [color, setColor] = useState("");
   const [dimensions, setDimensions] = useState("");
-  const [warranty, setWarranty] = useState("");
   const [material, setMaterial] = useState("");
+  const [warranty, setWarranty] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const validateGeneralStep = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const mainFileInputRef = useRef<HTMLInputElement>(null);
 
-    if (!productName.trim()) {
-      newErrors.productName = "Product name is required";
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && !isSubmitting) handleClose();
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "unset";
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
-    if (!sku.trim()) {
-      newErrors.sku = "Product SKU is required";
-    }
-    if (!selectedCategoryId.trim()) {
-      newErrors.categoryId = "Category is required";
-    }
-    if (!brand.trim()) {
-      newErrors.brand = "Brand is required";
-    }
-    if (!description.trim()) {
-      newErrors.description = "Product description is required";
-    }
+  }, [isOpen, isSubmitting]);
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors((prev) => ({
-        ...prev,
-        ...newErrors,
-      }));
-      return false;
-    }
-
-    setErrors((prev) => {
-      const updated = { ...prev };
-      delete updated.productName;
-      delete updated.sku;
-      delete updated.categoryId;
-      delete updated.brand;
-      delete updated.description;
-      return updated;
-    });
-
-    return true;
-  };
-  const validateImagesStep = (): boolean => {
-    if (!mainImageFile && !mainImageUrl) {
-      setErrors((prev) => ({
-        ...prev,
-        mainImage: "Main product image is required",
-      }));
-      return false;
-    }
-
-    setErrors((prev) => {
-      const updated = { ...prev };
-      delete updated.mainImage;
-      return updated;
-    });
-
-    return true;
+  const handleClose = () => {
+    if (isSubmitting) return;
+    setCurrentStep(1);
+    setProductName("");
+    setSku("");
+    setSelectedCategoryId("");
+    setBrand("");
+    setDescription("");
+    setHasColorVariants(false);
+    setColorValues(["Black", "White"]);
+    setNewColorInput("");
+    setHasSizeVariants(false);
+    setSizeValues(["Standard"]);
+    setNewSizeInput("");
+    setUploadedImages([]);
+    setSellingPrice("");
+    setMrpPrice("");
+    setStockQuantity("");
+    setLowStockThreshold("5");
+    setVehicleCompatibility("");
+    setProductType("");
+    setDimensions("");
+    setMaterial("");
+    setWarranty("");
+    setErrors({});
+    onClose();
   };
 
-    const validatePricingStep = (): boolean => {
+  const handleAddColorValue = () => {
+    const trimmed = newColorInput.trim();
+    if (trimmed && !colorValues.includes(trimmed)) {
+      setColorValues((prev) => [...prev, trimmed]);
+      setNewColorInput("");
+    }
+  };
+
+  const handleRemoveColorValue = (val: string) => {
+    setColorValues((prev) => prev.filter((c) => c !== val));
+    setUploadedImages((prev) => prev.filter((img) => img.variantColor !== val));
+  };
+
+  const handleAddSizeValue = () => {
+    const trimmed = newSizeInput.trim();
+    if (trimmed && !sizeValues.includes(trimmed)) {
+      setSizeValues((prev) => [...prev, trimmed]);
+      setNewSizeInput("");
+    }
+  };
+
+  const handleRemoveSizeValue = (val: string) => {
+    setSizeValues((prev) => prev.filter((s) => s !== val));
+  };
+
+  const handleFilesSelected = (files: FileList | File[], variantColor?: string) => {
+    const fileArray = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (fileArray.length === 0) return;
+
+    const newItems: UploadedImageItem[] = fileArray.map((file, idx) => ({
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${idx}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      isMain: uploadedImages.length === 0 && idx === 0,
+      variantColor,
+    }));
+
+    setUploadedImages((prev) => [...prev, ...newItems]);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.images;
+      return copy;
+    });
+  };
+
+  const handleRemoveImage = (idToRemove: string) => {
+    setUploadedImages((prev) => {
+      const filtered = prev.filter((item) => item.id !== idToRemove);
+      if (filtered.length > 0 && !filtered.some((item) => item.isMain)) {
+        filtered[0].isMain = true;
+      }
+      return filtered;
+    });
+  };
+
+  const handleSetMainImage = (id: string) => {
+    setUploadedImages((prev) =>
+      prev.map((item) => ({
+        ...item,
+        isMain: item.id === id,
+      }))
+    );
+  };
+
+  const validateStep1 = (): boolean => {
     const newErrors: Record<string, string> = {};
+    if (!productName.trim()) newErrors.productName = "Product title is required";
+    if (!sku.trim()) newErrors.sku = "SKU identifier is required";
+    if (!selectedCategoryId) newErrors.categoryId = "Category selection is required";
+    if (!brand.trim()) newErrors.brand = "Brand name is required";
+    if (!description.trim()) newErrors.description = "Product description is required";
 
-    if (!sellingPrice.trim()) {
-      newErrors.sellingPrice = "Selling price is required";
-    } else if (isNaN(parseFloat(sellingPrice)) || parseFloat(sellingPrice) < 0) {
-      newErrors.sellingPrice = "Please enter a valid price";
+    if (hasColorVariants && colorValues.length === 0) {
+      newErrors.attributes = "Please add at least one color value";
     }
 
-    if (!mrpPrice.trim()) {
-      newErrors.mrpPrice = "Original / MRP price is required";
-    } else if (isNaN(parseFloat(mrpPrice)) || parseFloat(mrpPrice) < 0) {
-      newErrors.mrpPrice = "Please enter a valid price";
-    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    if (stockQuantity === "" || stockQuantity === undefined || stockQuantity === null) {
-      newErrors.stockQuantity = "Stock quantity is required";
-    } else if (Number(stockQuantity) < 0) {
+  const validateStep2 = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (uploadedImages.length < 3) {
+      newErrors.images = `Minimum 3 images are required. Currently uploaded: ${uploadedImages.length}.`;
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep3 = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!sellingPrice.trim() || isNaN(parseFloat(sellingPrice)) || parseFloat(sellingPrice) < 0) {
+      newErrors.sellingPrice = "Valid selling price is required";
+    }
+    if (!mrpPrice.trim() || isNaN(parseFloat(mrpPrice)) || parseFloat(mrpPrice) < 0) {
+      newErrors.mrpPrice = "Valid MRP price is required";
+    }
+    if (stockQuantity === "" || Number(stockQuantity) < 0) {
       newErrors.stockQuantity = "Stock quantity cannot be negative";
     }
-
-    if (lowStockThreshold === "" || lowStockThreshold === undefined || lowStockThreshold === null) {
-      newErrors.lowStockThreshold = "Low stock threshold is required";
-    } else if (Number(lowStockThreshold) < 1) {
-      newErrors.lowStockThreshold = "Low stock threshold must be at least 1";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors((prev) => ({
-        ...prev,
-        ...newErrors,
-      }));
-      return false;
-    }
-
-    setErrors((prev) => {
-      const updated = { ...prev };
-      delete updated.sellingPrice;
-      delete updated.mrpPrice;
-      delete updated.stockQuantity;
-      delete updated.lowStockThreshold;
-      return updated;
-    });
-
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-    const validateSpecsStep = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!vehicleCompatibility.trim()) {
-      newErrors.vehicleCompatibility = "Vehicle compatibility is required";
-    }
-    if (!productType.trim()) {
-      newErrors.productType = "Product type is required";
-    }
-    if (!color.trim()) {
-      newErrors.color = "Color / finish is required";
-    }
-    if (!dimensions.trim()) {
-      newErrors.dimensions = "Size / dimensions are required";
-    }
-    if (!warranty.trim()) {
-      newErrors.warranty = "Warranty is required";
-    }
-    if (!material.trim()) {
-      newErrors.material = "Material is required";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors((prev) => ({
-        ...prev,
-        ...newErrors,
-      }));
-      return false;
-    }
-
-    setErrors((prev) => {
-      const updated = { ...prev };
-      delete updated.vehicleCompatibility;
-      delete updated.productType;
-      delete updated.color;
-      delete updated.dimensions;
-      delete updated.warranty;
-      delete updated.material;
-      return updated;
-    });
-
-    return true;
+  const handleNext = () => {
+    if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep === 2 && !validateStep2()) return;
+    setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
   };
 
-  const validateAllSteps = (): boolean => {
-    const isGeneralValid = validateGeneralStep();
-    const isImagesValid = validateImagesStep();
-    const isPricingValid = validatePricingStep();
-    const isSpecsValid = validateSpecsStep();
-
-    if (!isGeneralValid) {
-      setActiveTab("general");
-      return false;
-    }
-    if (!isImagesValid) {
-      setActiveTab("images");
-      return false;
-    }
-    if (!isPricingValid) {
-      setActiveTab("pricing");
-      return false;
-    }
-    if (!isSpecsValid) {
-      setActiveTab("specs");
-      return false;
-    }
-
-    return true;
-  };
-
-  const tabIndices: Record<TabType, number> = {
-    general: 0,
-    images: 1,
-    pricing: 2,
-    specs: 3,
-  };
-
-  const handleTabClick = (targetTab: TabType) => {
-    if (targetTab === activeTab) return;
-
-    const targetStepNumber = tabIndices[targetTab] + 1;
-
-    if (targetStepNumber > maxUnlockedStep) {
-      return;
-    }
-
-    const currentStepNumber = tabIndices[activeTab] + 1;
-
-    if (targetStepNumber > currentStepNumber) {
-      if (currentStepNumber === 1 && !validateGeneralStep()) return;
-      if (currentStepNumber === 2 && !validateImagesStep()) return;
-      if (currentStepNumber === 3 && !validatePricingStep()) return;
-    }
-
-    setActiveTab(targetTab);
-  };
-
-  const handleNextFromGeneral = () => {
-    if (validateGeneralStep()) {
-      setMaxUnlockedStep((prev) => Math.max(prev, 2));
-      setActiveTab("images");
-    }
-  };
-
-  const handleNextStep = () => {
-    if (activeTab === "general") {
-      if (validateGeneralStep()) {
-        setMaxUnlockedStep((prev) => Math.max(prev, 2));
-        setActiveTab("images");
-      }
-    } else if (activeTab === "images") {
-      if (validateImagesStep()) {
-        setMaxUnlockedStep((prev) => Math.max(prev, 3));
-        setActiveTab("pricing");
-      }
-    } else if (activeTab === "pricing") {
-      if (validatePricingStep()) {
-        setMaxUnlockedStep((prev) => Math.max(prev, 4));
-        setActiveTab("specs");
-      }
-    }
-  };
-
-  const handlePreviousStep = () => {
-    if (activeTab === "specs") setActiveTab("pricing");
-    else if (activeTab === "pricing") setActiveTab("images");
-    else if (activeTab === "images") setActiveTab("general");
-  };
-
-  const getCalculatedDiscount = (): string | null => {
-    if (!sellingPrice.trim() || !mrpPrice.trim()) return null;
-
-    const selling = parseFloat(sellingPrice);
-    const original = parseFloat(mrpPrice);
-
-    if (
-      isNaN(selling) ||
-      isNaN(original) ||
-      original <= 0 ||
-      selling < 0 ||
-      selling >= original
-    ) {
-      return null;
-    }
-
-    const discountValue = ((original - selling) / original) * 100;
-    return discountValue % 1 === 0 ? discountValue.toFixed(0) : discountValue.toFixed(1);
-  };
-
-  const calculatedDiscountText = getCalculatedDiscount();
-
-  const getComputedStockStatus = () => {
-    if (stockQuantity === "" || stockQuantity === 0 || Number(stockQuantity) <= 0) {
-      return {
-        label: "Out of Stock",
-        style: "bg-[#640C0C]/25 text-white border-[#640C0C]/50",
-        icon: AlertCircle,
-        dot: "bg-[#640C0C]",
-      };
-    }
-    if (Number(stockQuantity) <= (lowStockThreshold || 5)) {
-      return {
-        label: "Low Stock",
-        style: "bg-white/10 text-white border-white/20",
-        icon: AlertTriangle,
-        dot: "bg-white/80",
-      };
-    }
-    return {
-      label: "In Stock",
-      style: "bg-white/5 text-white/80 border-white/15",
-      icon: CheckCircle2,
-      dot: "bg-white/60",
-    };
-  };
-
-  const computedStock = getComputedStockStatus();
-
-  const hasGeneralErrors = !!(errors.productName || errors.sku || errors.categoryId);
-  const hasImageErrors = !!errors.mainImage;
-  const hasPricingErrors = !!(errors.sellingPrice || errors.stockQuantity);
-
-  const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setMainImageFile(file);
-      
-      const previewUrl = URL.createObjectURL(file);
-      setMainImageUrl(previewUrl);
-      setErrors((prev) => ({ ...prev, mainImage: "" }));
-    }
-  };
-
-  const handleAdditionalImagesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files);
-      setAdditionalImageFiles((prev) => [...prev, ...filesArray]);
-      
-      // Create preview URLs
-      const newUrls = filesArray.map((f) => URL.createObjectURL(f));
-      setAdditionalImageUrls((prev) => [...prev, ...newUrls]);
-    }
-  };
-
-  const removeAdditionalImage = (indexToRemove: number) => {
-    setAdditionalImageFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-    setAdditionalImageUrls((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  // Upload all images and return their URLs
-  const uploadAllImages = async () => {
-    const imagePromises: Promise<string>[] = [];
-    
- 
-    if (mainImageFile) {
-      imagePromises.push(
-        uploadImageMutation.mutateAsync(mainImageFile).then(result => result.url)
-      );
-    } else if (mainImageUrl) {
-      imagePromises.push(Promise.resolve(mainImageUrl));
-    }
-
-    for (const file of additionalImageFiles) {
-      imagePromises.push(
-        uploadImageMutation.mutateAsync(file).then(result => result.url)
-      );
-    }
-    
-    return Promise.all(imagePromises);
+  const handleBack = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateSpecsStep() || !validateAllSteps()) {
+    if (!validateStep1() || !validateStep2() || !validateStep3()) {
       return;
     }
 
     setIsSubmitting(true);
-    
     try {
+      const uploadPromises = uploadedImages.map(async (item) => {
+        if (item.file) {
+          try {
+            const res = await uploadImageMutation.mutateAsync(item.file);
+            return { ...item, finalUrl: res.url };
+          } catch {
+            return { ...item, finalUrl: item.previewUrl };
+          }
+        }
+        return { ...item, finalUrl: item.previewUrl };
+      });
 
-      const uploadedUrls = await uploadAllImages();
+      const processedImages = await Promise.all(uploadPromises);
 
-      const defaultImageUrl = mainImageUrl || "https://picsum.photos/800/600?random=1";
-      const images = [
-        {
-          imageUrl: uploadedUrls[0] || defaultImageUrl,
-          isMainImage: true,
-          altText: productName,
-        },
-        ...uploadedUrls.slice(1).map(url => ({
-          imageUrl: url,
-          isMainImage: false,
-          altText: productName,
-        })),
-      ];
+      const imagesPayload = processedImages.map((img, idx) => ({
+        imageUrl: img.finalUrl,
+        isMainImage: img.isMain,
+        displayOrder: idx + 1,
+        altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
+      }));
 
       const vehicleCompatibilityArray = vehicleCompatibility
-        .split(',')
-        .map(v => v.trim())
-        .filter(v => v.length > 0);
+        ? vehicleCompatibility
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0)
+        : [];
 
-      const productData = {
+      const colorString =
+        hasColorVariants && colorValues.length > 0 ? colorValues.join(", ") : undefined;
+      const sizeString =
+        hasSizeVariants && sizeValues.length > 0 ? sizeValues.join(", ") : undefined;
+
+      const productPayload = {
         name: productName.trim(),
         sku: sku.trim(),
         categoryId: selectedCategoryId,
@@ -520,126 +302,39 @@ export default function AddProductModal({
         mrpPrice: mrpPrice ? parseFloat(mrpPrice) : undefined,
         stockQuantity: Number(stockQuantity),
         lowStockThreshold: Number(lowStockThreshold) || 5,
-        publicationStatus: 'active' as const,
-        vehicleCompatibility: vehicleCompatibilityArray.length > 0 ? vehicleCompatibilityArray : undefined,
+        publicationStatus: "active" as const,
+        vehicleCompatibility:
+          vehicleCompatibilityArray.length > 0 ? vehicleCompatibilityArray : undefined,
         productType: productType.trim() || undefined,
-        color: color.trim() || undefined,
-        dimensions: dimensions.trim() || undefined,
+        color: colorString,
+        dimensions: sizeString || (dimensions.trim() ? dimensions.trim() : undefined),
         warranty: warranty.trim() || undefined,
         material: material.trim() || undefined,
-        images,
+        images: imagesPayload,
       };
 
       try {
-        const result = await createProductMutation.mutateAsync(productData);
-        
-        onSuccess?.({
-          id: result.id,
-          name: result.name,
-          productName: result.name,
-          sku: result.sku,
-          category: result.category.name,
-          sellingPrice: result.sellingPrice,
-          stockQuantity: result.stockQuantity,
-          stockStatus: result.inventoryStatus === 'in_stock' ? 'In Stock' : 
-                     result.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock',
-          price: `₹${result.sellingPrice}`,
-          rawProduct: result,
-        });
-        
+        const result = await createProductMutation.mutateAsync(productPayload);
+        onSuccess?.(result as unknown as Record<string, unknown>);
         handleClose();
-      } catch (mutationError: unknown) {
-        const categoryObj = availableCategories.find(c => c.id === selectedCategoryId);
-        const fallbackSellingPrice = String(productData.sellingPrice);
-        const fallbackStatus: 'in_stock' | 'low_stock' | 'out_of_stock' =
-          productData.stockQuantity <= 0 ? 'out_of_stock' :
-          productData.stockQuantity <= (Number(lowStockThreshold) || 5) ? 'low_stock' : 'in_stock';
-
-        const fallbackProduct = createFallbackProduct({
-          productData,
-          selectedCategoryId,
-          categoryName: categoryObj?.name || 'Accessories',
-          images,
-          vehicleCompatibilityArray,
-          fallbackStatus,
-        });
-
+      } catch {
         onSuccess?.({
-          id: fallbackProduct.id,
-          name: fallbackProduct.name,
-          productName: fallbackProduct.name,
-          sku: fallbackProduct.sku,
-          category: fallbackProduct.category.name,
-          sellingPrice: fallbackProduct.sellingPrice,
-          stockQuantity: fallbackProduct.stockQuantity,
-          stockStatus: fallbackStatus === 'in_stock' ? 'In Stock' : 
-                     fallbackStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock',
-          price: `₹${parseFloat(fallbackProduct.sellingPrice).toFixed(2)}`,
-          rawProduct: fallbackProduct,
+          id: `prod-${Date.now()}`,
+          name: productPayload.name,
+          sku: productPayload.sku,
+          category:
+            availableCategories.find((c) => c.id === selectedCategoryId)?.name || "Accessories",
+          sellingPrice: productPayload.sellingPrice,
+          stockQuantity: productPayload.stockQuantity,
+          inventoryStatus: productPayload.stockQuantity > 5 ? "in_stock" : "low_stock",
+          images: productPayload.images,
         });
-
         handleClose();
       }
-    } catch (error: unknown) {
-      console.error('Failed to create product:', error);
-      const errMessage = error instanceof Error ? error.message : 'Failed to create product';
-      setErrors({ submit: errMessage });
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const resetForm = useCallback(() => {
-    setProductName("");
-    setSku("");
-    setSelectedCategoryId("");
-    setBrand("");
-    setDescription("");
-    setMainImageFile(null);
-    setMainImageUrl(null);
-    setAdditionalImageFiles([]);
-    setAdditionalImageUrls([]);
-    setSellingPrice("");
-    setMrpPrice("");
-    setStockQuantity("");
-    setLowStockThreshold(5);
-    setVehicleCompatibility("");
-    setProductType("");
-    setColor("");
-    setDimensions("");
-    setWarranty("");
-    setMaterial("");
-    setErrors({});
-    setActiveTab("general");
-    setMaxUnlockedStep(1);
-    setIsSubmitting(false);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    resetForm();
-    onClose();
-  }, [onClose, resetForm]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") handleClose();
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = "unset";
-        window.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [isOpen, handleClose]);
-
-  const steps = [
-    { id: "general" as const, stepNumber: 1, label: "General" },
-    { id: "images" as const, stepNumber: 2, label: "Images" },
-    { id: "pricing" as const, stepNumber: 3, label: "Pricing & Stock" },
-    { id: "specs" as const, stepNumber: 4, label: "Vehicle & Specs" },
-  ] as const;
 
   if (!isOpen) return null;
 
@@ -648,342 +343,712 @@ export default function AddProductModal({
       aria-modal="true"
       role="dialog"
       onClick={handleClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden"
+        className="relative w-full max-w-4xl h-[92vh] max-h-[860px] flex flex-col rounded-[20px] border border-white/10 bg-[#0e0e0e] text-white shadow-2xl overflow-hidden"
       >
-   
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-5 bg-[#0a0a0a]">
+        {/* Top Header */}
+        <div className="flex items-center justify-between border-b border-white/10 px-8 py-5 bg-[#0a0a0a]">
           <div>
-            <h2 className="text-lg md:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#640C0C]" />
-              Add Product
-            </h2>
-            <p className="text-xs text-white/40 mt-0.5">
-              Quickly configure automotive specifications, pricing &amp; fitment
+            <h2 className="text-lg font-bold tracking-tight text-white">Add New Product</h2>
+            <p className="text-xs text-white/50 mt-0.5">
+              Fill in product catalogue specifications, media, and pricing
             </p>
           </div>
+
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Close dialog"
-            className="grid h-9 w-9 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors"
+            aria-label="Close modal"
+            className="grid h-8 w-8 place-items-center rounded-full bg-white/5 border border-white/10 text-white/70 hover:bg-[#640C0C] hover:text-white transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
+        {/* 3-Step Stepper with current step as pure white */}
+        <div className="border-b border-white/10 bg-[#0e0e0e] px-8 py-4">
+          <div className="mx-auto max-w-md flex items-center justify-between">
+            {[1, 2, 3].map((step) => {
+              const isCurrent = currentStep === step;
+              const isCompleted = currentStep > step;
 
-        <div className="flex items-center justify-start sm:justify-center border-b border-white/5 bg-[#0e0e0e] px-6 gap-6 sm:gap-8 overflow-x-auto">
-          {steps.map((step) => {
-            const isActive = activeTab === step.id;
-            const isUnlocked = step.stepNumber <= maxUnlockedStep;
+              return (
+                <React.Fragment key={step}>
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (step < currentStep) setCurrentStep(step);
+                        else if (step === 2 && validateStep1()) setCurrentStep(2);
+                        else if (step === 3 && validateStep1() && validateStep2()) setCurrentStep(3);
+                      }}
+                      className={`relative flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        isCurrent
+                          ? "bg-white text-black ring-4 ring-white/20 shadow-md"
+                          : isCompleted
+                          ? "bg-[#640C0C] text-white hover:bg-[#7a1010]"
+                          : "bg-white/10 text-white/40 hover:bg-white/15 hover:text-white"
+                      }`}
+                    >
+                      {isCompleted ? <Check className="h-3.5 w-3.5" /> : step}
+                    </button>
+                  </div>
 
-            return (
-              <button
-                key={step.id}
-                type="button"
-                onClick={() => {
-                  if (!isUnlocked) return;
-                  handleTabClick(step.id);
-                }}
-                disabled={!isUnlocked}
-                className={`relative flex items-center gap-2.5 pb-3.5 pt-3.5 text-xs whitespace-nowrap border-b-2 transition-colors ${
-                  isActive
-                    ? "border-[#640C0C] text-white font-semibold cursor-pointer"
-                    : isUnlocked
-                    ? "border-transparent text-white font-medium hover:text-white cursor-pointer"
-                    : "border-transparent text-white/35 font-medium cursor-not-allowed select-none"
-                }`}
-              >
-                <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums leading-none transition-colors ${
-                    isActive
-                      ? "bg-[#640C0C] text-white"
-                      : isUnlocked
-                      ? "bg-white/20 text-white font-medium"
-                      : "bg-white/5 text-white/30"
-                  }`}
-                >
-                  <span className="translate-y-px">{step.stepNumber}</span>
-                </span>
-                <span className="leading-none">{step.label}</span>
-              </button>
-            );
-          })}
+                  {step < totalSteps && (
+                    <div
+                      className={`h-0.5 flex-1 mx-4 rounded transition-colors ${
+                        currentStep > step ? "bg-[#640C0C]" : "bg-white/10"
+                      }`}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="p-6 text-xs min-h-[380px] md:min-h-[400px] max-h-[60vh] overflow-y-auto">
-            {activeTab === "general" && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Product Name
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {/* STEP 1: Basic Details + Attributes/Variants */}
+          {currentStep === 1 && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              <div className="border-b border-white/10 pb-2">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                  Basic Details
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Product Title */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white/70">
+                      Product Title <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={productName}
-                      onChange={(e) => {
-                        setProductName(e.target.value);
-                        if (errors.productName) setErrors((prev) => ({ ...prev, productName: "" }));
-                      }}
-                      placeholder="e.g. Xenon Matrix H11 LED Headlights"
-                      className={`w-full rounded-xl border ${
-                        errors.productName ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
                     {errors.productName && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.productName}</p>
+                      <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="h-3 w-3" /> {errors.productName}
+                      </span>
                     )}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Premium Matrix LED Headlight Set"
+                    value={productName}
+                    onChange={(e) => {
+                      setProductName(e.target.value);
+                      if (errors.productName) setErrors((prev) => ({ ...prev, productName: "" }));
+                    }}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                      errors.productName ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                    }`}
+                  />
+                </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Product SKU
+                {/* SKU */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white/70">
+                      SKU Identifier <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="text"
-                      value={sku}
-                      onChange={(e) => {
-                        setSku(e.target.value);
-                        if (errors.sku) setErrors((prev) => ({ ...prev, sku: "" }));
-                      }}
-                      placeholder="e.g. LED-H11-001"
-                      className={`w-full rounded-xl border ${
-                        errors.sku ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
                     {errors.sku && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.sku}</p>
+                      <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="h-3 w-3" /> {errors.sku}
+                      </span>
                     )}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. LED-H11-001"
+                    value={sku}
+                    onChange={(e) => {
+                      setSku(e.target.value.toUpperCase());
+                      if (errors.sku) setErrors((prev) => ({ ...prev, sku: "" }));
+                    }}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-colors ${
+                      errors.sku ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                    }`}
+                  />
+                </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Category
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white/70">
+                      Category <span className="text-red-400">*</span>
                     </label>
-                    <select
-                      value={selectedCategoryId}
-                      onChange={(e) => {
-                        setSelectedCategoryId(e.target.value);
-                        if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
-                      }}
-                      className={`w-full rounded-xl border ${
-                        errors.categoryId ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white focus:border-[#640C0C] focus:outline-none transition-colors cursor-pointer`}
-                    >
-                      <option value="" className="bg-[#121212] text-white">Select a category</option>
-                      {availableCategories.map((cat) => (
-                        <option key={cat.id} value={cat.id} className="bg-[#121212] text-white">
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
                     {errors.categoryId && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.categoryId}</p>
+                      <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="h-3 w-3" /> {errors.categoryId}
+                      </span>
                     )}
                   </div>
+                  <select
+                    value={selectedCategoryId}
+                    onChange={(e) => {
+                      setSelectedCategoryId(e.target.value);
+                      if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
+                    }}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white outline-none transition-colors cursor-pointer ${
+                      errors.categoryId ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                    }`}
+                  >
+                    <option value="" className="bg-[#121212] text-white/40">
+                      Select Category
+                    </option>
+                    {availableCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-[#121212] text-white">
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Brand</label>
-                    <input
-                      type="text"
-                      value={brand}
-                      onChange={(e) => {
-                        setBrand(e.target.value);
-                        if (errors.brand) setErrors((prev) => ({ ...prev, brand: "" }));
-                      }}
-                      placeholder="e.g. Redline Pro, Bosch, Philips"
-                      className={`w-full rounded-xl border ${
-                        errors.brand ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
+                {/* Brand */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white/70">
+                      Brand Name <span className="text-red-400">*</span>
+                    </label>
                     {errors.brand && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.brand}</p>
+                      <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="h-3 w-3" /> {errors.brand}
+                      </span>
                     )}
                   </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Philips, Hella, Ikigai Originals"
+                    value={brand}
+                    onChange={(e) => {
+                      setBrand(e.target.value);
+                      if (errors.brand) setErrors((prev) => ({ ...prev, brand: "" }));
+                    }}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                      errors.brand ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                    }`}
+                  />
+                </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block font-medium text-white/80 mb-1.5">Product Description</label>
-                    <textarea
-                      rows={3}
-                      value={description}
-                      onChange={(e) => {
-                        setDescription(e.target.value);
-                        if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
-                      }}
-                      placeholder="Lumens, voltage, waterproof rating, packaging notes..."
-                      className={`w-full rounded-xl border ${
-                        errors.description ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors resize-none`}
-                    />
+                {/* Description */}
+                <div className="md:col-span-2 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-white/70">
+                      Product Description <span className="text-red-400">*</span>
+                    </label>
                     {errors.description && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.description}</p>
+                      <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                        <AlertCircle className="h-3 w-3" /> {errors.description}
+                      </span>
                     )}
                   </div>
+                  <textarea
+                    rows={4}
+                    placeholder="Describe product highlights, build quality, and specifications..."
+                    value={description}
+                    onChange={(e) => {
+                      setDescription(e.target.value);
+                      if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
+                    }}
+                    className={`w-full rounded-[20px] bg-[#0a0a0a] border p-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                      errors.description ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                    }`}
+                  />
                 </div>
               </div>
-            )}
 
-            {activeTab === "images" && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Main Product Image
-                    </label>
-                    {mainImageUrl ? (
-                      <div className="relative rounded-xl border border-white/10 bg-[#0a0a0a] p-3 flex items-center gap-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={mainImageUrl}
-                          alt="Main Preview"
-                          className="h-20 w-20 rounded-lg object-cover bg-[#121212] border border-white/5"
+              {/* Attributes / Variants Section */}
+              <div className="pt-4 border-t border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                    Attributes
+                  </span>
+                  {errors.attributes && (
+                    <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3 w-3" /> {errors.attributes}
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {/* Color Option Attribute */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border border-white/10 bg-[#0a0a0a]">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasColorVariants((prev) => !prev)}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
+                          hasColorVariants ? "bg-[#640C0C]" : "bg-white/20"
+                        }`}
+                      >
+                        <div
+                          className={`h-5 w-5 rounded-full bg-white transition-transform ${
+                            hasColorVariants ? "translate-x-5" : "translate-x-0"
+                          }`}
                         />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {mainImageFile?.name || "Main Photo Uploaded"}
-                          </p>
-                          <label
-                            htmlFor={mainImageInputId}
-                            className="text-[11px] text-[#640C0C] hover:text-[#7a1010] cursor-pointer block mt-1 font-medium"
-                          >
-                            Replace Image
-                          </label>
+                      </button>
+                      <div>
+                        <span className="text-sm font-medium text-white">Color Variants</span>
+                        <p className="text-xs text-white/40">Enable to configure specific color options</p>
+                      </div>
+                    </div>
+
+                    {hasColorVariants && (
+                      <div className="flex-1 max-w-xl w-full flex items-center gap-2">
+                        <div className="flex-1 flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-[#121212] px-3 py-1.5 min-h-[42px]">
+                          {colorValues.map((color) => (
+                            <span
+                              key={color}
+                              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-white"
+                            >
+                              {color}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveColorValue(color)}
+                                className="text-white/40 hover:text-white"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                          <input
+                            type="text"
+                            placeholder="Add color + Enter"
+                            value={newColorInput}
+                            onChange={(e) => setNewColorInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddColorValue();
+                              }
+                            }}
+                            className="flex-1 min-w-[100px] bg-transparent text-xs text-white outline-none placeholder-white/30"
+                          />
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            setMainImageFile(null);
-                            setMainImageUrl(null);
-                          }}
-                          className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-[#640C0C] transition-colors"
-                          title="Remove image"
+                          onClick={handleAddColorValue}
+                          className="h-10 px-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          Add
                         </button>
-                        <input
-                          id={mainImageInputId}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleMainImageChange}
-                          className="hidden"
-                        />
                       </div>
-                    ) : (
-                      <label
-                        htmlFor={mainImageInputId}
-                        className={`flex flex-col items-center justify-center rounded-xl border border-dashed ${
-                          errors.mainImage
-                            ? "border-[#640C0C] ring-1 ring-[#640C0C]"
-                            : "border-white/15 hover:border-[#640C0C]"
-                        } bg-[#0a0a0a] p-6 cursor-pointer transition-colors`}
-                      >
-                        <Upload className={`h-7 w-7 ${errors.mainImage ? "text-[#640C0C]" : "text-white/40"} mb-2`} />
-                        <span className="text-xs font-semibold text-white">Upload Main Photo</span>
-                        <span className="text-[10px] text-white/40 mt-0.5">PNG, JPG, WEBP up to 5MB</span>
-                        <input
-                          id={mainImageInputId}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleMainImageChange}
-                          className="hidden"
-                        />
-                      </label>
                     )}
-                    {errors.mainImage && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.mainImage}</p>}
                   </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Additional Images</label>
-                    <label
-                      htmlFor={additionalImagesInputId}
-                      className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/15 hover:border-white/30 bg-[#0a0a0a] p-6 cursor-pointer transition-colors"
-                    >
-                      <ImageIcon className="h-7 w-7 text-white/40 mb-2" />
-                      <span className="text-xs font-semibold text-white">+ Add Angle / Detail Photos</span>
-                      <span className="text-[10px] text-white/40 mt-0.5">Upload multiple alternate angles</span>
-                      <input
-                        id={additionalImagesInputId}
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleAdditionalImagesChange}
-                        className="hidden"
-                      />
-                    </label>
+                  {/* Size Option Attribute */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border border-white/10 bg-[#0a0a0a]">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasSizeVariants((prev) => !prev)}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
+                          hasSizeVariants ? "bg-[#640C0C]" : "bg-white/20"
+                        }`}
+                      >
+                        <div
+                          className={`h-5 w-5 rounded-full bg-white transition-transform ${
+                            hasSizeVariants ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                      <div>
+                        <span className="text-sm font-medium text-white">Size Variants</span>
+                        <p className="text-xs text-white/40">Enable to configure specific sizes</p>
+                      </div>
+                    </div>
 
-                    {additionalImageUrls.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {additionalImageUrls.map((imgUrl, idx) => (
-                          <div key={idx} className="relative group">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={imgUrl}
-                              alt={`Alternate ${idx + 1}`}
-                              className="h-12 w-12 rounded-lg object-cover bg-[#121212] border border-white/10"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeAdditionalImage(idx)}
-                              className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#640C0C] text-white text-[10px]"
+                    {hasSizeVariants && (
+                      <div className="flex-1 max-w-xl w-full flex items-center gap-2">
+                        <div className="flex-1 flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-[#121212] px-3 py-1.5 min-h-[42px]">
+                          {sizeValues.map((size) => (
+                            <span
+                              key={size}
+                              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-white"
                             >
-                              ×
-                            </button>
-                          </div>
-                        ))}
+                              {size}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSizeValue(size)}
+                                className="text-white/40 hover:text-white"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                          <input
+                            type="text"
+                            placeholder="Add size + Enter"
+                            value={newSizeInput}
+                            onChange={(e) => setNewSizeInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddSizeValue();
+                              }
+                            }}
+                            className="flex-1 min-w-[100px] bg-transparent text-xs text-white outline-none placeholder-white/30"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddSizeValue}
+                          className="h-10 px-4 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"
+                        >
+                          Add
+                        </button>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-            )}
-            {activeTab === "pricing" && (
-              <div className="space-y-5 animate-in fade-in duration-150">
-                <div className="flex items-center justify-between rounded-xl border border-white/5 bg-[#0a0a0a] px-4 py-3">
-                  <span className="text-xs text-white/60">
-                    Stock status calculates automatically:
+            </div>
+          )}
+
+          {/* STEP 2: Media */}
+          {currentStep === 2 && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              <div className="border-b border-white/10 pb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                  Product Images
+                </span>
+                <div className="flex items-center gap-3">
+                  {errors.images && (
+                    <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                      <AlertCircle className="h-3 w-3" /> {errors.images}
+                    </span>
+                  )}
+                  <span className="text-xs text-white/50">
+                    {uploadedImages.length} / 3 min required
                   </span>
+                </div>
+              </div>
+
+              {/* When Color Variants are active: UI matching screenshot with inner drop zone */}
+              {hasColorVariants && colorValues.length > 0 ? (
+                <div className="space-y-5">
+                  {colorValues.map((colorName) => {
+                    const colorImages = uploadedImages.filter(
+                      (img) => img.variantColor === colorName
+                    );
+                    const isDragOverThis = draggingColor === colorName;
+
+                    return (
+                      <div
+                        key={colorName}
+                        className="rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5 space-y-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-base font-bold text-white capitalize">{colorName}</span>
+                            <span className="text-xs text-white/40">
+                              ({colorImages.length} images)
+                            </span>
+                          </div>
+
+                          <label className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-2 text-xs font-semibold text-white transition-colors cursor-pointer">
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Upload for {colorName}</span>
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  handleFilesSelected(e.target.files, colorName);
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                          </label>
+                        </div>
+
+                        {/* Drop area matching screenshot */}
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDraggingColor(colorName);
+                          }}
+                          onDragLeave={() => setDraggingColor(null)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDraggingColor(null);
+                            if (e.dataTransfer.files) {
+                              handleFilesSelected(e.dataTransfer.files, colorName);
+                            }
+                          }}
+                          className={`w-full min-h-[90px] rounded-[16px] border border-dashed transition-all flex items-center justify-center p-4 ${
+                            isDragOverThis
+                              ? "border-white bg-white/10"
+                              : "border-white/10 bg-[#121212]/60 hover:border-white/20"
+                          }`}
+                        >
+                          {colorImages.length > 0 ? (
+                            <div className="w-full grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                              {colorImages.map((img) => (
+                                <div
+                                  key={img.id}
+                                  className={`relative rounded-xl border bg-[#0a0a0a] overflow-hidden p-1.5 flex flex-col justify-between ${
+                                    img.isMain
+                                      ? "border-white ring-1 ring-white"
+                                      : "border-white/10"
+                                  }`}
+                                >
+                                  <div className="relative w-full h-24 rounded-lg overflow-hidden bg-black/40 flex items-center justify-center">
+                                    <Image
+                                      src={img.previewUrl}
+                                      alt={colorName}
+                                      fill
+                                      unoptimized
+                                      className="object-contain p-1"
+                                      sizes="120px"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveImage(img.id)}
+                                      className="absolute top-1 right-1 grid h-5 w-5 place-items-center rounded-full bg-black/70 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                  {!img.isMain && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetMainImage(img.id)}
+                                      className="mt-1 text-center text-[10px] text-white/50 hover:text-white underline cursor-pointer"
+                                    >
+                                      Set main
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-white/40">
+                              No images uploaded for {colorName} yet
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Standard Main Big Upload Zone when color variants are OFF */
+                <div className="space-y-4">
                   <div
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${computedStock.style}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files) {
+                        handleFilesSelected(e.dataTransfer.files);
+                      }
+                    }}
+                    className={`relative flex min-h-52 flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed p-6 transition-all text-center cursor-pointer ${
+                      isDragging
+                        ? "border-white bg-white/10 ring-2 ring-white/20"
+                        : "border-white/15 bg-[#0a0a0a] hover:border-white/30 hover:bg-[#121212]"
+                    }`}
+                    onClick={() => mainFileInputRef.current?.click()}
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${computedStock.dot}`} />
-                    <span>{computedStock.label}</span>
+                    <input
+                      ref={mainFileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => {
+                        if (e.target.files) handleFilesSelected(e.target.files);
+                      }}
+                      className="sr-only"
+                    />
+
+                    <div className="mb-3 flex size-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                    <p className="mb-1 text-sm font-semibold text-white">
+                      Drop product images here
+                    </p>
+                    <p className="text-xs text-white/40 max-w-sm">
+                      PNG, JPG, WEBP up to 10MB each. Select multiple files.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        mainFileInputRef.current?.click();
+                      }}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/20 px-5 py-2.5 text-xs font-semibold text-white transition-colors cursor-pointer"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      <span>Select Images</span>
+                    </button>
                   </div>
+
+                  {uploadedImages.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
+                        Uploaded Gallery ({uploadedImages.length} images)
+                      </span>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {uploadedImages.map((img, idx) => (
+                          <div
+                            key={img.id}
+                            className={`group relative rounded-[20px] border bg-[#0a0a0a] overflow-hidden p-2 flex flex-col justify-between transition-all ${
+                              img.isMain
+                                ? "border-white ring-1 ring-white"
+                                : "border-white/10 hover:border-white/30"
+                            }`}
+                          >
+                            <div className="relative w-full h-32 rounded-xl overflow-hidden bg-black/40 flex items-center justify-center">
+                              <Image
+                                src={img.previewUrl}
+                                alt={`Preview ${idx + 1}`}
+                                fill
+                                unoptimized
+                                className="object-contain p-1"
+                                sizes="180px"
+                              />
+
+                              {img.isMain && (
+                                <span className="absolute top-2 left-2 rounded-full bg-black/80 backdrop-blur-md border border-white/20 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                  Main
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(img.id)}
+                                className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-black/70 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+
+                            {!img.isMain && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetMainImage(img.id)}
+                                className="mt-2 text-center text-white/60 hover:text-white underline text-xs block"
+                              >
+                                Set as main
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3: Specifications first, then Inventory */}
+          {currentStep === 3 && (
+            <div className="space-y-6 animate-in fade-in duration-150">
+              {/* Specifications & Vehicle Compatibility (First) */}
+              <div className="space-y-4">
+                <div className="border-b border-white/10 pb-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                    Specifications &amp; Vehicle Compatibility
+                  </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Selling Price (₹)
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Vehicle Compatibility (comma-separated, optional)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={sellingPrice}
-                      onChange={(e) => {
-                        setSellingPrice(e.target.value);
-                        if (errors.sellingPrice) setErrors((prev) => ({ ...prev, sellingPrice: "" }));
-                      }}
-                      placeholder="2499"
-                      className={`w-full rounded-xl border ${
-                        errors.sellingPrice ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      type="text"
+                      placeholder="e.g. Mahindra Thar, Toyota Fortuner, Hyundai Creta, Universal"
+                      value={vehicleCompatibility}
+                      onChange={(e) => setVehicleCompatibility(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
                     />
-                    {errors.sellingPrice && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.sellingPrice}</p>}
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block font-medium text-white/80">Original / MRP (₹)</label>
-                      {calculatedDiscountText && (
-                        <span className="text-xs font-medium text-white/80 bg-white/10 border border-white/15 px-2 py-0.5 rounded-full">
-                          Discount: {calculatedDiscountText}%
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Product Type
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. LED Fog Lamp Assembly"
+                      value={productType}
+                      onChange={(e) => setProductType(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Dimensions / Size
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 32-inch curved, 85mm diameter"
+                      value={dimensions}
+                      onChange={(e) => setDimensions(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Material
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Aviation Grade Die-Cast Aluminum"
+                      value={material}
+                      onChange={(e) => setMaterial(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Warranty
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2 Years Replacement Warranty"
+                      value={warranty}
+                      onChange={(e) => setWarranty(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing & Inventory (Second) */}
+              <div className="space-y-4 pt-4 border-t border-white/10">
+                <div className="border-b border-white/10 pb-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                    Pricing &amp; Inventory
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white/70">
+                        Selling Price (₹) <span className="text-red-400">*</span>
+                      </label>
+                      {errors.sellingPrice && (
+                        <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                          <AlertCircle className="h-3 w-3" /> {errors.sellingPrice}
                         </span>
                       )}
                     </div>
@@ -991,265 +1056,139 @@ export default function AddProductModal({
                       type="number"
                       step="0.01"
                       min="0"
+                      placeholder="2499.00"
+                      value={sellingPrice}
+                      onChange={(e) => {
+                        setSellingPrice(e.target.value);
+                        if (errors.sellingPrice) setErrors((prev) => ({ ...prev, sellingPrice: "" }));
+                      }}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                        errors.sellingPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white/70">
+                        Original MRP Price (₹) <span className="text-red-400">*</span>
+                      </label>
+                      {errors.mrpPrice && (
+                        <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                          <AlertCircle className="h-3 w-3" /> {errors.mrpPrice}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="3499.00"
                       value={mrpPrice}
                       onChange={(e) => {
                         setMrpPrice(e.target.value);
                         if (errors.mrpPrice) setErrors((prev) => ({ ...prev, mrpPrice: "" }));
                       }}
-                      placeholder="3499"
-                      className={`w-full rounded-xl border ${
-                        errors.mrpPrice ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                        errors.mrpPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                     />
-                    {errors.mrpPrice && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.mrpPrice}</p>
-                    )}
-                    {calculatedDiscountText && !errors.mrpPrice && (
-                      <p className="text-xs text-white/60 mt-1.5">
-                        Discount: <span className="font-semibold text-white">{calculatedDiscountText}%</span>
-                      </p>
-                    )}
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Stock Quantity (Units)
-                    </label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white/70">
+                        Initial Stock Units <span className="text-red-400">*</span>
+                      </label>
+                      {errors.stockQuantity && (
+                        <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                          <AlertCircle className="h-3 w-3" /> {errors.stockQuantity}
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       min="0"
+                      placeholder="20"
                       value={stockQuantity}
                       onChange={(e) => {
-                        setStockQuantity(e.target.value === "" ? "" : Number(e.target.value));
+                        setStockQuantity(e.target.value);
                         if (errors.stockQuantity) setErrors((prev) => ({ ...prev, stockQuantity: "" }));
                       }}
-                      placeholder="e.g. 18"
-                      className={`w-full rounded-xl border ${
-                        errors.stockQuantity ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                        errors.stockQuantity ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                     />
-                    {errors.stockQuantity && <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.stockQuantity}</p>}
                   </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Low Stock Threshold</label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-white/70 block">
+                      Low Stock Threshold Alert
+                    </label>
                     <input
                       type="number"
                       min="1"
-                      value={lowStockThreshold}
-                      onChange={(e) => {
-                        setLowStockThreshold(e.target.value === "" ? "" : Number(e.target.value));
-                        if (errors.lowStockThreshold) setErrors((prev) => ({ ...prev, lowStockThreshold: "" }));
-                      }}
                       placeholder="5"
-                      className={`w-full rounded-xl border ${
-                        errors.lowStockThreshold ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                      value={lowStockThreshold}
+                      onChange={(e) => setLowStockThreshold(e.target.value)}
+                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
                     />
-                    {errors.lowStockThreshold && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.lowStockThreshold}</p>
-                    )}
-                    <span className="text-[10px] text-white/40 mt-1 block">
-                      Quantity ≤ this threshold triggers &quot;Low Stock&quot;.
+                    <span className="text-[11px] text-white/40">
+                      Triggers low stock warnings when inventory drops below this quantity
                     </span>
                   </div>
                 </div>
               </div>
-            )}
-            {activeTab === "specs" && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block font-medium text-white/80 mb-1.5">
-                      Vehicle Compatibility
-                    </label>
-                    <input
-                      type="text"
-                      value={vehicleCompatibility}
-                      onChange={(e) => {
-                        setVehicleCompatibility(e.target.value);
-                        if (errors.vehicleCompatibility) {
-                          setErrors((prev) => {
-                            const updated = { ...prev };
-                            delete updated.vehicleCompatibility;
-                            return updated;
-                          });
-                        }
-                      }}
-                      placeholder="e.g. Hyundai Creta 2020–2024, Kia Seltos 2019–2024"
-                      className={`w-full rounded-xl border ${
-                        errors.vehicleCompatibility ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.vehicleCompatibility && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.vehicleCompatibility}</p>
-                    )}
-                    <span className="text-[10px] text-white/40 mt-1 block">
-                      Separate multiple vehicles with commas.
-                    </span>
-                  </div>
+            </div>
+          )}
+        </div>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Product Type</label>
-                    <input
-                      type="text"
-                      value={productType}
-                      onChange={(e) => {
-                        setProductType(e.target.value);
-                        if (errors.productType) setErrors((prev) => ({ ...prev, productType: "" }));
-                      }}
-                      placeholder="e.g. Plug-and-Play Kit"
-                      className={`w-full rounded-xl border ${
-                        errors.productType ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.productType && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.productType}</p>
-                    )}
-                  </div>
+        {/* Modal Bottom Footer Actions: Only Previous and Continue/Publish */}
+        <div className="flex items-center justify-between border-t border-white/10 bg-[#0a0a0a] px-8 py-4">
+          <button
+            type="button"
+            disabled={currentStep === 1 || isSubmitting}
+            onClick={handleBack}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-5 py-2.5 text-xs font-medium text-white transition-colors cursor-pointer ${
+              currentStep === 1 ? "opacity-30 pointer-events-none" : "hover:bg-white/10"
+            }`}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Previous</span>
+          </button>
 
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Color / Finish</label>
-                    <input
-                      type="text"
-                      value={color}
-                      onChange={(e) => {
-                        setColor(e.target.value);
-                        if (errors.color) setErrors((prev) => ({ ...prev, color: "" }));
-                      }}
-                      placeholder="e.g. 6500K Pure White"
-                      className={`w-full rounded-xl border ${
-                        errors.color ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.color && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.color}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Size / Dimensions</label>
-                    <input
-                      type="text"
-                      value={dimensions}
-                      onChange={(e) => {
-                        setDimensions(e.target.value);
-                        if (errors.dimensions) setErrors((prev) => ({ ...prev, dimensions: "" }));
-                      }}
-                      placeholder="e.g. H11 Socket / 32-inch Bar"
-                      className={`w-full rounded-xl border ${
-                        errors.dimensions ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.dimensions && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.dimensions}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block font-medium text-white/80 mb-1.5">Warranty</label>
-                    <input
-                      type="text"
-                      value={warranty}
-                      onChange={(e) => {
-                        setWarranty(e.target.value);
-                        if (errors.warranty) setErrors((prev) => ({ ...prev, warranty: "" }));
-                      }}
-                      placeholder="e.g. 2 Years Replacement"
-                      className={`w-full rounded-xl border ${
-                        errors.warranty ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.warranty && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.warranty}</p>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block font-medium text-white/80 mb-1.5">Material</label>
-                    <input
-                      type="text"
-                      value={material}
-                      onChange={(e) => {
-                        setMaterial(e.target.value);
-                        if (errors.material) setErrors((prev) => ({ ...prev, material: "" }));
-                      }}
-                      placeholder="e.g. 6063 Aviation Aluminum + IP68 Seal"
-                      className={`w-full rounded-xl border ${
-                        errors.material ? "border-[#640C0C] ring-1 ring-[#640C0C]" : "border-white/10"
-                      } bg-[#0a0a0a] px-3.5 py-2.5 text-xs text-white placeholder:text-white/40 focus:border-[#640C0C] focus:outline-none transition-colors`}
-                    />
-                    {errors.material && (
-                      <p className="text-[#640C0C] text-[11px] mt-1 font-medium">{errors.material}</p>
-                    )}
-                  </div>
-
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-white/5 bg-[#0a0a0a] px-6 py-4">
-            {activeTab === "general" ? (
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={handleNextFromGeneral}
-                  className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-8 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-all shadow-md cursor-pointer"
-                >
-                  Next
-                </button>
-              </div>
+          <div>
+            {currentStep < totalSteps ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white text-black hover:bg-white/90 px-6 py-2.5 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <span>Continue</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             ) : (
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={handlePreviousStep}
-                  className="rounded-full border border-white/20 bg-white/5 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  Previous
-                </button>
-
-                <div className="flex items-center gap-3">
-                  {errors.submit && (
-                    <p className="text-[#640C0C] text-xs mr-2">{errors.submit}</p>
-                  )}
-
-                  {activeTab !== "specs" ? (
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-all shadow-md cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleClose}
-                        disabled={isSubmitting}
-                        className="rounded-full border border-white/25 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || categoriesLoading}
-                        className="rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Creating Product...' : 'Save Product'}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleSubmit}
+                className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-md"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Creating Product...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Publish Product</span>
+                  </>
+                )}
+              </button>
             )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

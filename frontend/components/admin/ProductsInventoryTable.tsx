@@ -17,6 +17,7 @@ export interface InventoryProduct {
   status: InventoryStatus;
   image?: string;
   imageUrl?: string;
+  updatedAt?: string;
 }
 
 export interface ProductsInventoryTableProps {

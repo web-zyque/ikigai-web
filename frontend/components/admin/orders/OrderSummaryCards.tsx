@@ -56,20 +56,8 @@ export default function OrderSummaryCards({
 
   return (
     <div className="w-full space-y-4">
-      {/* Top search & interactive date range picker */}
+      {/* Top interactive date range picker */}
       <div className="flex items-center justify-end gap-2.5">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder="Search"
-            aria-label="Search orders"
-            className="w-full h-9 rounded-lg bg-[#121212] border border-white/10 pl-9 pr-3 text-xs text-white placeholder-white/40 outline-none transition-colors focus:border-white/20 focus:bg-[#161616]"
-          />
-        </div>
-
         <div className="relative" ref={calendarRef}>
           <button
             type="button"
