@@ -1,126 +1,131 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useMobileMenu } from "@/app/admin/layout";
-import InventorySummaryCards, {
-  InventoryCardType,
-  InventoryMetricCard,
-} from "@/components/admin/InventorySummaryCards";
-import ProductsInventoryTable, {
-  InventoryProduct,
-  InventoryStatus,
-} from "@/components/admin/ProductsInventoryTable";
+import { Package, Menu, Plus } from "lucide-react";
+import { useProducts, useProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/use-products";
+import { InventoryProduct } from "@/components/admin/ProductsInventoryTable";
+import ProductSummaryCards, { ProductCounts } from "@/components/admin/ProductSummaryCards";
+import ProductsTable from "@/components/admin/ProductsTable";
 import AddProductModal from "@/components/admin/AddProductModal";
-import { Package, CheckCircle2, AlertTriangle, AlertCircle, Menu } from "lucide-react";
-import { useProducts } from "@/hooks/use-products";
+import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
+import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
+import { ProductResponse } from "@/types/products.types";
 
 export default function ProductsInventoryPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<InventoryCardType | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"All" | "In Stock" | "Low Stock" | "Out of Stock">("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: productsData, isLoading, refetch } = useProducts({
     limit: 100,
   });
 
-  const productsList: InventoryProduct[] = productsData?.products.map(product => ({
-    id: product.id,
-    name: product.name,
-    category: product.category.name,
-    sku: product.sku,
-    price: `₹${parseFloat(product.sellingPrice).toFixed(2)}`,
-    stock: product.stockQuantity,
-    status: product.inventoryStatus === 'in_stock' ? 'In Stock' :
-            product.inventoryStatus === 'low_stock' ? 'Low Stock' : 'Out of Stock'
-  })) || [];
+  const { data: selectedApiProduct } = useProduct(selectedProductId || "");
 
-  const totalCount = productsList.length;
-  const inStockCount = productsList.filter((p) => p.status === "In Stock").length;
-  const lowStockCount = productsList.filter((p) => p.status === "Low Stock").length;
-  const outOfStockCount = productsList.filter((p) => p.status === "Out of Stock").length;
+  const selectedProduct: ProductResponse | null = useMemo(() => {
+    if (!selectedProductId) return null;
+    if (selectedApiProduct) return selectedApiProduct;
+    if (productsData?.products) {
+      const match = productsData.products.find((p) => p.id === selectedProductId);
+      if (match) return match;
+    }
+    if (DEMO_PRODUCTS_BY_ID[selectedProductId]) {
+      return DEMO_PRODUCTS_BY_ID[selectedProductId];
+    }
+    return null;
+  }, [selectedProductId, selectedApiProduct, productsData]);
 
-  const dynamicCards: InventoryMetricCard[] = [
-    {
-      type: "total",
-      title: "Total Products",
-      value: totalCount,
-      description: "",
-      footer: "",
-      icon: Package,
-    },
-    {
-      type: "in_stock",
-      title: "In Stock",
-      value: inStockCount,
-      description: "",
-      footer: "",
-      icon: CheckCircle2,
-    },
-    {
-      type: "low_stock",
-      title: "Low Stock",
-      value: lowStockCount,
-      description: "",
-      footer: "",
-      icon: AlertTriangle,
-    },
-    {
-      type: "out_of_stock",
-      title: "Out of Stock",
-      value: outOfStockCount,
-      description: "",
-      footer: "",
-      icon: AlertCircle,
-    },
-  ];
+  const productsList: InventoryProduct[] = useMemo(() => {
+    return (
+      productsData?.products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        category: product.category?.name || "Uncategorized",
+        sku: product.sku,
+        price: `₹${parseFloat(product.sellingPrice).toFixed(2)}`,
+        stock: product.stockQuantity,
+        status:
+          product.inventoryStatus === "in_stock"
+            ? "In Stock"
+            : product.inventoryStatus === "low_stock"
+            ? "Low Stock"
+            : "Out of Stock",
+        image: product.images?.[0]?.imageUrl,
+        updatedAt: product.updatedAt || product.createdAt,
+      })) || []
+    );
+  }, [productsData]);
 
-  const getFilteredProducts = () => {
-    switch (selectedCategory) {
+  const counts: ProductCounts = useMemo(() => {
+    return {
+      total: productsList.length,
+      inStock: productsList.filter((p) => p.status === "In Stock").length,
+      lowStock: productsList.filter((p) => p.status === "Low Stock").length,
+      outOfStock: productsList.filter((p) => p.status === "Out of Stock").length,
+    };
+  }, [productsList]);
+
+  const handleStatusCardClick = (
+    type: "All" | "in_stock" | "low_stock" | "out_of_stock"
+  ) => {
+    switch (type) {
       case "in_stock":
-        return productsList.filter((p) => p.status === "In Stock");
+        setStatusFilter("In Stock");
+        break;
       case "low_stock":
-        return productsList.filter((p) => p.status === "Low Stock");
+        setStatusFilter("Low Stock");
+        break;
       case "out_of_stock":
-        return productsList.filter((p) => p.status === "Out of Stock");
-      case "total":
+        setStatusFilter("Out of Stock");
+        break;
+      case "All":
       default:
-        return productsList;
+        setStatusFilter("All");
+        break;
     }
   };
 
-  const filteredProducts = getFilteredProducts();
+  const activeCardType: "All" | "in_stock" | "low_stock" | "out_of_stock" =
+    statusFilter === "In Stock"
+      ? "in_stock"
+      : statusFilter === "Low Stock"
+      ? "low_stock"
+      : statusFilter === "Out of Stock"
+      ? "out_of_stock"
+      : "All";
 
-  const getCategoryMeta = () => {
-    switch (selectedCategory) {
-      case "in_stock":
-        return {
-          title: "IN STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products currently available above the low-stock threshold",
-        };
-      case "low_stock":
-        return {
-          title: "LOW STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products requiring restock soon",
-        };
-      case "out_of_stock":
-        return {
-          title: "OUT OF STOCK",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: "Products with zero available inventory",
-        };
-      case "total":
-      default:
-        return {
-          title: "TOTAL PRODUCTS",
-          badgeText: `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"}`,
-          subtitle: `Complete catalogue of ${productsList.length} automobile accessories and fitments`,
-        };
-    }
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
+
+  const handleAddStock = (prod: ProductResponse, additionalStock: number) => {
+    updateProductMutation.mutate({
+      id: prod.id,
+      data: {
+        stockQuantity: prod.stockQuantity + additionalStock,
+      },
+    });
   };
 
-  const categoryMeta = getCategoryMeta();
+  const handleArchiveProduct = (prod: ProductResponse) => {
+    updateProductMutation.mutate({
+      id: prod.id,
+      data: {
+        publicationStatus: "draft",
+      },
+    });
+  };
+
+  const handleDeleteProduct = (prod: ProductResponse) => {
+    deleteProductMutation.mutate(prod.id, {
+      onSuccess: () => {
+        setSelectedProductId(null);
+      },
+    });
+  };
 
   const handleAddProductSuccess = () => {
     refetch();
@@ -128,10 +133,10 @@ export default function ProductsInventoryPage() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 px-6 lg:px-12 py-8 flex items-center justify-center">
+      <main className="flex-1 px-4 lg:px-8 py-6 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white/60">Loading products...</p>
+          <p className="text-white/60 text-xs">Loading products...</p>
         </div>
       </main>
     );
@@ -139,8 +144,8 @@ export default function ProductsInventoryPage() {
 
   return (
     <>
-      {/* Reused Top Header */}
-      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
+      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 max-w-7xl w-full flex flex-col justify-start">
+        <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -150,44 +155,52 @@ export default function ProductsInventoryPage() {
             >
               <Menu className="h-4 w-4" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Products</h1>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">
+              Products
+            </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer"
-            >
-              <Package className="h-4 w-4" />
-              <span>Add Product</span>
-            </button>
-          </div>
-        </header>
 
-        <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* 1. Summary Cards */}
-          <InventorySummaryCards
-            cards={dynamicCards}
-            selectedType={selectedCategory}
-            onSelectCard={(type) => setSelectedCategory(type === selectedCategory ? null : type)}
-          />
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer ml-auto"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Product</span>
+          </button>
+        </div>
 
-          {/* 2. Products Table */}
-          <ProductsInventoryTable
-            products={filteredProducts}
-            title={categoryMeta.title}
-            badgeText={categoryMeta.badgeText}
-            subtitle={categoryMeta.subtitle}
-          />
-        </main>
+        <ProductSummaryCards
+          counts={counts}
+          selectedStatus={activeCardType}
+          onStatusClick={handleStatusCardClick}
+        />
 
-      {/* Add Product Modal */}
+        <ProductsTable
+          products={productsList}
+          onViewProduct={(id) => setSelectedProductId(id)}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+        />
+      </main>
+
       <AddProductModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleAddProductSuccess}
+      />
+
+      <ProductDetailsModal
+        product={selectedProduct}
+        isOpen={Boolean(selectedProductId && selectedProduct)}
+        onClose={() => setSelectedProductId(null)}
+        onAddStock={handleAddStock}
+        onArchive={handleArchiveProduct}
+        onDelete={handleDeleteProduct}
       />
     </>
   );

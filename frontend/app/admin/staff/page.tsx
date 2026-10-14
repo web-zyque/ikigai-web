@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
-import { Menu, UserPlus } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Menu, Plus } from "lucide-react";
 import { useMobileMenu } from "@/app/admin/layout";
 import { StaffMember, StaffFormData } from "@/types/staff.types";
 import { INITIAL_MOCK_STAFF } from "@/data/mockStaff";
+import StaffSummaryCards, { StaffCounts } from "@/components/admin/staff/StaffSummaryCards";
 import StaffTable from "@/components/admin/staff/StaffTable";
 import AddEditStaffModal from "@/components/admin/staff/AddEditStaffModal";
 import StaffDetailsModal from "@/components/admin/staff/StaffDetailsModal";
@@ -12,16 +13,28 @@ import StaffDetailsModal from "@/components/admin/staff/StaffDetailsModal";
 export default function StaffPage() {
   const { setMobileOpen } = useMobileMenu();
 
-  // Staff State initialized with mock data
   const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_MOCK_STAFF);
 
-  // Modal States
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [staffToEdit, setStaffToEdit] = useState<StaffMember | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
 
-  // Handlers
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [roleFilter, setRoleFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const counts: StaffCounts = useMemo(() => {
+    return {
+      total: staffList.length,
+      active: staffList.filter((m) => m.status === "Active").length,
+      inactive: staffList.filter((m) => m.status === "Inactive").length,
+      managers: staffList.filter(
+        (m) => m.role.toLowerCase().includes("manager") || m.role.toLowerCase().includes("lead")
+      ).length,
+    };
+  }, [staffList]);
+
   const handleOpenAdd = () => {
     setStaffToEdit(null);
     setIsAddEditModalOpen(true);
@@ -49,7 +62,6 @@ export default function StaffPage() {
       )
     );
 
-    // Keep selected staff synced if currently open in view modal
     if (selectedStaff && selectedStaff.id === staffId) {
       setSelectedStaff((prev) =>
         prev
@@ -64,7 +76,6 @@ export default function StaffPage() {
 
   const handleSaveStaff = (data: StaffFormData, staffId?: string) => {
     if (staffId) {
-      // Editing existing staff
       setStaffList((prev) =>
         prev.map((member) =>
           member.id === staffId
@@ -87,8 +98,6 @@ export default function StaffPage() {
         );
       }
     } else {
-      // Adding new staff
-      // Calculate next Staff ID
       const maxNumericId = staffList.reduce((max, member) => {
         const num = parseInt(member.id.replace(/\D/g, ""), 10);
         return isNaN(num) ? max : Math.max(max, num);
@@ -105,47 +114,59 @@ export default function StaffPage() {
     }
   };
 
+  const handleDeleteStaff = (staff: StaffMember) => {
+    setStaffList((prev) => prev.filter((m) => m.id !== staff.id));
+    if (selectedStaff && selectedStaff.id === staff.id) {
+      setSelectedStaff(null);
+      setIsDetailsModalOpen(false);
+    }
+  };
+
   return (
     <>
-      {/* Top Header bar with mobile menu toggle and Add Staff button */}
-      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setMobileOpen((prev) => !prev)}
-            aria-label="Open navigation menu"
-            className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors lg:hidden"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Staff Management</h1>
+      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 max-w-7xl w-full flex flex-col justify-start">
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setMobileOpen((prev) => !prev)}
+              aria-label="Open navigation menu"
+              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+            <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">
+              Staff Management
+            </h1>
           </div>
-        </div>
-        <div className="flex items-center gap-4">
+
           <button
             type="button"
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer ml-auto"
           >
-            <UserPlus className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
             <span>Add Staff</span>
           </button>
         </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 px-6 lg:px-12 py-8 space-y-6 max-w-7xl w-full">
-        {/* Staff Table Directory with Search, Filters, List, & Actions */}
+        <StaffSummaryCards counts={counts} />
+
         <StaffTable
           staffList={staffList}
           onViewStaff={handleOpenView}
           onEditStaff={handleOpenEdit}
           onToggleStatus={handleToggleStatus}
+          onDeleteStaff={handleDeleteStaff}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          roleFilter={roleFilter}
+          onRoleFilterChange={setRoleFilter}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
         />
       </main>
 
-      {/* View Staff Details Modal */}
       <StaffDetailsModal
         staff={selectedStaff}
         isOpen={isDetailsModalOpen}
@@ -157,9 +178,9 @@ export default function StaffPage() {
           handleOpenEdit(staff);
         }}
         onToggleStatus={handleToggleStatus}
+        onDelete={handleDeleteStaff}
       />
 
-      {/* Add / Edit Staff Modal */}
       <AddEditStaffModal
         isOpen={isAddEditModalOpen}
         onClose={() => {

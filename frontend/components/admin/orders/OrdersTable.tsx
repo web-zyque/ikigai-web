@@ -203,11 +203,30 @@ export default function OrdersTable({
           })}
         </div>
 
-        {/* Right: Dropdown Filter for Shipped, Delivered, etc. */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="order-status-filter" className="text-xs text-white/50 whitespace-nowrap">
-            Fulfillment:
-          </label>
+        {/* Right: Search Box + Dropdown Filter (no label text) */}
+        <div className="flex items-center gap-2.5">
+          <div className="relative w-full sm:w-56">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search orders..."
+              aria-label="Search orders"
+              className="w-full h-8.5 rounded-lg bg-[#0a0a0a] border border-white/10 pl-8.5 pr-7 text-xs text-white placeholder-white/40 outline-none transition-colors focus:border-white/30 focus:bg-[#121212]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
           <select
             id="order-status-filter"
             value={activeOrderStatus}

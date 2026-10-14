@@ -4,41 +4,51 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   X,
-  Tag,
-  Car,
-  ShieldCheck,
+  Maximize2,
+  Minimize2,
+  Edit,
+  Printer,
+  PlusCircle,
+  Archive,
+  Trash2,
   Image as ImageIcon,
+  Calendar,
+  Car,
 } from "lucide-react";
 import { ProductResponse } from "@/types/products.types";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export interface ProductDetailsModalProps {
   product: ProductResponse | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (product: ProductResponse) => void;
+  onAddStock?: (product: ProductResponse, additionalStock: number) => void;
+  onArchive?: (product: ProductResponse) => void;
+  onDelete?: (product: ProductResponse) => void;
 }
 
 export default function ProductDetailsModal({
   product,
   isOpen,
   onClose,
+  onEdit,
+  onAddStock,
+  onArchive,
+  onDelete,
 }: ProductDetailsModalProps) {
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [mainImageError, setMainImageError] = useState(false);
-  const [thumbnailErrorMap, setThumbnailErrorMap] = useState<Record<string, boolean>>({});
 
-  // Reset selected image and error state when product changes or modal opens
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+  const [stockToAdd, setStockToAdd] = useState("10");
+
   useEffect(() => {
     setSelectedImageIndex(0);
-    setMainImageError(false);
-    setThumbnailErrorMap({});
   }, [product?.id, isOpen]);
 
-  // Reset main image error state when active thumbnail changes
-  useEffect(() => {
-    setMainImageError(false);
-  }, [selectedImageIndex]);
-
-  // Lock body scroll and listen for Escape key
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -55,360 +65,432 @@ export default function ProductDetailsModal({
 
   if (!isOpen || !product) return null;
 
-  // Stock status badge
-  const getStockBadge = (status: ProductResponse["inventoryStatus"]) => {
-    switch (status) {
-      case "in_stock":
-        return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-white/80">
-            <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
-            In Stock
-          </span>
-        );
-      case "low_stock":
-        return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/90">
-            <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
-            Low Stock
-          </span>
-        );
-      case "out_of_stock":
-        return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-[#640C0C]/50 bg-[#640C0C]/25 px-2 py-0.5 text-[10px] font-medium text-white">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#640C0C] animate-pulse" />
-            Out of Stock
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Pricing calculations
   const selling = parseFloat(product.sellingPrice) || 0;
   const mrp = product.mrpPrice ? parseFloat(product.mrpPrice) : 0;
-  const hasDiscount = mrp > selling && selling > 0;
-  const discountPercent = hasDiscount
-    ? (((mrp - selling) / mrp) * 100).toFixed(1)
-    : null;
-
-  // Photos setup
   const images = product.images || [];
   const currentImage = images[selectedImageIndex] || images[0] || null;
 
+  const getStatusTextClass = (status: ProductResponse["inventoryStatus"]) => {
+    switch (status) {
+      case "in_stock":
+        return "text-emerald-400 font-semibold";
+      case "low_stock":
+        return "text-amber-400 font-semibold";
+      case "out_of_stock":
+        return "text-red-500 font-semibold";
+      default:
+        return "text-white/70 font-semibold";
+    }
+  };
+
+  const getStatusLabel = (status: ProductResponse["inventoryStatus"]) => {
+    switch (status) {
+      case "in_stock":
+        return "In Stock";
+      case "low_stock":
+        return "Low Stock";
+      case "out_of_stock":
+        return "Out of Stock";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "N/A";
+    const d = new Date(dateStr);
+    return isNaN(d.getTime())
+      ? dateStr
+      : d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+  };
+
   return (
-    <div
-      aria-modal="true"
-      role="dialog"
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-hidden"
-    >
+    <>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl flex flex-col rounded-[20px] border border-white/10 bg-[#121212] text-white shadow-2xl overflow-hidden my-auto"
+        aria-modal="true"
+        role="dialog"
+        onClick={onClose}
+        className="fixed inset-0 z-40 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity duration-300"
       >
-        {/* Compact Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/5 px-5 py-3 sm:px-6 sm:py-3.5 bg-[#0a0a0a]">
-          <div className="min-w-0 pr-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold tracking-tight text-white truncate max-w-xs sm:max-w-md">
-                {product.name}
-              </h2>
-              {getStockBadge(product.inventoryStatus)}
-              <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize ${
-                  product.publicationStatus === "active"
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-400"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    product.publicationStatus === "active" ? "bg-emerald-400" : "bg-amber-400"
-                  }`}
-                />
-                {product.publicationStatus === "active" ? "Active" : "Draft"}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`relative flex flex-col h-full bg-[#121212] text-white border-l border-white/10 shadow-2xl transition-all duration-300 ease-out transform animate-in slide-in-from-right duration-300 ${
+            isFullScreen ? "w-full" : "w-full sm:w-[560px] md:w-[640px]"
+          }`}
+        >
+          {/* Top Bar with Title and Controls */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-white/10 bg-[#0e0e0e]">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-white/40">
+                Product Details
               </span>
+              <span className="text-white/20">•</span>
+              <span className="font-mono text-xs text-white/70">#{product.sku}</span>
             </div>
 
-            <p className="text-[11px] text-white/50 flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="font-mono text-white/70">SKU: {product.sku}</span>
-              <span className="text-white/20">•</span>
-              <span className="inline-flex items-center gap-1">
-                <Tag className="h-3 w-3 text-[#640C0C]" />
-                {product.category?.name || "Uncategorized"}
-              </span>
-              {product.brand && (
-                <>
-                  <span className="text-white/20">•</span>
-                  <span>Brand: {product.brand}</span>
-                </>
-              )}
-            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close details"
+                className="grid h-8 w-8 place-items-center rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-[#640C0C] hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="grid h-7 w-7 place-items-center rounded-full bg-white/5 border border-white/10 text-white/60 hover:bg-[#640C0C] hover:text-white transition-colors cursor-pointer shrink-0"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+          {/* Action Buttons Bar: Edit, Print, Add Stock, Archive, Delete */}
+          <div className="px-6 py-3 border-b border-white/10 bg-[#121212] flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              onClick={() => onEdit?.(product)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white text-black hover:bg-white/90 px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap shadow-sm"
+            >
+              <Edit className="h-3.5 w-3.5" />
+              <span>Edit</span>
+            </button>
 
-        {/* Content Body: Zero-Scroll Compact Two-Column Layout */}
-        <div className="p-4 sm:p-5 overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch">
-            {/* LEFT COLUMN: Product Photos (5 cols) */}
-            <div className="md:col-span-5 rounded-xl border border-white/5 bg-[#0e0e0e] p-3 flex flex-col">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-2.5">
-                <div className="flex items-center gap-1.5">
-                  <ImageIcon className="h-3 w-3 text-white/40" />
-                  <span>Product Photos</span>
-                </div>
-                {images.length > 0 && (
-                  <span className="text-white/40 font-normal">
-                    {images.length} {images.length === 1 ? "Photo" : "Photos"}
-                  </span>
-                )}
-              </div>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Printer className="h-3.5 w-3.5 text-white/70" />
+              <span>Print</span>
+            </button>
 
-              {currentImage ? (
-                <div className="flex-1 flex flex-col gap-2.5 min-h-0">
-                  {/* Main Photo Container - directly below header, uses available height */}
-                  <div className="relative flex-1 min-h-[230px] sm:min-h-[240px] w-full rounded-lg bg-[#0a0a0a] border border-white/10 overflow-hidden flex items-center justify-center">
-                    {!mainImageError && currentImage.imageUrl ? (
-                      <>
-                        <Image
-                          src={currentImage.imageUrl}
-                          alt={currentImage.altText || product.name}
-                          fill
-                          priority
-                          unoptimized
-                          onError={() => setMainImageError(true)}
-                          className="object-contain p-2.5"
-                          sizes="(max-width: 768px) 100vw, 360px"
-                        />
-                        {currentImage.isMainImage && (
-                          <span className="absolute top-2 left-2 rounded bg-black/80 backdrop-blur-md border border-white/10 px-1.5 py-0.5 text-[9px] font-semibold text-white/80">
-                            Main
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-6 text-center">
-                        <ImageIcon className="h-8 w-8 text-white/20 mb-2" />
-                        <p className="text-xs text-white/40">Photo preview unavailable</p>
-                      </div>
-                    )}
-                  </div>
+            <button
+              type="button"
+              onClick={() => setIsStockModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <PlusCircle className="h-3.5 w-3.5 text-white/70" />
+              <span>Add Stock</span>
+            </button>
 
-                  {/* Compact Thumbnails Strip (if multiple photos) */}
-                  {images.length > 1 && (
-                    <div className="flex items-center gap-2 overflow-x-auto shrink-0 pb-0.5">
-                      {images.map((img, idx) => {
-                        const isSelected = idx === selectedImageIndex;
-                        const hasThumbError = Boolean(
-                          thumbnailErrorMap[img.id || `${idx}`] || !img.imageUrl
-                        );
-                        return (
-                          <button
-                            key={img.id || idx}
-                            type="button"
-                            onClick={() => setSelectedImageIndex(idx)}
-                            className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-[#0a0a0a] transition-all cursor-pointer flex items-center justify-center ${
-                              isSelected
-                                ? "border-[#640C0C] ring-1 ring-[#640C0C]"
-                                : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
-                            }`}
-                            title={img.altText || `View photo ${idx + 1}`}
-                          >
-                            {!hasThumbError ? (
-                              <Image
-                                src={img.imageUrl}
-                                alt={img.altText || `Thumbnail ${idx + 1}`}
-                                fill
-                                unoptimized
-                                onError={() =>
-                                  setThumbnailErrorMap((prev) => ({
-                                    ...prev,
-                                    [img.id || `${idx}`]: true,
-                                  }))
-                                }
-                                className="object-cover"
-                                sizes="44px"
-                              />
-                            ) : (
-                              <ImageIcon className="h-4 w-4 text-white/30" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-[#0a0a0a] py-14 text-center">
-                  <ImageIcon className="h-6 w-6 text-white/20 mb-1" />
-                  <p className="text-[11px] text-white/40">No photos uploaded</p>
-                </div>
+            <button
+              type="button"
+              onClick={() => setIsArchiveDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-amber-500/10 hover:border-amber-500/30 hover:text-amber-400 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors cursor-pointer whitespace-nowrap ml-auto"
+            >
+              <Archive className="h-3.5 w-3.5" />
+              <span>Archive</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete</span>
+            </button>
+          </div>
+
+          {/* Scrollable Content Body with Clean Line-Divided Sections */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {/* Header: Title and Brand */}
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug">
+                {product.name}
+              </h2>
+              {product.brand && (
+                <p className="text-sm text-white/50 mt-1">Brand: {product.brand}</p>
               )}
             </div>
 
-            {/* RIGHT COLUMN: Product Details (7 cols) */}
-            <div className="md:col-span-7 flex flex-col justify-between gap-2.5">
-              {/* 1. Pricing & Inventory */}
-              <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-2.5">
-                <div className="border-b border-white/5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40 mb-2">
-                  Pricing &amp; Inventory
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {/* Selling Price */}
-                  <div className="rounded-lg border border-white/5 bg-[#0a0a0a] p-2">
-                    <span className="text-[9px] uppercase text-white/40 block">Selling Price</span>
-                    <span className="text-sm sm:text-base font-bold text-[#640C0C] block mt-0.5">
+            {/* Line-separated Metrics Section (Orders Top Line Design) */}
+            <div className="pt-2 pb-5 border-y border-white/10">
+              <div className="grid grid-cols-2 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10 gap-y-4 sm:gap-y-0 mt-3">
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4">
+                  <span className="text-xs font-medium text-white/70">Selling Price</span>
+                  <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                       ₹{selling.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
-                    {hasDiscount && (
-                      <span className="text-[9px] text-white/50 block">
-                        <span className="line-through mr-1">₹{mrp.toFixed(0)}</span>
-                        <span className="text-white font-semibold">{discountPercent}% off</span>
-                      </span>
-                    )}
                   </div>
-
-                  {/* MRP */}
-                  <div className="rounded-lg border border-white/5 bg-[#0a0a0a] p-2">
-                    <span className="text-[9px] uppercase text-white/40 block">Original / MRP</span>
-                    <span className="text-xs sm:text-sm font-semibold text-white block mt-0.5">
-                      {product.mrpPrice ? (
-                        `₹${mrp.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      ) : (
-                        <span className="text-white/30 italic text-[10px] font-normal">Not provided</span>
-                      )}
-                    </span>
-                    <span className="text-[9px] text-white/40 block">
-                      GST: {product.gstPercentage ? `${parseFloat(product.gstPercentage)}%` : "18%"}
-                    </span>
-                  </div>
-
-                  {/* Stock Quantity */}
-                  <div className="rounded-lg border border-white/5 bg-[#0a0a0a] p-2">
-                    <span className="text-[9px] uppercase text-white/40 block">Current Stock</span>
-                    <span className="text-sm sm:text-base font-bold text-white block mt-0.5">
-                      {product.stockQuantity}
-                      <span className="text-[10px] font-normal text-white/40 ml-1">Units</span>
-                    </span>
-                    <span className="text-[9px] text-white/40 block">In inventory</span>
-                  </div>
-
-                  {/* Low Stock Threshold */}
-                  <div className="rounded-lg border border-white/5 bg-[#0a0a0a] p-2">
-                    <span className="text-[9px] uppercase text-white/40 block">Low Stock Alert</span>
-                    <span className="text-xs sm:text-sm font-semibold text-white block mt-0.5">
-                      {product.lowStockThreshold || 5}
-                      <span className="text-[10px] font-normal text-white/40 ml-1">Units</span>
-                    </span>
-                    <span className="text-[9px] text-white/40 block">Threshold</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Product Description */}
-              <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 block mb-1">
-                  Product Description
-                </span>
-                <p className="text-[11px] text-white/80 leading-relaxed line-clamp-2 sm:line-clamp-3">
-                  {product.description?.trim() ? (
-                    product.description
+                  {mrp > 0 ? (
+                    <span className="mt-1 text-xs text-white/40">MRP: ₹{mrp.toFixed(2)}</span>
                   ) : (
-                    <span className="text-white/30 italic">Not provided</span>
+                    <span className="mt-1 text-xs text-white/40">Standard retail pricing</span>
                   )}
-                </p>
-              </div>
-
-              {/* 3. Vehicle Compatibility */}
-              <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-2.5">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40 mb-1.5">
-                  <Car className="h-3 w-3 text-[#640C0C]" />
-                  <span>Vehicle Compatibility</span>
                 </div>
 
-                {product.vehicleCompatibility && product.vehicleCompatibility.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {product.vehicleCompatibility.map((veh, idx) => (
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4">
+                  <span className="text-xs font-medium text-white/70">Stock Quantity</span>
+                  <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                      {product.stockQuantity}
+                    </span>
+                    <span className="text-xs text-white/40">units</span>
+                  </div>
+                  <span className="mt-1 text-xs text-white/40">
+                    Alert threshold: {product.lowStockThreshold || 5} units
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4 col-span-2 sm:col-span-1 border-t sm:border-t-0 pt-3 sm:pt-0">
+                  <span className="text-xs font-medium text-white/70">Stock Status</span>
+                  <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
+                    <span className={`text-xl sm:text-2xl font-bold tracking-tight ${getStatusTextClass(product.inventoryStatus)}`}>
+                      {getStatusLabel(product.inventoryStatus)}
+                    </span>
+                  </div>
+                  <span className="mt-1 text-xs text-white/40">
+                    Category: {product.category?.name || "Uncategorized"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Line-separated Specifications Row */}
+            <div className="pt-2 pb-5 border-b border-white/10">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block mb-3">
+                Specifications
+              </span>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/10 gap-y-3 sm:gap-y-0">
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                  <span className="text-xs text-white/50">SKU Code</span>
+                  <span className="mt-1 font-mono text-sm text-white font-medium truncate">
+                    {product.sku}
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                  <span className="text-xs text-white/50">Product Type</span>
+                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                    {product.productType || "Standard"}
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                  <span className="text-xs text-white/50">Color / Finish</span>
+                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                    {product.color || "Default"}
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                  <span className="text-xs text-white/50">Warranty</span>
+                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                    {product.warranty || "Standard"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Vehicle Compatibility below specifications */}
+              {product.vehicleCompatibility && product.vehicleCompatibility.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block mb-2.5">
+                    Vehicle Compatibility
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {product.vehicleCompatibility.map((veh, i) => (
                       <span
-                        key={idx}
-                        className="inline-flex items-center gap-1 rounded border border-white/10 bg-[#0a0a0a] px-2 py-0.5 text-[10px] text-white/80"
+                        key={i}
+                        className="inline-flex items-center text-sm text-white/85 pr-3 border-r border-white/15 last:border-none"
                       >
-                        <Car className="h-2.5 w-2.5 text-[#640C0C]" />
-                        <span>{veh}</span>
+                        {veh}
                       </span>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-[11px] text-white/30 italic">Not provided</p>
-                )}
+                </div>
+              )}
+            </div>
+
+            {/* Description Section */}
+            {product.description && (
+              <div className="pt-2 pb-5 border-b border-white/10 space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
+                  Description
+                </span>
+                <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* SEPARATE SECTION BELOW FOR ALL IMAGES */}
+            <div className="pt-2 pb-5 border-b border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Product Images
+                </span>
+                <span className="text-xs text-white/40">
+                  {images.length} {images.length === 1 ? "Image" : "Images"}
+                </span>
               </div>
 
-              {/* 4. Specifications */}
-              <div className="rounded-xl border border-white/5 bg-[#0e0e0e] p-2.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40 block mb-1.5">
-                  Specifications
-                </span>
+              {images.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Selected Preview Image */}
+                  {currentImage && (
+                    <div className="relative w-full h-56 sm:h-64 rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden flex items-center justify-center p-3">
+                      <Image
+                        src={currentImage.imageUrl}
+                        alt={currentImage.altText || product.name}
+                        fill
+                        unoptimized
+                        className="object-contain p-2"
+                        sizes="(max-width: 768px) 100vw, 540px"
+                      />
+                    </div>
+                  )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
-                  {/* Product Type */}
-                  <div className="rounded border border-white/5 bg-[#0a0a0a] p-1.5">
-                    <span className="text-[9px] text-white/40 block uppercase">Product Type</span>
-                    <span className="text-[11px] font-medium text-white mt-0.5 block truncate">
-                      {product.productType || <span className="text-white/30 italic">Not provided</span>}
-                    </span>
+                  {/* Thumbnail gallery */}
+                  <div className="flex items-center gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    {images.map((img, idx) => {
+                      const isSelected = idx === selectedImageIndex;
+                      return (
+                        <button
+                          key={img.id || idx}
+                          type="button"
+                          onClick={() => setSelectedImageIndex(idx)}
+                          className={`relative h-16 w-16 min-w-16 rounded-lg border bg-[#0a0a0a] overflow-hidden transition-all cursor-pointer p-1 ${
+                            isSelected
+                              ? "border-white ring-1 ring-white"
+                              : "border-white/10 opacity-60 hover:opacity-100 hover:border-white/30"
+                          }`}
+                        >
+                          <Image
+                            src={img.imageUrl}
+                            alt={img.altText || `Product image ${idx + 1}`}
+                            fill
+                            unoptimized
+                            className="object-contain p-1"
+                            sizes="64px"
+                          />
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 rounded-lg border border-dashed border-white/10 bg-[#0a0a0a] text-white/30 text-center">
+                  <ImageIcon className="h-8 w-8 mb-2 text-white/20" />
+                  <p className="text-xs">No images available for this product</p>
+                </div>
+              )}
+            </div>
 
-                  {/* Color / Finish */}
-                  <div className="rounded border border-white/5 bg-[#0a0a0a] p-1.5">
-                    <span className="text-[9px] text-white/40 block uppercase">Color / Finish</span>
-                    <span className="text-[11px] font-medium text-white mt-0.5 block truncate">
-                      {product.color || <span className="text-white/30 italic">Not provided</span>}
-                    </span>
-                  </div>
-
-                  {/* Dimensions */}
-                  <div className="rounded border border-white/5 bg-[#0a0a0a] p-1.5">
-                    <span className="text-[9px] text-white/40 block uppercase">Dimensions</span>
-                    <span className="text-[11px] font-medium text-white mt-0.5 block truncate">
-                      {product.dimensions || <span className="text-white/30 italic">Not provided</span>}
-                    </span>
-                  </div>
-
-                  {/* Material */}
-                  <div className="rounded border border-white/5 bg-[#0a0a0a] p-1.5">
-                    <span className="text-[9px] text-white/40 block uppercase">Material</span>
-                    <span className="text-[11px] font-medium text-white mt-0.5 block truncate">
-                      {product.material || <span className="text-white/30 italic">Not provided</span>}
-                    </span>
-                  </div>
-
-                  {/* Warranty */}
-                  <div className="rounded border border-white/5 bg-[#0a0a0a] p-1.5 sm:col-span-2">
-                    <span className="text-[9px] text-white/40 block uppercase">Warranty</span>
-                    <span className="text-[11px] font-medium text-white mt-0.5 block truncate flex items-center gap-1">
-                      <ShieldCheck className="h-3 w-3 text-emerald-400 shrink-0" />
-                      <span>
-                        {product.warranty || <span className="text-white/30 italic">Not provided</span>}
-                      </span>
-                    </span>
-                  </div>
+            {/* PRODUCT DATES AT BOTTOM (Line Separated, No calendar icons) */}
+            <div className="pt-2 pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-white/10 gap-y-2 sm:gap-y-0 text-sm text-white/60">
+                <div className="px-1 sm:px-3">
+                  <span className="text-xs text-white/40 block mb-0.5">Added Date</span>
+                  <span className="font-mono text-sm text-white/80">
+                    {formatDate(product.createdAt)}
+                  </span>
+                </div>
+                <div className="px-1 sm:px-3">
+                  <span className="text-xs text-white/40 block mb-0.5">Last Modified</span>
+                  <span className="font-mono text-sm text-white/80">
+                    {formatDate(product.updatedAt || product.createdAt)}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Reusable Confirm Dialog for Archive */}
+      <ConfirmDialog
+        isOpen={isArchiveDialogOpen}
+        onClose={() => setIsArchiveDialogOpen(false)}
+        onConfirm={() => {
+          setIsArchiveDialogOpen(false);
+          onArchive?.(product);
+        }}
+        title="Archive Product"
+        description={`Are you sure you want to archive "${product.name}"? It will be hidden from customer store views and marked as draft.`}
+        confirmText="Archive Product"
+        variant="warning"
+      />
+
+      {/* Reusable Confirm Dialog for Delete */}
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={() => {
+          setIsDeleteDialogOpen(false);
+          onDelete?.(product);
+        }}
+        title="Delete Product"
+        description={`This action cannot be undone. Are you sure you want to permanently delete "${product.name}" (${product.sku})?`}
+        confirmText="Delete Permanently"
+        variant="danger"
+      />
+
+      {/* Add Stock Dialog */}
+      {isStockModalOpen && (
+        <div
+          aria-modal="true"
+          role="dialog"
+          onClick={() => setIsStockModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#121212] p-5 shadow-2xl text-white space-y-4"
+          >
+            <div>
+              <h3 className="text-sm font-bold text-white">Add Stock Units</h3>
+              <p className="text-xs text-white/50 mt-0.5">
+                Current stock: <span className="text-white font-medium">{product.stockQuantity}</span>
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-white/40 block mb-1">
+                Units to add
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={stockToAdd}
+                onChange={(e) => setStockToAdd(e.target.value)}
+                className="w-full h-9 rounded-lg bg-[#0a0a0a] border border-white/10 px-3 text-xs text-white outline-none focus:border-white/30"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsStockModalOpen(false)}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const qty = parseInt(stockToAdd, 10);
+                  if (qty > 0) {
+                    onAddStock?.(product, qty);
+                  }
+                  setIsStockModalOpen(false);
+                }}
+                className="rounded-lg bg-[#640C0C] hover:bg-[#7a1010] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors"
+              >
+                Update Stock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
