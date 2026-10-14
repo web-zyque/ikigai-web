@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { ReportDataset } from "@/data/mockReports";
 
 export interface OrdersReportViewProps {

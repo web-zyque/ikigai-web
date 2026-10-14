@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FileDown, Calendar, TrendingUp, Package, ShoppingCart, DollarSign } from "lucide-react";
+import { FileDown, TrendingUp, Package, ShoppingCart, DollarSign } from "lucide-react";
 import { DateFilterType, ReportTab } from "@/types/reports.types";
 
 export interface ReportsHeaderProps {
@@ -20,12 +20,6 @@ export interface ReportsHeaderProps {
 export default function ReportsHeader({
   activeTab,
   onTabChange,
-  dateFilter,
-  onDateFilterChange,
-  customStartDate,
-  onCustomStartDateChange,
-  customEndDate,
-  onCustomEndDateChange,
   onExportPDF,
   onExportCSV,
 }: ReportsHeaderProps) {
@@ -36,17 +30,10 @@ export default function ReportsHeader({
     { id: "revenue", label: "Revenue Summary", icon: DollarSign },
   ];
 
-  const dateOptions: { id: DateFilterType; label: string }[] = [
-    { id: "today", label: "Today" },
-    { id: "last7days", label: "Last 7 Days" },
-    { id: "thisMonth", label: "This Month" },
-    { id: "custom", label: "Custom Range" },
-  ];
-
   const handleExport = onExportPDF || onExportCSV;
 
   return (
-    <div className="grid grid-cols-1 gap-3 border-b border-white/5 pb-3 sm:flex sm:items-center sm:gap-2">
+    <div className="grid grid-cols-1 gap-2 border-b border-white/5 pb-3 sm:flex sm:items-center sm:gap-2">
       <button
         type="button"
         onClick={handleExport}
