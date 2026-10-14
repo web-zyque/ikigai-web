@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Package, AlertTriangle, AlertCircle, CheckCircle2, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { ReportDataset } from "@/data/mockReports";
 
 export interface InventoryReportViewProps {
@@ -19,68 +19,46 @@ export default function InventoryReportView({ data }: InventoryReportViewProps) 
   return (
     <div className="space-y-6">
       {/* 1. Inventory Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {/* Total Products */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Total Catalog Items</span>
-            <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
-              <Package className="h-4 w-4" />
+      <div className="pt-2 pb-3 border-b border-white/10">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Total catalog items</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {totalProducts}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Active items in catalog</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white font-mono">
-              {totalProducts}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Active items in catalog</p>
-          </div>
-        </div>
 
-        {/* In Stock */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Healthy Stock</span>
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Healthy stock</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {inStockProducts}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">{inStockPct}% of inventory optimal</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-emerald-400 font-mono">
-              {inStockProducts}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">{inStockPct}% of inventory optimal</p>
-          </div>
-        </div>
 
-        {/* Low Stock */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Low Stock Alert</span>
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <AlertTriangle className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Low stock alert</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {lowStockProducts}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Requires restocking soon</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-amber-400 font-mono">
-              {lowStockProducts}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Requires restocking soon</p>
-          </div>
-        </div>
 
-        {/* Out of Stock */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Out of Stock</span>
-            <div className="h-8 w-8 rounded-lg bg-[#640C0C]/20 border border-[#640C0C]/30 flex items-center justify-center text-rose-400">
-              <AlertCircle className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Out of stock</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {outOfStockProducts}
+              </span>
             </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-rose-400 font-mono">
-              {outOfStockProducts}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Zero quantity available</p>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Zero quantity available</span>
           </div>
         </div>
       </div>

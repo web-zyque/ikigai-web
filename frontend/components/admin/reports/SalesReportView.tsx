@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { TrendingUp, ShoppingCart, DollarSign, Calendar } from "lucide-react";
 import { ReportDataset } from "@/data/mockReports";
 import { SalesTrendPoint } from "@/types/reports.types";
 
@@ -73,59 +72,36 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
   return (
     <div className="space-y-6">
       {/* 1. Core Sales Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Sales */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Total Gross Sales</span>
-            <div className="h-8 w-8 rounded-lg bg-[#640C0C]/20 border border-[#640C0C]/30 flex items-center justify-center text-[#640C0C]">
-              <DollarSign className="h-4 w-4 text-white" />
+      <div className="pt-2 pb-3 border-b border-white/10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+          <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Total gross sales</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                ₹{data.metrics.totalSales.toLocaleString("en-IN")}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Revenue generated in selected period</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white font-mono">
-              ₹{data.metrics.totalSales.toLocaleString("en-IN")}
-            </h3>
-            <p className="mt-1 text-xs text-emerald-400 flex items-center gap-1 font-medium">
-              <TrendingUp className="h-3 w-3" />
-              <span>Revenue generated in selected period</span>
-            </p>
-          </div>
-        </div>
 
-        {/* Total Orders */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Orders Placed</span>
-            <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
-              <ShoppingCart className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Orders placed</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {data.metrics.totalOrders}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Total customer checkouts completed</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white">
-              {data.metrics.totalOrders}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">
-              Total customer checkouts completed
-            </p>
-          </div>
-        </div>
 
-        {/* Avg Order Value */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Average Order Value (AOV)</span>
-            <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
-              <TrendingUp className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Average order value (AOV)</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                ₹{data.metrics.avgOrderValue.toLocaleString("en-IN")}
+              </span>
             </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white font-mono">
-              ₹{data.metrics.avgOrderValue.toLocaleString("en-IN")}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">
-              Average basket size per order
-            </p>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Average basket size per order</span>
           </div>
         </div>
       </div>

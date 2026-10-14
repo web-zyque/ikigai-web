@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { ShoppingCart, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { ReportDataset } from "@/data/mockReports";
 
 export interface OrdersReportViewProps {
@@ -14,70 +13,48 @@ export default function OrdersReportView({ data }: OrdersReportViewProps) {
   return (
     <div className="space-y-6">
       {/* 1. Core Orders Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {/* Total Orders */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Total Orders</span>
-            <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/70">
-              <ShoppingCart className="h-4 w-4" />
+      <div className="pt-2 pb-3 border-b border-white/10">
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Total orders</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {totalOrders}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Total orders in filter window</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-white font-mono">
-              {totalOrders}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Total orders in filter window</p>
-          </div>
-        </div>
 
-        {/* Completed Orders */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Completed / Delivered</span>
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <CheckCircle2 className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Pending orders</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {pendingOrders}
+              </span>
             </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Awaiting packing / dispatch</span>
           </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-emerald-400 font-mono">
-              {completedOrders}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">
+
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Completed</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {completedOrders}
+              </span>
+            </div>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">
               {totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0}% completion rate
-            </p>
+            </span>
           </div>
-        </div>
 
-        {/* Pending Orders */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Pending &amp; In-Flight</span>
-            <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Clock className="h-4 w-4" />
+          <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
+            <span className="text-xs sm:text-sm font-medium text-white/70">Cancelled</span>
+            <div className="mt-1 sm:mt-2 flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                {cancelledOrders}
+              </span>
             </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-amber-400 font-mono">
-              {pendingOrders}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Awaiting packing / dispatch</p>
-          </div>
-        </div>
-
-        {/* Cancelled Orders */}
-        <div className="rounded-[20px] bg-[#121212] border border-white/5 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/50">Cancelled Orders</span>
-            <div className="h-8 w-8 rounded-lg bg-[#640C0C]/20 border border-[#640C0C]/30 flex items-center justify-center text-rose-400">
-              <XCircle className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <h3 className="text-2xl font-bold tracking-tight text-rose-400 font-mono">
-              {cancelledOrders}
-            </h3>
-            <p className="mt-1 text-xs text-white/40">Customer or system cancelled</p>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Customer or system cancelled</span>
           </div>
         </div>
       </div>

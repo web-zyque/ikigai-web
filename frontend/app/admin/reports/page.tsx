@@ -237,16 +237,12 @@ export default function ReportsPage() {
           onExportPDF={handleExportPDF}
         />
 
-        {/* Tab 1: Sales Report */}
         {activeTab === "sales" && <SalesReportView data={reportData} />}
 
-        {/* Tab 2: Products & Inventory Report */}
         {activeTab === "inventory" && <InventoryReportView data={reportData} />}
 
-        {/* Tab 3: Orders Report */}
         {activeTab === "orders" && <OrdersReportView data={reportData} />}
 
-        {/* Tab 4: Revenue Summary */}
         {activeTab === "revenue" && <RevenueReportView data={reportData} />}
       </main>
     </>
