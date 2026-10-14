@@ -12,7 +12,6 @@ export default function OrdersReportView({ data }: OrdersReportViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* 1. Core Orders Metric Cards */}
       <div className="pt-2 pb-3 border-b border-white/10">
         <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-white/10">
           <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
@@ -59,8 +58,7 @@ export default function OrdersReportView({ data }: OrdersReportViewProps) {
         </div>
       </div>
 
-      {/* 2. Visual Order Status Distribution Bar */}
-      <div className="rounded-[20px] border border-white/5 bg-[#121212] p-6 shadow-sm">
+      <div className="p-6 shadow-sm">
         <h3 className="text-sm font-bold tracking-tight text-white">
           Fulfillment Status Distribution
         </h3>
@@ -68,7 +66,6 @@ export default function OrdersReportView({ data }: OrdersReportViewProps) {
           Percentage breakdown of all recorded customer orders
         </p>
 
-        {/* Multi-segment distribution bar */}
         <div className="mt-4 h-3 w-full rounded-full bg-white/5 overflow-hidden flex">
           {data.ordersBreakdown.map((item, idx) => {
             const colorClass =
@@ -91,31 +88,28 @@ export default function OrdersReportView({ data }: OrdersReportViewProps) {
           })}
         </div>
 
-        {/* Status Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-6 text-xs">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           {data.ordersBreakdown.map((item, idx) => {
             const dotColor =
               item.status === "Delivered"
-                ? "bg-emerald-500"
+                ? "shrink-0 bg-emerald-500"
                 : item.status === "Processing"
-                ? "bg-sky-500"
+                ? "shrink-0 bg-sky-500"
                 : item.status === "Pending"
-                ? "bg-amber-500"
-                : "bg-[#640C0C]";
+                ? "shrink-0 bg-amber-500"
+                : "shrink-0 bg-[#640C0C]";
 
             return (
-              <div key={idx} className="flex items-center gap-2">
+              <div key={idx} className="flex flex-row items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${dotColor}`} />
                 <span className="text-white/60">
-                  {item.status} ({item.count} • {item.percentage}%)
+                  {item.status} ({item.percentage}%)
                 </span>
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* 3. Detailed Status Breakdown Table */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="border-b border-white/5 px-6 py-4 bg-[#121212]">
           <h3 className="text-sm font-bold tracking-tight text-white">

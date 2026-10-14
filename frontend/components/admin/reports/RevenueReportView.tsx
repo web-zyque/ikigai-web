@@ -14,13 +14,12 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
   const getMethodIcon = (method: string) => {
     if (method.includes("UPI")) return <QrCode className="h-4 w-4 text-emerald-400" />;
     if (method.includes("Card")) return <CreditCard className="h-4 w-4 text-sky-400" />;
-    if (method.includes("Banking")) return <Building className="h-4 w-4 text-purple-400" />;
-    return <Banknote className="h-4 w-4 text-amber-400" />;
+    if (method.includes("Banking")) return <Building className="h-4 w-4 text-amber-400" />;
+    return <Banknote className="h-8 w-8 sm:h-4 sm:w-4 text-[#640C0C]" />;
   };
 
   return (
     <div className="space-y-6">
-      {/* 1. Core Revenue Summary Cards */}
       <div className="pt-2 pb-3 border-b border-white/10">
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
           <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
@@ -55,8 +54,7 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
         </div>
       </div>
 
-      {/* 2. Visual Payment Channel Split */}
-      <div className="rounded-[20px] border border-white/5 bg-[#121212] p-6 shadow-sm">
+      <div className="rounded-[20px] p-6 shadow-sm">
         <h3 className="text-sm font-bold tracking-tight text-white">
           Payment Method Share
         </h3>
@@ -64,7 +62,6 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
           Proportional volume split across payment instruments
         </p>
 
-        {/* Multi-segment progress bar */}
         <div className="mt-4 h-3 w-full rounded-full bg-white/5 overflow-hidden flex">
           {data.paymentBreakdown.map((item, idx) => {
             const barBg =
@@ -73,8 +70,8 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
                 : idx === 1
                 ? "bg-sky-500"
                 : idx === 2
-                ? "bg-purple-500"
-                : "bg-amber-500";
+                ? "bg-amber-500"
+                : "bg-[#640C0C]";
 
             return (
               <div
@@ -86,18 +83,16 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
             );
           })}
         </div>
-
-        {/* Legend */}
-        <div className="mt-3 flex flex-wrap items-center gap-6 text-xs">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           {data.paymentBreakdown.map((item, idx) => {
             const dotBg =
               idx === 0
-                ? "bg-emerald-500"
+                ? "shrink-0 bg-emerald-500"
                 : idx === 1
-                ? "bg-sky-500"
+                ? "shrink-0 bg-sky-500"
                 : idx === 2
-                ? "bg-purple-500"
-                : "bg-amber-500";
+                ? "shrink-0 bg-amber-500"
+                : "shrink-0 bg-[#640C0C]";
 
             return (
               <div key={idx} className="flex items-center gap-2">
@@ -111,7 +106,6 @@ export default function RevenueReportView({ data }: RevenueReportViewProps) {
         </div>
       </div>
 
-      {/* 3. Detailed Payment Method Summary Table */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="border-b border-white/5 px-6 py-4 bg-[#121212]">
           <h3 className="text-sm font-bold tracking-tight text-white">
