@@ -38,6 +38,7 @@ export function AuthForm({
   const [otpSent, setOtpSent] = React.useState(false);
   const [otpVerified, setOtpVerified] = React.useState(false);
   const [phone, setPhone] = React.useState("");
+  const [identifier, setIdentifier] = React.useState("");
   const [fullName, setFullName] = React.useState("");
   const [otp, setOtp] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -78,10 +79,10 @@ export function AuthForm({
     e.preventDefault();
 
     if (isLogin) {
-      // Login
-      if (phone && password) {
+
+      if (identifier && password) {
         try {
-          await loginMutation.mutateAsync({ phone, password });
+          await loginMutation.mutateAsync({ identifier, password });
         } catch (error) {
           // Error is handled in the mutation
         }
@@ -110,6 +111,7 @@ export function AuthForm({
     setOtpSent(false);
     setOtpVerified(false);
     setPhone("");
+    setIdentifier("");
     setFullName("");
     setOtp("");
     setPassword("");
@@ -172,17 +174,19 @@ export function AuthForm({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor={isLogin ? "identifier" : "phone"}>
+              {isLogin ? "Phone Number" : "Phone Number"}
+            </Label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Phone className="absolute left-3 top-3 h-5 w-5 text-white/40" />
                 <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
+                  id={isLogin ? "identifier" : "phone"}
+                  type={isLogin ? "text" : "tel"}
+                  placeholder={isLogin ? "Phone number" : "+1 (555) 000-0000"}
                   className="pl-10"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  value={isLogin ? identifier : phone}
+                  onChange={(e) => isLogin ? setIdentifier(e.target.value) : setPhone(e.target.value)}
                   disabled={isPending}
                   required
                 />

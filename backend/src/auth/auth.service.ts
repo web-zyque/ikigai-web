@@ -12,8 +12,17 @@ import { and, desc, eq } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
-import { otps, users } from '../db/schema';
-import type { SignupDto } from './dto/auth.dto';
+import { admins, otps, users } from '../db/schema';
+import type { CreateAdminDto, SignupDto } from './dto/auth.dto';
+
+const normalizePhone = (value: string) => {
+  const cleaned = value.replace(/[\s()-]/g, '');
+  if (/^\d{10}$/.test(cleaned)) return `+91${cleaned}`;
+  if (/^91\d{10}$/.test(cleaned)) return `+${cleaned}`;
+  return cleaned;
+};
+
+const E164 = /^\+[1-9]\d{9,14}$/;
 
 @Injectable()
 export class AuthService {
@@ -136,7 +145,7 @@ export class AuthService {
           passwordHash: await argon2.hash(dto.password),
         })
         .returning();
-      return this.signToken(user.id);
+      return this.signToken(user.id, 'CUSTOMER');
     } catch (e: any) {
   
       if (e?.code === '23505')
@@ -145,33 +154,101 @@ export class AuthService {
     }
   }
 
-  async login(phone: string, password: string) {
-    const [user] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.phone, phone));
-    if (!user || !(await argon2.verify(user.passwordHash, password))) {
-      throw new UnauthorizedException('Invalid credentials');
+  async login(identifier: string, password: string) {
+
+    const normalizedPhone = normalizePhone(identifier);
+    const isPhone = E164.test(normalizedPhone);
+    
+    if (isPhone) {
+
+      const [user] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.phone, normalizedPhone));
+      if (!user || !(await argon2.verify(user.passwordHash, password))) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      return this.signToken(user.id, 'CUSTOMER');
+    } else {
+
+      const [admin] = await this.db
+        .select()
+        .from(admins)
+        .where(and(eq(admins.adminId, identifier), eq(admins.isActive, true)));
+      if (!admin || !(await argon2.verify(admin.passwordHash, password))) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      return this.signToken(admin.id, admin.role);
     }
-    return this.signToken(user.id);
   }
 
-  async me(userId: string) {
-    const [user] = await this.db
-      .select({
-        id: users.id,
-        fullName: users.fullName,
-        phone: users.phone,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
-    if (!user) throw new UnauthorizedException();
-    return user;
+  async me(userId: string, role?: string) {
+    if (role === 'ADMIN' || role === 'STAFF') {
+      const [admin] = await this.db
+        .select({
+          id: admins.id,
+          adminId: admins.adminId,
+          fullName: admins.fullName,
+          email: admins.email,
+          role: admins.role,
+          isActive: admins.isActive,
+          createdAt: admins.createdAt,
+        })
+        .from(admins)
+        .where(eq(admins.id, userId));
+      if (!admin) throw new UnauthorizedException();
+      return { ...admin, role: admin.role };
+    } else {
+      const [user] = await this.db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          phone: users.phone,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, userId));
+      if (!user) throw new UnauthorizedException();
+      return { ...user, role: 'CUSTOMER' };
+    }
   }
 
-  private signToken(userId: string) {
-    return this.jwt.sign({ sub: userId });
+  async createAdmin(dto: CreateAdminDto) {
+    try {
+      const [admin] = await this.db
+        .insert(admins)
+        .values({
+          adminId: dto.adminId,
+          fullName: dto.fullName.trim(),
+          email: dto.email.toLowerCase(),
+          passwordHash: await argon2.hash(dto.password),
+          role: dto.role,
+        })
+        .returning();
+      return {
+        id: admin.id,
+        adminId: admin.adminId,
+        fullName: admin.fullName,
+        email: admin.email,
+        role: admin.role,
+        isActive: admin.isActive,
+        createdAt: admin.createdAt,
+      };
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        if (e.constraint === 'admins_admin_id_unique') {
+          throw new ConflictException('Admin ID already exists');
+        }
+        if (e.constraint === 'admins_email_unique') {
+          throw new ConflictException('Email already registered');
+        }
+      }
+      throw e;
+    }
+  }
+
+  private signToken(userId: string, role: 'CUSTOMER' | 'ADMIN' | 'STAFF' = 'CUSTOMER') {
+    return this.jwt.sign({ sub: userId, role });
   }
 
   private async sendSms(phone: string, message: string) {

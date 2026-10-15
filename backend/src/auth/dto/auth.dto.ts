@@ -33,11 +33,20 @@ export const SignupSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  phone: phoneSchema,
+  identifier: z.string().min(1), // Can be phone number or admin ID
   password: z.string().min(1),
+});
+
+export const CreateAdminSchema = z.object({
+  adminId: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_-]+$/, 'Admin ID can only contain letters, numbers, underscore and hyphen'),
+  fullName: z.string().min(2).max(100),
+  email: z.string().email(),
+  password: z.string().min(8).max(72),
+  role: z.enum(['ADMIN', 'STAFF']).default('STAFF'),
 });
 
 export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>;
 export type SendOtpDto = z.infer<typeof SendOtpSchema>;
 export type SignupDto = z.infer<typeof SignupSchema>;
 export type LoginDto = z.infer<typeof LoginSchema>;
+export type CreateAdminDto = z.infer<typeof CreateAdminSchema>;

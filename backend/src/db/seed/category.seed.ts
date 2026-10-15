@@ -2,8 +2,8 @@ import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import * as schema from './schema';
-import { categories } from './schema';
+import * as schema from '../schema';
+import { categories } from '../schema';
 
 const db = drizzle(neon(process.env.DATABASE_URL!), { schema });
 
@@ -22,41 +22,55 @@ const initialCategories = [
   { name: 'Other Accessories', description: 'Miscellaneous car accessories' },
 ];
 
-async function seed() {
-  console.log('Seeding categories...');
-  console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
+export async function seedCategories() {
+  console.log('📦 Seeding categories...');
   
   try {
+    let created = 0;
+    let existing = 0;
+    
     for (const category of initialCategories) {
       const slug = category.name.toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
       
-      const existing = await db
+      const existingCategory = await db
         .select()
         .from(categories)
         .where(eq(categories.slug, slug))
         .limit(1);
       
-      if (existing.length === 0) {
+      if (existingCategory.length === 0) {
         await db.insert(categories).values({
           name: category.name,
           slug,
           description: category.description,
         });
-        console.log(`Created category: ${category.name}`);
+        console.log(`   ✅ Created category: ${category.name}`);
+        created++;
       } else {
-        console.log(`Category already exists: ${category.name}`);
+        console.log(`   ⏭️  Category already exists: ${category.name}`);
+        existing++;
       }
     }
     
-    console.log('Seeding completed!');
+    console.log(`📦 Categories: ${created} created, ${existing} existing`);
   } catch (error) {
-    console.error('Seeding failed:', error);
-    process.exit(1);
+    console.error('❌ Category seeding failed:', error);
+    throw error;
   }
 }
 
+// Allow running this script directly
+async function seed() {
+  console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
+  await seedCategories();
+  console.log('Category seeding completed!');
+}
+
 if (require.main === module) {
-  seed();
+  seed().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }
