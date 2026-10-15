@@ -7,6 +7,7 @@ import type {
   SignupPayload,
   User,
   VerifyOtpPayload,
+  CreateAdminPayload,
 } from "@/types/auth.types";
 
 export const sendOtp = (payload: SendOtpPayload) =>
@@ -27,6 +28,9 @@ export const logout = () =>
 export const me = () =>
   api.get<User>("/auth/me").then((r) => r.data);
 
+export const createAdmin = (payload: CreateAdminPayload) =>
+  api.post<User>("/auth/admin", payload).then((r) => r.data);
+
 export const authService = {
   sendOtp,
   verifyOtp,
@@ -34,4 +38,5 @@ export const authService = {
   login,
   logout,
   me,
+  createAdmin,
 };

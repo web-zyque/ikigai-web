@@ -10,6 +10,10 @@ import {
   json,
 } from 'drizzle-orm/pg-core';
 
+export const publicationStatusEnum = pgEnum('publication_status', ['active', 'draft']);
+export const inventoryStatusEnum = pgEnum('inventory_status', ['in_stock', 'low_stock', 'out_of_stock']);
+export const adminRoleEnum = pgEnum('admin_role', ['ADMIN', 'STAFF']);
+
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   fullName: text('full_name').notNull(),
@@ -28,8 +32,17 @@ export const otps = pgTable('otps', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const publicationStatusEnum = pgEnum('publication_status', ['active', 'draft']);
-export const inventoryStatusEnum = pgEnum('inventory_status', ['in_stock', 'low_stock', 'out_of_stock']);
+export const admins = pgTable('admins', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  adminId: text('admin_id').notNull().unique(),
+  fullName: text('full_name').notNull(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  role: adminRoleEnum('role').default('ADMIN').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 
 export const categories = pgTable('categories', {
   id: uuid('id').defaultRandom().primaryKey(),

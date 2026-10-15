@@ -18,7 +18,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "seed": "ts-node src/db/seed.ts"
+    "seed": "ts-node src/db/seed/index.ts",
+    "seed:admin": "ts-node src/db/seed/admin.seed.ts",
+    "seed:categories": "ts-node src/db/seed/category.seed.ts",
+    "seed:products": "ts-node src/db/seed/products.seed.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

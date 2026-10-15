@@ -11,8 +11,8 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto } from './dto/auth.dto';
-import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema } from './dto/auth.dto';
+import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto } from './dto/auth.dto';
+import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema } from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt/jwt-auth.guard';
 
 const COOKIE_NAME = 'token';
@@ -62,7 +62,7 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
     const dto = LoginSchema.parse(body);
-    const token = await this.auth.login(dto.phone, dto.password);
+    const token = await this.auth.login(dto.identifier, dto.password);
     res.cookie(COOKIE_NAME, token, cookieOptions());
     return { ok: true };
   }
@@ -77,7 +77,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: Request & { user: { id: string } }) {
-    return this.auth.me(req.user.id);
+  me(@Req() req: Request & { user: { id: string; role: string } }) {
+    return this.auth.me(req.user.id, req.user.role);
+  }
+
+  @Post('admin')
+  @HttpCode(201)
+  async createAdmin(@Body() body: unknown) {
+    const dto = CreateAdminSchema.parse(body);
+    return this.auth.createAdmin(dto);
   }
 }

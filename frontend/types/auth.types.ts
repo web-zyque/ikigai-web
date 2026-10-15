@@ -1,8 +1,11 @@
 export interface User {
   id: string;
   fullName: string;
-  phone: string;
+  phone?: string;
   email?: string;
+  adminId?: string;
+  isActive?: boolean;
+  role: 'CUSTOMER' | 'ADMIN' | 'STAFF';
   createdAt?: string;
 }
 
@@ -23,8 +26,16 @@ export interface SignupPayload {
 }
 
 export interface LoginPayload {
-  phone: string;
+  identifier: string; // Can be phone number or admin ID
   password: string;
+}
+
+export interface CreateAdminPayload {
+  adminId: string;
+  fullName: string;
+  email: string;
+  password: string;
+  role: 'ADMIN' | 'STAFF';
 }
 
 export interface OkResponse {

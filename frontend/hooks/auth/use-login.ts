@@ -14,8 +14,20 @@ export function useLogin() {
     mutationFn: authService.login,
     onSuccess: async () => {
       setAuthSession();
-      await qc.invalidateQueries({ queryKey: authKeys.me() });
-      router.push('/');
+      try {
+        const user = await authService.me();
+        await qc.invalidateQueries({ queryKey: authKeys.me() });
+        
+        if (user.role === 'ADMIN') {
+          router.push('/admin');
+        } else if (user.role === 'STAFF') {
+          router.push('/admin');
+        } else {
+          router.push('/');
+        }
+      } catch (error) {
+        router.push('/');
+      }
     },
   });
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, createContext, useContext, useEffect } from "react";
 import AdminSidebar from "@/components/admin/sidebar/Sidebar";
+import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
 
 export interface AdminLayoutContextType {
   mobileOpen: boolean;
@@ -53,26 +54,28 @@ export default function AdminLayout({
   };
 
   return (
-    <AdminLayoutContext.Provider
-      value={{
-        mobileOpen,
-        setMobileOpen,
-        isCollapsed,
-        setIsCollapsed,
-        toggleCollapse,
-      }}
-    >
-      <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
-        <AdminSidebar
-          mobileOpen={mobileOpen}
-          onCloseMobile={() => setMobileOpen(false)}
-          isCollapsed={isCollapsed}
-          onToggleCollapse={toggleCollapse}
-        />
-        <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden transition-all duration-300">
-          {children}
+    <AdminAuthWrapper>
+      <AdminLayoutContext.Provider
+        value={{
+          mobileOpen,
+          setMobileOpen,
+          isCollapsed,
+          setIsCollapsed,
+          toggleCollapse,
+        }}
+      >
+        <div className="flex min-h-screen bg-black text-white antialiased selection:bg-[#640C0C]/40 selection:text-white">
+          <AdminSidebar
+            mobileOpen={mobileOpen}
+            onCloseMobile={() => setMobileOpen(false)}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={toggleCollapse}
+          />
+          <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden transition-all duration-300">
+            {children}
+          </div>
         </div>
-      </div>
-    </AdminLayoutContext.Provider>
+      </AdminLayoutContext.Provider>
+    </AdminAuthWrapper>
   );
 }

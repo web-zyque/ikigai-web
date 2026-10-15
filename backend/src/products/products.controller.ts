@@ -10,7 +10,7 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
+import { AdminGuard, JwtAuthGuard, StaffGuard } from '../auth/jwt/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type {
   CreateCategoryDto,
@@ -31,7 +31,7 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(StaffGuard)
   @UsePipes(new ZodValidationPipe(CreateProductSchema))
   async createProduct(@Body() dto: CreateProductDto) {
     return this.productsService.createProduct(dto);
@@ -48,14 +48,14 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(StaffGuard)
   @UsePipes(new ZodValidationPipe(UpdateProductSchema))
   async updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.updateProduct(id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminGuard)
   async deleteProduct(@Param('id') id: string) {
     await this.productsService.deleteProduct(id);
     return { message: 'Product deleted successfully' };
@@ -67,7 +67,7 @@ export class CategoriesController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(StaffGuard)
   @UsePipes(new ZodValidationPipe(CreateCategorySchema))
   async createCategory(@Body() dto: CreateCategoryDto) {
     return this.productsService.createCategory(dto);
