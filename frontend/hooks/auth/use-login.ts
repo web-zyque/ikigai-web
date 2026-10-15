@@ -16,8 +16,9 @@ export function useLogin() {
       setAuthSession();
       try {
         const user = await authService.me();
-        await qc.invalidateQueries({ queryKey: authKeys.me() });
-        
+        // Immediately seed the cache so all components see the user at once
+        qc.setQueryData(authKeys.me(), user);
+
         if (user.role === 'ADMIN') {
           router.push('/admin');
         } else if (user.role === 'STAFF') {

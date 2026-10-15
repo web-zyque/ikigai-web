@@ -14,7 +14,13 @@ export function useSignup() {
     mutationFn: authService.signup,
     onSuccess: async () => {
       setAuthSession();
-      await qc.invalidateQueries({ queryKey: authKeys.me() });
+      try {
+        const user = await authService.me();
+        // Immediately seed the cache so all components see the user at once
+        qc.setQueryData(authKeys.me(), user);
+      } catch {
+        // non-fatal; cache will be populated on next mount
+      }
       router.push('/');
     },
   });
