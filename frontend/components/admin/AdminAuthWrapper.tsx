@@ -2,7 +2,7 @@
 
 import { useMe } from "@/hooks/auth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface AdminAuthWrapperProps {
   children: React.ReactNode;
@@ -11,22 +11,35 @@ interface AdminAuthWrapperProps {
 export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   const { data: user, isLoading, error } = useMe();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering after client-side mount
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && isMounted) {
       if (error || !user) {
-
+        // Not authenticated, redirect to login
         router.push('/login');
         return;
       }
       
       if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
+        // Not an admin or staff, redirect to customer area
         router.push('/');
         return;
       }
     }
-  }, [user, isLoading, error, router]);
+  }, [user, isLoading, error, router, isMounted]);
 
+  // Show nothing during SSR to prevent hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
+
+  // Show loading while checking authentication
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black text-white">
@@ -38,6 +51,7 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
     );
   }
 
+  // Show loading while redirecting for unauthorized users
   if (error || !user || (user.role !== 'ADMIN' && user.role !== 'STAFF')) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black text-white">
@@ -49,5 +63,6 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
     );
   }
 
+  // User is authenticated and is an admin or staff
   return <>{children}</>;
 }
