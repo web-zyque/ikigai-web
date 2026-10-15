@@ -61,16 +61,24 @@ export async function seedCategories() {
   }
 }
 
-// Allow running this script directly
-async function seed() {
-  console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
-  await seedCategories();
-  console.log('Category seeding completed!');
+export async function closeCategoriesConnection() {
+  // Neon serverless doesn't require explicit connection closing
+  // This function is provided for consistency with the pattern
+  console.log('🔌 Categories connection closed');
 }
 
+// Allow running this script directly
 if (require.main === module) {
-  seed().catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+  (async () => {
+    try {
+      console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
+      await seedCategories();
+      console.log('Category seeding completed!');
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    } finally {
+      await closeCategoriesConnection();
+    }
+  })();
 }

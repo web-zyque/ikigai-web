@@ -48,10 +48,7 @@ export async function seedAdmin() {
     });
     
     console.log(`   ✅ Admin user created successfully!`);
-    console.log(`   📧 Email: ${adminEmail}`);
-    console.log(`   👤 Name: ${adminName}`);
-    console.log(`   🔑 Role: ${adminRole}`);
-    console.log(`   🆔 Admin ID: ${adminId}`);
+
     
   } catch (error: any) {
     if (error?.code === '23505') {
@@ -67,16 +64,23 @@ export async function seedAdmin() {
   }
 }
 
-// Allow running this script directly
-async function seedAdminDirect() {
-  console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
-  await seedAdmin();
-  console.log('\n🔐 Keep these credentials secure!');
+export async function closeAdminConnection() {
+
+  console.log('🔌 Admin connection closed');
 }
 
+// Allow running this script directly
 if (require.main === module) {
-  seedAdminDirect().catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+  (async () => {
+    try {
+      console.log('Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
+      await seedAdmin();
+      console.log('\n🔐 Keep these credentials secure!');
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    } finally {
+      await closeAdminConnection();
+    }
+  })();
 }
