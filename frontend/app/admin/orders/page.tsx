@@ -130,7 +130,7 @@ export default function OrderDashboardPage() {
 
   return (
     <>
-      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 max-w-7xl w-full flex flex-col justify-start">
+      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 w-full flex flex-col justify-start">
         {/* Mobile menu toggle button if sidebar is collapsed on mobile */}
         <div className="lg:hidden flex items-center justify-between pb-2">
           <button
