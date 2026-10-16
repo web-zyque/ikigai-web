@@ -16,6 +16,23 @@
   /* Global mappings */
   --background: #000000;
   --foreground: #ffffff;
+
+  /* ReceiptPrinter grayscale scale (dark theme) */
+  --color-grayscale-1:  #0a0a0a;
+  --color-grayscale-2:  #111111;
+  --color-grayscale-3:  #1a1a1a;
+  --color-grayscale-4:  #222222;
+  --color-grayscale-5:  #2e2e2e;
+  --color-grayscale-6:  #3d3d3d;
+  --color-grayscale-7:  #4f4f4f;
+  --color-grayscale-8:  #686868;
+  --color-grayscale-9:  #818181;
+  --color-grayscale-10: #a0a0a0;
+  --color-grayscale-11: #c0c0c0;
+  --color-grayscale-12: #e8e8e8;
+
+  /* ReceiptPrinter green accent */
+  --color-green-9: #22c55e;
 }
 
 @theme inline {
@@ -89,4 +106,9 @@ input[type="number"] {
 
 .policy-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #7a1010;
+}
+.receipt-export {
+  background: #ffffff;
+  color: #171717;
+  padding: 24px;
 }

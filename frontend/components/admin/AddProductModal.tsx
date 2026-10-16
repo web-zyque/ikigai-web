@@ -95,20 +95,6 @@ export default function AddProductModal({
 
   const mainFileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape" && !isSubmitting) handleClose();
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = "unset";
-        window.removeEventListener("keydown", handleKeyDown);
-      };
-    }
-  }, [isOpen, isSubmitting]);
-
   const handleClose = () => {
     if (isSubmitting) return;
     setCurrentStep(1);
@@ -136,6 +122,21 @@ export default function AddProductModal({
     setErrors({});
     onClose();
   };
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && !isSubmitting) handleClose();
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "unset";
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [isOpen, isSubmitting]);
+
+
 
   const handleAddColorValue = () => {
     const trimmed = newColorInput.trim();
@@ -282,9 +283,9 @@ export default function AddProductModal({
 
       const vehicleCompatibilityArray = vehicleCompatibility
         ? vehicleCompatibility
-            .split(",")
-            .map((v) => v.trim())
-            .filter((v) => v.length > 0)
+          .split(",")
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0)
         : [];
 
       const colorString =
@@ -385,13 +386,12 @@ export default function AddProductModal({
                         else if (step === 2 && validateStep1()) setCurrentStep(2);
                         else if (step === 3 && validateStep1() && validateStep2()) setCurrentStep(3);
                       }}
-                      className={`relative flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                        isCurrent
+                      className={`relative flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer ${isCurrent
                           ? "bg-white text-black ring-4 ring-white/20 shadow-md"
                           : isCompleted
-                          ? "bg-[#640C0C] text-white hover:bg-[#7a1010]"
-                          : "bg-white/10 text-white/40 hover:bg-white/15 hover:text-white"
-                      }`}
+                            ? "bg-[#640C0C] text-white hover:bg-[#7a1010]"
+                            : "bg-white/10 text-white/40 hover:bg-white/15 hover:text-white"
+                        }`}
                     >
                       {isCompleted ? <Check className="h-3.5 w-3.5" /> : step}
                     </button>
@@ -399,9 +399,8 @@ export default function AddProductModal({
 
                   {step < totalSteps && (
                     <div
-                      className={`h-0.5 flex-1 mx-4 rounded transition-colors ${
-                        currentStep > step ? "bg-[#640C0C]" : "bg-white/10"
-                      }`}
+                      className={`h-0.5 flex-1 mx-4 rounded transition-colors ${currentStep > step ? "bg-[#640C0C]" : "bg-white/10"
+                        }`}
                     />
                   )}
                 </React.Fragment>
@@ -442,9 +441,8 @@ export default function AddProductModal({
                       setProductName(e.target.value);
                       if (errors.productName) setErrors((prev) => ({ ...prev, productName: "" }));
                     }}
-                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                      errors.productName ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                    }`}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.productName ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                   />
                 </div>
 
@@ -468,9 +466,8 @@ export default function AddProductModal({
                       setSku(e.target.value.toUpperCase());
                       if (errors.sku) setErrors((prev) => ({ ...prev, sku: "" }));
                     }}
-                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-colors ${
-                      errors.sku ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                    }`}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm font-mono text-white placeholder-white/30 outline-none transition-colors ${errors.sku ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                   />
                 </div>
 
@@ -492,9 +489,8 @@ export default function AddProductModal({
                       setSelectedCategoryId(e.target.value);
                       if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
                     }}
-                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white outline-none transition-colors cursor-pointer ${
-                      errors.categoryId ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                    }`}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white outline-none transition-colors cursor-pointer ${errors.categoryId ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                   >
                     <option value="" className="bg-[#121212] text-white/40">
                       Select Category
@@ -527,9 +523,8 @@ export default function AddProductModal({
                       setBrand(e.target.value);
                       if (errors.brand) setErrors((prev) => ({ ...prev, brand: "" }));
                     }}
-                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                      errors.brand ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                    }`}
+                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.brand ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                   />
                 </div>
 
@@ -553,9 +548,8 @@ export default function AddProductModal({
                       setDescription(e.target.value);
                       if (errors.description) setErrors((prev) => ({ ...prev, description: "" }));
                     }}
-                    className={`w-full rounded-[20px] bg-[#0a0a0a] border p-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                      errors.description ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                    }`}
+                    className={`w-full rounded-[20px] bg-[#0a0a0a] border p-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.description ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                      }`}
                   />
                 </div>
               </div>
@@ -580,14 +574,12 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={() => setHasColorVariants((prev) => !prev)}
-                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
-                          hasColorVariants ? "bg-[#640C0C]" : "bg-white/20"
-                        }`}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hasColorVariants ? "bg-[#640C0C]" : "bg-white/20"
+                          }`}
                       >
                         <div
-                          className={`h-5 w-5 rounded-full bg-white transition-transform ${
-                            hasColorVariants ? "translate-x-5" : "translate-x-0"
-                          }`}
+                          className={`h-5 w-5 rounded-full bg-white transition-transform ${hasColorVariants ? "translate-x-5" : "translate-x-0"
+                            }`}
                         />
                       </button>
                       <div>
@@ -645,14 +637,12 @@ export default function AddProductModal({
                       <button
                         type="button"
                         onClick={() => setHasSizeVariants((prev) => !prev)}
-                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
-                          hasSizeVariants ? "bg-[#640C0C]" : "bg-white/20"
-                        }`}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hasSizeVariants ? "bg-[#640C0C]" : "bg-white/20"
+                          }`}
                       >
                         <div
-                          className={`h-5 w-5 rounded-full bg-white transition-transform ${
-                            hasSizeVariants ? "translate-x-5" : "translate-x-0"
-                          }`}
+                          className={`h-5 w-5 rounded-full bg-white transition-transform ${hasSizeVariants ? "translate-x-5" : "translate-x-0"
+                            }`}
                         />
                       </button>
                       <div>
@@ -780,22 +770,20 @@ export default function AddProductModal({
                               handleFilesSelected(e.dataTransfer.files, colorName);
                             }
                           }}
-                          className={`w-full min-h-[90px] rounded-[16px] border border-dashed transition-all flex items-center justify-center p-4 ${
-                            isDragOverThis
+                          className={`w-full min-h-[90px] rounded-[16px] border border-dashed transition-all flex items-center justify-center p-4 ${isDragOverThis
                               ? "border-white bg-white/10"
                               : "border-white/10 bg-[#121212]/60 hover:border-white/20"
-                          }`}
+                            }`}
                         >
                           {colorImages.length > 0 ? (
                             <div className="w-full grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                               {colorImages.map((img) => (
                                 <div
                                   key={img.id}
-                                  className={`relative rounded-xl border bg-[#0a0a0a] overflow-hidden p-1.5 flex flex-col justify-between ${
-                                    img.isMain
+                                  className={`relative rounded-xl border bg-[#0a0a0a] overflow-hidden p-1.5 flex flex-col justify-between ${img.isMain
                                       ? "border-white ring-1 ring-white"
                                       : "border-white/10"
-                                  }`}
+                                    }`}
                                 >
                                   <div className="relative w-full h-24 rounded-lg overflow-hidden bg-black/40 flex items-center justify-center">
                                     <Image
@@ -852,11 +840,10 @@ export default function AddProductModal({
                         handleFilesSelected(e.dataTransfer.files);
                       }
                     }}
-                    className={`relative flex min-h-52 flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed p-6 transition-all text-center cursor-pointer ${
-                      isDragging
+                    className={`relative flex min-h-52 flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed p-6 transition-all text-center cursor-pointer ${isDragging
                         ? "border-white bg-white/10 ring-2 ring-white/20"
                         : "border-white/15 bg-[#0a0a0a] hover:border-white/30 hover:bg-[#121212]"
-                    }`}
+                      }`}
                     onClick={() => mainFileInputRef.current?.click()}
                   >
                     <input
@@ -903,11 +890,10 @@ export default function AddProductModal({
                         {uploadedImages.map((img, idx) => (
                           <div
                             key={img.id}
-                            className={`group relative rounded-[20px] border bg-[#0a0a0a] overflow-hidden p-2 flex flex-col justify-between transition-all ${
-                              img.isMain
+                            className={`group relative rounded-[20px] border bg-[#0a0a0a] overflow-hidden p-2 flex flex-col justify-between transition-all ${img.isMain
                                 ? "border-white ring-1 ring-white"
                                 : "border-white/10 hover:border-white/30"
-                            }`}
+                              }`}
                           >
                             <div className="relative w-full h-32 rounded-xl overflow-hidden bg-black/40 flex items-center justify-center">
                               <Image
@@ -1062,9 +1048,8 @@ export default function AddProductModal({
                         setSellingPrice(e.target.value);
                         if (errors.sellingPrice) setErrors((prev) => ({ ...prev, sellingPrice: "" }));
                       }}
-                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                        errors.sellingPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                      }`}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.sellingPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                        }`}
                     />
                   </div>
 
@@ -1089,9 +1074,8 @@ export default function AddProductModal({
                         setMrpPrice(e.target.value);
                         if (errors.mrpPrice) setErrors((prev) => ({ ...prev, mrpPrice: "" }));
                       }}
-                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                        errors.mrpPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                      }`}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.mrpPrice ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                        }`}
                     />
                   </div>
 
@@ -1115,9 +1099,8 @@ export default function AddProductModal({
                         setStockQuantity(e.target.value);
                         if (errors.stockQuantity) setErrors((prev) => ({ ...prev, stockQuantity: "" }));
                       }}
-                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
-                        errors.stockQuantity ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                      }`}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.stockQuantity ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                        }`}
                     />
                   </div>
 
@@ -1149,9 +1132,8 @@ export default function AddProductModal({
             type="button"
             disabled={currentStep === 1 || isSubmitting}
             onClick={handleBack}
-            className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-5 py-2.5 text-xs font-medium text-white transition-colors cursor-pointer ${
-              currentStep === 1 ? "opacity-30 pointer-events-none" : "hover:bg-white/10"
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-5 py-2.5 text-xs font-medium text-white transition-colors cursor-pointer ${currentStep === 1 ? "opacity-30 pointer-events-none" : "hover:bg-white/10"
+              }`}
           >
             <ChevronLeft className="h-4 w-4" />
             <span>Previous</span>
