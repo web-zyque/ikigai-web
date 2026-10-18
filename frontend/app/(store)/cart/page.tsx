@@ -9,46 +9,32 @@ import { useMe } from "@/hooks/auth";
 
 export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart } = useCart();
-  const { data: user, isLoading } = useMe();
+  const { data: user } = useMe();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discount = subtotal > 0 ? 0 : 0; 
   const deliveryFee = subtotal > 0 ? 15.00 : 0;
   const total = subtotal - discount + deliveryFee;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black">
-        <div className="container mx-auto px-4 py-8 max-w-7xl flex justify-center items-center h-[50vh]">
-          <p className="text-white/50">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col">
-        <div className="flex-1 container mx-auto px-4 flex justify-center items-center">
-          <div className="bg-[#121212] border border-white/5 rounded-[20px] p-8 md:p-12 text-center max-w-md w-full">
-            <h2 className="text-2xl font-bold text-white mb-3">Cart Access Restricted</h2>
-            <p className="text-white/60 mb-8 text-sm leading-relaxed">
-              Please log in to your account to view your cart, manage your items, and proceed to checkout securely.
-            </p>
-            <Link href="/login">
-              <Button className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 font-medium">
-                Log In to Continue
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-black">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {!user && cartItems.length > 0 && (
+          <div className="mb-6 bg-[#121212] border border-white/10 rounded-[16px] p-4 flex items-start gap-3">
+            <div className="text-white/70 text-sm">
+              <span className="text-lg">ℹ️</span>
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium mb-1">Guest Cart</p>
+              <p className="text-white/60 text-xs leading-relaxed">
+                You're browsing as a guest. Your cart is saved locally. 
+                <Link href="/login?redirect=/cart" className="text-[#640C0C] hover:underline ml-1">
+                  Log in
+                </Link> to proceed with checkout.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 bg-[#121212] rounded-[16px] border border-white/5 p-5 md:p-6">
             <div className="hidden md:grid grid-cols-12 gap-4 text-white/50 text-xs mb-4 border-b border-white/10 pb-2">
@@ -138,6 +124,14 @@ export default function CartPage() {
               <Button 
                 disabled={cartItems.length === 0}
                 className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (!user) {
+                    window.location.href = '/login?redirect=/cart';
+                  } else {
+                    // Existing checkout logic (if implemented)
+                    alert('Checkout functionality to be implemented');
+                  }
+                }}
               >
                 Go to Checkout
               </Button>

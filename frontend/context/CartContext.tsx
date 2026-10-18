@@ -23,21 +23,32 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [toastVisible, setToastVisible] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Optional: Load from local storage on mount
+  // Load from local storage on mount
   useEffect(() => {
     const saved = localStorage.getItem("cart");
     if (saved) {
       try {
-        setCartItems(JSON.parse(saved));
-      } catch (e) {}
+        const parsedCart = JSON.parse(saved);
+        // Validate that it's an array
+        if (Array.isArray(parsedCart)) {
+          setCartItems(parsedCart);
+        }
+      } catch (e) {
+        // Invalid JSON - ignore and start with empty cart
+        console.warn("Failed to parse cart from localStorage:", e);
+      }
     }
+    setIsHydrated(true);
   }, []);
 
-  // Save to local storage on change
+  // Save to local storage on change (only after hydration)
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (isHydrated) {
+      localStorage.setItem("cart", JSON.stringify(cartItems));
+    }
+  }, [cartItems, isHydrated]);
 
   const showToast = () => {
     setToastVisible(true);

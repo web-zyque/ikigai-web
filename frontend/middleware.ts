@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PROTECTED_ROUTES = ['/profile', '/orders', '/cart'];
+
+const PROTECTED_ROUTES = ['/profile', '/orders'];
 const AUTH_ROUTES = ['/login', '/forgot-password'];
 const ADMIN_ROUTES = ['/admin'];
 
-export default function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   const token = request.cookies.get('token')?.value;
