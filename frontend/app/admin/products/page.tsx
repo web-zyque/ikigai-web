@@ -127,6 +127,12 @@ export default function ProductsInventoryPage() {
     });
   };
 
+  const handleEditProduct = (prod: ProductResponse) => {
+    // TODO: Implement edit product modal or navigate to edit page
+    // For now, show a notification that this feature is coming soon
+    alert(`Edit functionality for "${prod.name}" is not yet implemented. This will be added in a future update.`);
+  };
+
   const handleAddProductSuccess = () => {
     refetch();
   };
@@ -198,6 +204,7 @@ export default function ProductsInventoryPage() {
         product={selectedProduct}
         isOpen={Boolean(selectedProductId && selectedProduct)}
         onClose={() => setSelectedProductId(null)}
+        onEdit={handleEditProduct}
         onAddStock={handleAddStock}
         onArchive={handleArchiveProduct}
         onDelete={handleDeleteProduct}
