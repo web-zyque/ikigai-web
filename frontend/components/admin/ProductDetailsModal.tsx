@@ -96,6 +96,32 @@ export default function ProductDetailsModal({
     }
   };
 
+  const getPublicationStatusBadge = (status: ProductResponse["publicationStatus"]) => {
+    switch (status) {
+      case "active":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            Active
+          </span>
+        );
+      case "draft":
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+            Draft
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/60">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/60"></span>
+            {status}
+          </span>
+        );
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -202,9 +228,12 @@ export default function ProductDetailsModal({
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {/* Header: Title and Brand */}
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug">
-                {product.name}
-              </h2>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug flex-1">
+                  {product.name}
+                </h2>
+                {getPublicationStatusBadge(product.publicationStatus)}
+              </div>
               {product.brand && (
                 <p className="text-sm text-white/50 mt-1">Brand: {product.brand}</p>
               )}
@@ -268,26 +297,50 @@ export default function ProductDetailsModal({
                   </span>
                 </div>
 
-                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
-                  <span className="text-xs text-white/50">Product Type</span>
-                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
-                    {product.productType || "Standard"}
-                  </span>
-                </div>
+                {product.productType && (
+                  <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                    <span className="text-xs text-white/50">Product Type</span>
+                    <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                      {product.productType}
+                    </span>
+                  </div>
+                )}
 
-                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
-                  <span className="text-xs text-white/50">Color / Finish</span>
-                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
-                    {product.color || "Default"}
-                  </span>
-                </div>
+                {product.color && (
+                  <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                    <span className="text-xs text-white/50">Color / Finish</span>
+                    <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                      {product.color}
+                    </span>
+                  </div>
+                )}
 
-                <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
-                  <span className="text-xs text-white/50">Warranty</span>
-                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
-                    {product.warranty || "Standard"}
-                  </span>
-                </div>
+                {product.dimensions && (
+                  <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                    <span className="text-xs text-white/50">Dimensions / Size</span>
+                    <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                      {product.dimensions}
+                    </span>
+                  </div>
+                )}
+
+                {product.material && (
+                  <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                    <span className="text-xs text-white/50">Material</span>
+                    <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                      {product.material}
+                    </span>
+                  </div>
+                )}
+
+                {product.warranty && (
+                  <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+                    <span className="text-xs text-white/50">Warranty</span>
+                    <span className="mt-1 text-sm text-white/90 font-medium truncate">
+                      {product.warranty}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Vehicle Compatibility below specifications */}
