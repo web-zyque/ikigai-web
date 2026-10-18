@@ -132,9 +132,9 @@ export default function AboutPage() {
                         </h1>
 
                         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base lg:text-lg">
-                            At Ikigai Car Accessories, we believe every vehicle deserves
-                            its own identity. Discover accessories that help you express
-                            your style and make every drive your own.
+                            From performance upgrades and exterior transformations to precision
+                            interiors and custom builds, every detail is shaped with one purpose -
+                            to make the machine feel like yours.
                         </p>
 
                         <div className="mt-8 flex flex-wrap gap-3">

@@ -25,15 +25,15 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/70">
-            From performance upgrades and exterior transformations to precision
-            interiors and custom builds, every detail is shaped with one purpose -
-            to make the machine feel like yours.
+            Discover premium car accessories, performance upgrades, 
+            and styling essentials to personalize your ride. Find the 
+            perfect upgrades to match your style.
           </p>
 
           <div className="mt-10 flex w-full max-w-[370px] items-center overflow-hidden rounded-full bg-white/10 pl-4 pr-1 py-1 backdrop-blur-md border border-white/20 transition-colors focus-within:border-white/40 focus-within:bg-white/15">
             <input
               type="text"
-              placeholder="Search accessories, parts..."
+              placeholder="Search products, brands, or part names..."
               className="w-full bg-transparent px-2 py-2 text-sm text-white placeholder-white/50 outline-none"
             />
             <button
