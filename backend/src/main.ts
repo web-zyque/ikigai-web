@@ -11,7 +11,7 @@ async function bootstrap() {
 app.enableCors({
   origin:
     process.env.NODE_ENV === 'production'
-      ? 'https://ikigaiautomotive.vercel.app'
+      ? /^https:\/\/ikigaiautomotive\.vercel\.app$/
       : 'http://localhost:3000',
   credentials: true,
 });
