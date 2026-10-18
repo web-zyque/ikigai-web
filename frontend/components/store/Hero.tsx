@@ -3,10 +3,9 @@ import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
 const socials = [
-  { name: "Instagram", icon: FaInstagram, href: "" },
-  { name: "Twitter", icon: FaXTwitter, href: "" },
-  { name: "LinkedIn", icon: FaLinkedin, href: "" },
-  { name: "Facebook", icon: FaFacebook, href: "" },
+  { name: "Instagram", icon: FaInstagram, href: "https://www.instagram.com/ikigai_car_accessories" },
+  { name: "Twitter", icon: FaXTwitter, href: "https://www.x.com/" },
+  { name: "Facebook", icon: FaFacebook, href: "https://www.facebook.com/profile.php?id=61576794269513" },
 ];
 
 export default function Hero() {
@@ -15,6 +14,13 @@ export default function Hero() {
       <div className="relative mx-auto grid min-h-[calc(100vh-80px)] max-w-7xl items-center gap-10 px-6 lg:grid-cols-2 lg:px-12 py-10 lg:py-0">
 
         <div className="relative z-10 max-w-xl">
+          <div className="mb-5 flex items-center gap-3">
+            <span className="h-px w-7 bg-[#640C0C]" />
+
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+              Ikigai Customs Car Accessories
+            </p>
+          </div>
           <h1 className="text-5xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
             Ready to Build{" "}<br />
             <span className="bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
@@ -25,8 +31,8 @@ export default function Hero() {
           </h1>
 
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/70">
-            Discover premium car accessories, performance upgrades, 
-            and styling essentials to personalize your ride. Find the 
+            Discover premium car accessories, performance upgrades,
+            and styling essentials to personalize your ride. Find the
             perfect upgrades to match your style.
           </p>
 
