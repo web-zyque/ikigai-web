@@ -39,11 +39,7 @@ export class AuthService {
     if (existing) throw new ConflictException('Phone already registered');
 
     const code = randomInt(100000, 1000000).toString();
-    
-    // Only log OTP in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Generated OTP:', { phone, code });
-    }
+    console.log('Generated OTP:', { phone, code });
 
     await this.db.insert(otps).values({
       phone,
@@ -59,6 +55,8 @@ export class AuthService {
   }
 
   async verifyOtp(phone: string, otp: string) {
+    console.log('Verify OTP attempt:', { phone, otp });
+    
     const [row] = await this.db
       .select()
       .from(otps)
@@ -66,11 +64,26 @@ export class AuthService {
       .orderBy(desc(otps.createdAt))
       .limit(1);
 
+    console.log('OTP row found for verification:', row ? { 
+      id: row.id, 
+      phone: row.phone, 
+      expiresAt: row.expiresAt, 
+      attempts: row.attempts,
+      consumed: row.consumed 
+    } : 'No row found');
+
     if (!row || row.expiresAt < new Date() || row.attempts >= 5) {
+      console.log('OTP verification failed:', {
+        noRow: !row,
+        expired: row ? row.expiresAt < new Date() : false,
+        tooManyAttempts: row ? row.attempts >= 5 : false
+      });
       throw new BadRequestException('OTP invalid or expired');
     }
 
+    console.log('Verifying OTP for verification:', { inputOtp: otp, hasCodeHash: !!row.codeHash });
     const valid = await argon2.verify(row.codeHash, otp);
+    console.log('OTP verification result:', valid);
     
     if (!valid) {
       await this.db
@@ -89,6 +102,9 @@ export class AuthService {
   }
 
   async signup(dto: SignupDto) {
+    console.log('Signup attempt:', { phone: dto.phone, otp: dto.otp });
+    
+
     const [row] = await this.db
       .select()
       .from(otps)
@@ -99,11 +115,22 @@ export class AuthService {
       .orderBy(desc(otps.createdAt))
       .limit(1);
 
+    console.log('OTP row found:', row ? { 
+      id: row.id, 
+      phone: row.phone, 
+      expiresAt: row.expiresAt, 
+      attempts: row.attempts,
+      consumed: row.consumed 
+    } : 'No row found');
+
     if (!row || row.createdAt < new Date(Date.now() - 10 * 60 * 1000)) {
       throw new BadRequestException('Please verify your OTP first');
     }
 
+
+    console.log('Final OTP verification for signup:', { inputOtp: dto.otp, hasCodeHash: !!row.codeHash });
     const valid = await argon2.verify(row.codeHash, dto.otp);
+    console.log('Final OTP verification result:', valid);
     
     if (!valid) {
       throw new BadRequestException('Wrong OTP');
@@ -120,6 +147,7 @@ export class AuthService {
         .returning();
       return this.signToken(user.id, 'CUSTOMER');
     } catch (e: any) {
+  
       if (e?.code === '23505')
         throw new ConflictException('Phone already registered');
       throw e;
@@ -224,10 +252,8 @@ export class AuthService {
   }
 
   private async sendSms(phone: string, message: string) {
-    // Only log SMS content in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[SMS] ${phone}: ${message}`);
-    }
+
+    console.log(`[SMS] ${phone}: ${message}`);
     
     if (process.env.NODE_ENV === 'production') {
       // TODO: call MSG91 / Twilio here

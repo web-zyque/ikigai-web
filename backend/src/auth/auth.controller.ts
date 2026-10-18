@@ -13,7 +13,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto } from './dto/auth.dto';
 import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema } from './dto/auth.dto';
-import { AdminGuard, JwtAuthGuard } from './jwt/jwt-auth.guard';
+import { JwtAuthGuard } from './jwt/jwt-auth.guard';
 
 const COOKIE_NAME = 'token';
 
@@ -81,7 +81,6 @@ export class AuthController {
     return this.auth.me(req.user.id, req.user.role);
   }
 
-  @UseGuards(AdminGuard)
   @Post('admin')
   @HttpCode(201)
   async createAdmin(@Body() body: unknown) {
