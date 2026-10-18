@@ -24,12 +24,7 @@ const socials = [
 
 function CartIcon() {
   const { cartItems } = useCart();
-  const { data: user, isLoading, error } = useMe();
   const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-
-  if (isLoading || error || !user) {
-    return null;
-  }
 
   return (
     <Link href="/cart" className="relative group flex h-10 w-10 items-center justify-center rounded-full bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
