@@ -50,9 +50,8 @@ export default function AddProductModal({
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
 
-  const { data: apiCategories } = useCategories();
-  const availableCategories =
-    apiCategories && apiCategories.length > 0 ? apiCategories : DEFAULT_CATEGORIES;
+  const { data: apiCategories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
+  const availableCategories = apiCategories && apiCategories.length > 0 ? apiCategories : [];
 
   const createProductMutation = useCreateProduct();
   const uploadImageMutation = useUploadImage();
@@ -143,6 +142,10 @@ export default function AddProductModal({
     if (trimmed && !colorValues.includes(trimmed)) {
       setColorValues((prev) => [...prev, trimmed]);
       setNewColorInput("");
+      // Clear color variant error if adding a value
+      if (errors.colorVariants) {
+        setErrors((prev) => ({ ...prev, colorVariants: "" }));
+      }
     }
   };
 
@@ -156,6 +159,10 @@ export default function AddProductModal({
     if (trimmed && !sizeValues.includes(trimmed)) {
       setSizeValues((prev) => [...prev, trimmed]);
       setNewSizeInput("");
+      // Clear size variant error if adding a value
+      if (errors.sizeVariants) {
+        setErrors((prev) => ({ ...prev, sizeVariants: "" }));
+      }
     }
   };
 
@@ -204,14 +211,38 @@ export default function AddProductModal({
 
   const validateStep1 = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!productName.trim()) newErrors.productName = "Product title is required";
-    if (!sku.trim()) newErrors.sku = "SKU identifier is required";
-    if (!selectedCategoryId) newErrors.categoryId = "Category selection is required";
-    if (!brand.trim()) newErrors.brand = "Brand name is required";
-    if (!description.trim()) newErrors.description = "Product description is required";
+    
+    // Required field validations (after trimming)
+    if (!productName.trim()) {
+      newErrors.productName = "Product title is required";
+    }
+    
+    if (!sku.trim()) {
+      newErrors.sku = "SKU identifier is required";
+    }
+    
+    if (!selectedCategoryId) {
+      newErrors.categoryId = "Category selection is required";
+    } else if (availableCategories.length > 0 && !availableCategories.find(cat => cat.id === selectedCategoryId)) {
+      // Validate that selected category exists in actual backend categories
+      newErrors.categoryId = "Please select a valid category from the list";
+    }
+    
+    if (!brand.trim()) {
+      newErrors.brand = "Brand name is required";
+    }
+    
+    if (!description.trim()) {
+      newErrors.description = "Product description is required";
+    }
 
+    // Variant validations
     if (hasColorVariants && colorValues.length === 0) {
-      newErrors.attributes = "Please add at least one color value";
+      newErrors.colorVariants = "Please add at least one color when color variants are enabled";
+    }
+    
+    if (hasSizeVariants && sizeValues.length === 0) {
+      newErrors.sizeVariants = "Please add at least one size when size variants are enabled";
     }
 
     setErrors(newErrors);
@@ -229,15 +260,41 @@ export default function AddProductModal({
 
   const validateStep3 = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!sellingPrice.trim() || isNaN(parseFloat(sellingPrice)) || parseFloat(sellingPrice) < 0) {
-      newErrors.sellingPrice = "Valid selling price is required";
+    
+    // Selling Price - Required and must be positive
+    if (!sellingPrice.trim()) {
+      newErrors.sellingPrice = "Selling price is required";
+    } else {
+      const price = parseFloat(sellingPrice);
+      if (isNaN(price) || price <= 0) {
+        newErrors.sellingPrice = "Selling price must be greater than zero";
+      }
     }
-    if (!mrpPrice.trim() || isNaN(parseFloat(mrpPrice)) || parseFloat(mrpPrice) < 0) {
-      newErrors.mrpPrice = "Valid MRP price is required";
+    
+    // MRP Price - Optional, but if provided must be positive
+    if (mrpPrice.trim()) {
+      const price = parseFloat(mrpPrice);
+      if (isNaN(price) || price <= 0) {
+        newErrors.mrpPrice = "MRP price must be a valid positive number";
+      }
     }
-    if (stockQuantity === "" || Number(stockQuantity) < 0) {
-      newErrors.stockQuantity = "Stock quantity cannot be negative";
+    
+    // Stock Quantity - Optional (defaults to 0), if provided must be non-negative
+    if (stockQuantity !== "" && stockQuantity !== undefined) {
+      const qty = Number(stockQuantity);
+      if (isNaN(qty) || qty < 0 || !Number.isInteger(qty)) {
+        newErrors.stockQuantity = "Stock quantity must be a non-negative whole number";
+      }
     }
+    
+    // Low Stock Threshold - Optional (defaults to 5), if provided must be >= 1
+    if (lowStockThreshold !== "" && lowStockThreshold !== undefined) {
+      const threshold = Number(lowStockThreshold);
+      if (isNaN(threshold) || threshold < 1 || !Number.isInteger(threshold)) {
+        newErrors.lowStockThreshold = "Low stock threshold must be a whole number of at least 1";
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -300,9 +357,9 @@ export default function AddProductModal({
         brand: brand.trim() || undefined,
         description: description.trim() || undefined,
         sellingPrice: parseFloat(sellingPrice),
-        mrpPrice: mrpPrice ? parseFloat(mrpPrice) : undefined,
-        stockQuantity: Number(stockQuantity),
-        lowStockThreshold: Number(lowStockThreshold) || 5,
+        mrpPrice: mrpPrice.trim() ? parseFloat(mrpPrice) : undefined,
+        stockQuantity: stockQuantity === "" || stockQuantity === undefined ? 0 : Number(stockQuantity),
+        lowStockThreshold: lowStockThreshold === "" || lowStockThreshold === undefined ? 5 : Number(lowStockThreshold),
         publicationStatus: "active" as const,
         vehicleCompatibility:
           vehicleCompatibilityArray.length > 0 ? vehicleCompatibilityArray : undefined,
@@ -319,12 +376,16 @@ export default function AddProductModal({
         onSuccess?.(result as unknown as Record<string, unknown>);
         handleClose();
       } catch {
+        // Fallback success handler
+        const categoryName = availableCategories.length > 0 
+          ? availableCategories.find((c) => c.id === selectedCategoryId)?.name 
+          : "Accessories";
+        
         onSuccess?.({
           id: `prod-${Date.now()}`,
           name: productPayload.name,
           sku: productPayload.sku,
-          category:
-            availableCategories.find((c) => c.id === selectedCategoryId)?.name || "Accessories",
+          category: categoryName || "Accessories",
           sellingPrice: productPayload.sellingPrice,
           stockQuantity: productPayload.stockQuantity,
           inventoryStatus: productPayload.stockQuantity > 5 ? "in_stock" : "low_stock",
@@ -483,24 +544,37 @@ export default function AddProductModal({
                       </span>
                     )}
                   </div>
-                  <select
-                    value={selectedCategoryId}
-                    onChange={(e) => {
-                      setSelectedCategoryId(e.target.value);
-                      if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
-                    }}
-                    className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white outline-none transition-colors cursor-pointer ${errors.categoryId ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
-                      }`}
-                  >
-                    <option value="" className="bg-[#121212] text-white/40">
-                      Select Category
-                    </option>
-                    {availableCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-[#121212] text-white">
-                        {cat.name}
+                  {categoriesError ? (
+                    <div className="w-full h-12 rounded-full bg-red-500/10 border border-red-500/30 px-4 flex items-center text-xs text-red-400">
+                      <AlertCircle className="h-3.5 w-3.5 mr-2" />
+                      Failed to load categories. Please refresh the page.
+                    </div>
+                  ) : categoriesLoading ? (
+                    <div className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 flex items-center text-xs text-white/40">
+                      <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                      Loading categories...
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedCategoryId}
+                      onChange={(e) => {
+                        setSelectedCategoryId(e.target.value);
+                        if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: "" }));
+                      }}
+                      disabled={availableCategories.length === 0}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white outline-none transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${errors.categoryId ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                        }`}
+                    >
+                      <option value="" className="bg-[#121212] text-white/40">
+                        {availableCategories.length === 0 ? "No categories available" : "Select Category"}
                       </option>
-                    ))}
-                  </select>
+                      {availableCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id} className="bg-[#121212] text-white">
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Brand */}
@@ -560,20 +634,24 @@ export default function AddProductModal({
                   <span className="text-sm font-semibold uppercase tracking-wider text-white/80">
                     Attributes
                   </span>
-                  {errors.attributes && (
+                  {(errors.colorVariants || errors.sizeVariants) && (
                     <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
-                      <AlertCircle className="h-3 w-3" /> {errors.attributes}
+                      <AlertCircle className="h-3 w-3" /> 
+                      {errors.colorVariants || errors.sizeVariants}
                     </span>
                   )}
                 </div>
 
                 <div className="space-y-3">
                   {/* Color Option Attribute */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border border-white/10 bg-[#0a0a0a]">
+                  <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border bg-[#0a0a0a] ${errors.colorVariants ? "border-red-500/30" : "border-white/10"}`}>
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setHasColorVariants((prev) => !prev)}
+                        onClick={() => {
+                          setHasColorVariants((prev) => !prev);
+                          if (errors.colorVariants) setErrors((prev) => ({ ...prev, colorVariants: "" }));
+                        }}
                         className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hasColorVariants ? "bg-[#640C0C]" : "bg-white/20"
                           }`}
                       >
@@ -632,11 +710,14 @@ export default function AddProductModal({
                   </div>
 
                   {/* Size Option Attribute */}
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border border-white/10 bg-[#0a0a0a]">
+                  <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-[20px] border bg-[#0a0a0a] ${errors.sizeVariants ? "border-red-500/30" : "border-white/10"}`}>
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setHasSizeVariants((prev) => !prev)}
+                        onClick={() => {
+                          setHasSizeVariants((prev) => !prev);
+                          if (errors.sizeVariants) setErrors((prev) => ({ ...prev, sizeVariants: "" }));
+                        }}
                         className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hasSizeVariants ? "bg-[#640C0C]" : "bg-white/20"
                           }`}
                       >
@@ -1056,7 +1137,7 @@ export default function AddProductModal({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-white/70">
-                        Original MRP Price (₹) <span className="text-red-400">*</span>
+                        Original MRP Price (₹)
                       </label>
                       {errors.mrpPrice && (
                         <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
@@ -1068,7 +1149,7 @@ export default function AddProductModal({
                       type="number"
                       step="0.01"
                       min="0"
-                      placeholder="3499.00"
+                      placeholder="3499.00 (optional)"
                       value={mrpPrice}
                       onChange={(e) => {
                         setMrpPrice(e.target.value);
@@ -1082,7 +1163,7 @@ export default function AddProductModal({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-medium text-white/70">
-                        Initial Stock Units <span className="text-red-400">*</span>
+                        Initial Stock Units
                       </label>
                       {errors.stockQuantity && (
                         <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
@@ -1093,7 +1174,7 @@ export default function AddProductModal({
                     <input
                       type="number"
                       min="0"
-                      placeholder="20"
+                      placeholder="0 (defaults to 0 if empty)"
                       value={stockQuantity}
                       onChange={(e) => {
                         setStockQuantity(e.target.value);
@@ -1105,16 +1186,27 @@ export default function AddProductModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-white/70 block">
-                      Low Stock Threshold Alert
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-medium text-white/70 block">
+                        Low Stock Threshold Alert
+                      </label>
+                      {errors.lowStockThreshold && (
+                        <span className="text-xs text-red-400 flex items-center gap-1 font-medium">
+                          <AlertCircle className="h-3 w-3" /> {errors.lowStockThreshold}
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="number"
                       min="1"
-                      placeholder="5"
+                      placeholder="5 (defaults to 5 if empty)"
                       value={lowStockThreshold}
-                      onChange={(e) => setLowStockThreshold(e.target.value)}
-                      className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                      onChange={(e) => {
+                        setLowStockThreshold(e.target.value);
+                        if (errors.lowStockThreshold) setErrors((prev) => ({ ...prev, lowStockThreshold: "" }));
+                      }}
+                      className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${errors.lowStockThreshold ? "border-red-500/50 focus:border-red-500" : "border-white/10 focus:border-white/30"
+                        }`}
                     />
                     <span className="text-[11px] text-white/40">
                       Triggers low stock warnings when inventory drops below this quantity
