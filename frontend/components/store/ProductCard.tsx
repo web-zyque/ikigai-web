@@ -10,6 +10,10 @@ export interface Product {
   price: string;
   image: string;
   category?: string;
+  categoryLabel?: string;
+  brand?: string;
+  partType?: string;
+  description?: string;
 }
 
 interface ProductCardProps {
@@ -42,10 +46,15 @@ export default function ProductCard({ product }: ProductCardProps) {
         />
       </div>
       <div className="flex flex-col p-4 grow">
+        {product.brand && (
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
+            {product.brand}
+          </p>
+        )}
         <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
           {product.name}
         </h3>
-        <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
+        <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
         <div className="mt-auto flex w-full gap-2 transition-all duration-300">
           <button className={`${isAdded ? 'w-full' : 'w-[70%]'} rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}>
             Buy Now

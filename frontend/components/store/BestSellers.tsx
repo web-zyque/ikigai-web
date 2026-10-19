@@ -2,27 +2,39 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Inter } from "next/font/google";
 import { useCart } from "@/context/CartContext";
+import { STORE_PRODUCTS } from "@/data/storeCatalog";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const products = Array.from({ length: 10 }).map((_, i) => ({
-  id: i,
-  name: i % 3 === 0
-    ? `Premium Part ${i + 1}`
-    : `Premium Performance Part ${i + 1} with Extra Long Title to Test the Two Line Clamping Behavior`,
-  price: `₹${(299 + i * 50).toLocaleString()}`,
-  image: i % 2 === 0 ? "/images/category_air-intake.jpg" : "/images/category_suspension.jpg",
-}));
+// Selected top best-selling items from the store catalog
+const bestSellerIds = [
+  "prod-1",
+  "prod-bk-1",
+  "prod-sp-1",
+  "prod-ex-1",
+  "prod-wh-1",
+  "prod-tr-t1",
+  "prod-4",
+  "prod-2",
+  "prod-eng-1",
+  "prod-int-1",
+];
 
 export default function BestSellers() {
   const { cartItems, addToCart } = useCart();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const products = useMemo(() => {
+    return bestSellerIds
+      .map((id) => STORE_PRODUCTS.find((p) => p.id === id))
+      .filter((p): p is typeof STORE_PRODUCTS[0] => Boolean(p));
+  }, []);
 
   const checkScroll = () => {
     if (scrollRef.current) {
@@ -63,7 +75,6 @@ export default function BestSellers() {
         </div>
 
         <div className="relative group">
-
           <div className={`pointer-events-none absolute left-0 top-0 z-10 h-full w-12 sm:w-20 bg-gradient-to-r from-black via-black/80 to-transparent transition-opacity duration-300 ${canScrollLeft ? 'opacity-100' : 'opacity-0'}`} />
           <div className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-12 sm:w-20 bg-gradient-to-l from-black via-black/80 to-transparent transition-opacity duration-300 ${canScrollRight ? 'opacity-100' : 'opacity-0'}`} />
 
@@ -117,15 +128,23 @@ export default function BestSellers() {
                   </div>
 
                   <div className="flex flex-col p-4 grow-0 sm:grow">
+                    {product.brand && (
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
+                        {product.brand}
+                      </p>
+                    )}
                     <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
                       {product.name}
                     </h3>
-                    <p className="text-lg font-bold text-[#640C0C] mb-2">{product.price}</p>
+                    <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
 
                     <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
-                      <button className={`flex-1 rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90`}>
+                      <Link
+                        href={`/products?search=${encodeURIComponent(product.name)}`}
+                        className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+                      >
                         Buy Now
-                      </button>
+                      </Link>
                       {!isAdded && (
                         <button
                           onClick={handleAddToCart}
