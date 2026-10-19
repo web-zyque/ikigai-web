@@ -8,12 +8,14 @@ import { InventoryProduct } from "@/components/admin/ProductsInventoryTable";
 import ProductSummaryCards, { ProductCounts } from "@/components/admin/ProductSummaryCards";
 import ProductsTable from "@/components/admin/ProductsTable";
 import AddProductModal from "@/components/admin/AddProductModal";
+import EditProductModal from "@/components/admin/EditProductModal";
 import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
 import { ProductResponse } from "@/types/products.types";
 
 export default function ProductsInventoryPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"All" | "In Stock" | "Low Stock" | "Out of Stock">("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -130,13 +132,16 @@ export default function ProductsInventoryPage() {
   };
 
   const handleEditProduct = (prod: ProductResponse) => {
-    // TODO: Implement edit product modal or navigate to edit page
-    // For now, show a notification that this feature is coming soon
-    alert(`Edit functionality for "${prod.name}" is not yet implemented. This will be added in a future update.`);
+    setIsEditModalOpen(true);
   };
 
   const handleAddProductSuccess = () => {
     refetch();
+  };
+
+  const handleEditProductSuccess = () => {
+    refetch();
+    setIsEditModalOpen(false);
   };
 
   if (isLoading) {
@@ -202,9 +207,16 @@ export default function ProductsInventoryPage() {
         onSuccess={handleAddProductSuccess}
       />
 
+      <EditProductModal
+        isOpen={isEditModalOpen}
+        product={selectedProduct}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={handleEditProductSuccess}
+      />
+
       <ProductDetailsModal
         product={selectedProduct}
-        isOpen={Boolean(selectedProductId && selectedProduct)}
+        isOpen={Boolean(selectedProductId && selectedProduct && !isEditModalOpen)}
         onClose={() => setSelectedProductId(null)}
         onEdit={handleEditProduct}
         onAddStock={handleAddStock}

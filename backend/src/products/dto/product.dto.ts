@@ -31,9 +31,7 @@ export const CreateProductSchema = z.object({
   })).min(1, 'At least one image is required'),
 });
 
-export const UpdateProductSchema = CreateProductSchema.partial().extend({
-  id: z.string().uuid(),
-});
+export const UpdateProductSchema = CreateProductSchema.partial();
 
 export const GetProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
