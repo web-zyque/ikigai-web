@@ -9,17 +9,28 @@ export const metadata: Metadata = {
 };
 
 interface ProductsPageProps {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    search?: string;
+    q?: string;
+    brand?: string;
+  }>;
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
   const activeCategory = params.category ?? "";
+  const searchQuery = params.search ?? params.q ?? "";
+  const activeBrand = params.brand ?? "";
 
   return (
     <div className="min-h-screen bg-black">
       <Suspense>
-        <ProductsList initialCategory={activeCategory} />
+        <ProductsList
+          initialCategory={activeCategory}
+          initialSearch={searchQuery}
+          initialBrand={activeBrand}
+        />
       </Suspense>
     </div>
   );
