@@ -295,6 +295,29 @@ export class ProductsService {
     }
   }
 
+  async addStock(id: string, quantity: number): Promise<ProductResponse> {
+
+    const existingProduct = await this.db
+      .select()
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+
+    if (existingProduct.length === 0) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.db
+      .update(products)
+      .set({
+        stockQuantity: sql`${products.stockQuantity} + ${quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, id));
+
+    return this.getProductById(id);
+  }
+
   async createCategory(dto: CreateCategoryDto): Promise<CategoryResponse> {
     const slug = dto.name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')

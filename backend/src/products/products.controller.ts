@@ -17,12 +17,14 @@ import type {
   CreateProductDto,
   GetProductsQueryDto,
   UpdateProductDto,
+  AddStockDto,
 } from './dto/product.dto';
 import {
   CreateCategorySchema,
   CreateProductSchema,
   GetProductsQuerySchema,
   UpdateProductSchema,
+  AddStockSchema,
 } from './dto/product.dto';
 import { ProductsService } from './products.service';
 
@@ -52,6 +54,15 @@ export class ProductsController {
   @UsePipes(new ZodValidationPipe(UpdateProductSchema))
   async updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.updateProduct(id, dto);
+  }
+
+  @Patch(':id/stock')
+  @UseGuards(StaffGuard)
+  async addStock(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(AddStockSchema)) dto: AddStockDto
+  ) {
+    return this.productsService.addStock(id, dto.quantity);
   }
 
   @Delete(':id')

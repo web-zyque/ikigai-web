@@ -53,6 +53,23 @@ export const useUpdateProduct = () => {
   });
 };
 
+export const useAddStock = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, quantity }: { id: string; quantity: number }) =>
+      productsApi.addStock(id, quantity),
+    onSuccess: (updatedProduct: ProductResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.setQueryData(['products', updatedProduct.id], updatedProduct);
+      console.log('Stock added successfully');
+    },
+    onError: (error: any) => {
+      console.error('Failed to add stock:', error);
+    },
+  });
+};
+
 export const useDeleteProduct = () => {
   const queryClient = useQueryClient();
 

@@ -49,10 +49,15 @@ export const CreateCategorySchema = z.object({
   description: z.string().optional(),
 });
 
+export const AddStockSchema = z.object({
+  quantity: z.number().int().positive('Quantity must be a positive integer'),
+});
+
 export type CreateProductDto = z.infer<typeof CreateProductSchema>;
 export type UpdateProductDto = z.infer<typeof UpdateProductSchema>;
 export type GetProductsQueryDto = z.infer<typeof GetProductsQuerySchema>;
 export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;
+export type AddStockDto = z.infer<typeof AddStockSchema>;
 
 
 export interface ProductResponse {

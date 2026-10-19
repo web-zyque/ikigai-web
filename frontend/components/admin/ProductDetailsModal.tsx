@@ -43,10 +43,13 @@ export default function ProductDetailsModal({
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
-  const [stockToAdd, setStockToAdd] = useState("10");
+  const [stockToAdd, setStockToAdd] = useState("");
+  const [stockError, setStockError] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedImageIndex(0);
+    setStockToAdd("");
+    setStockError(null);
   }, [product?.id, isOpen]);
 
   useEffect(() => {
@@ -492,7 +495,12 @@ export default function ProductDetailsModal({
         <div
           aria-modal="true"
           role="dialog"
-          onClick={() => setIsStockModalOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsStockModalOpen(false);
+            setStockToAdd("");
+            setStockError(null);
+          }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
         >
           <div
@@ -502,7 +510,7 @@ export default function ProductDetailsModal({
             <div>
               <h3 className="text-sm font-bold text-white">Add Stock Units</h3>
               <p className="text-xs text-white/50 mt-0.5">
-                Current stock: <span className="text-white font-medium">{product.stockQuantity}</span>
+                Current stock: <span className="text-white font-medium">{product.stockQuantity}</span> units
               </p>
             </div>
 
@@ -513,30 +521,67 @@ export default function ProductDetailsModal({
               <input
                 type="number"
                 min="1"
+                step="1"
                 value={stockToAdd}
-                onChange={(e) => setStockToAdd(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setStockToAdd(value);
+                  
+                  // Validate input
+                  if (value === "") {
+                    setStockError(null);
+                  } else {
+                    const num = parseInt(value, 10);
+                    if (isNaN(num) || num <= 0 || !Number.isInteger(parseFloat(value))) {
+                      setStockError("Please enter a positive whole number");
+                    } else {
+                      setStockError(null);
+                    }
+                  }
+                }}
+                placeholder="Enter quantity"
                 className="w-full h-9 rounded-lg bg-[#0a0a0a] border border-white/10 px-3 text-xs text-white outline-none focus:border-white/30"
               />
+              {stockError && (
+                <p className="text-[10px] text-red-400 mt-1">{stockError}</p>
+              )}
             </div>
+
+            {/* Live Preview */}
+            {stockToAdd && !stockError && parseInt(stockToAdd, 10) > 0 && (
+              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">New Stock Total</p>
+                <p className="text-base font-bold text-emerald-400">
+                  {product.stockQuantity + parseInt(stockToAdd, 10)} units
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setIsStockModalOpen(false)}
+                onClick={() => {
+                  setIsStockModalOpen(false);
+                  setStockToAdd("");
+                  setStockError(null);
+                }}
                 className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={!stockToAdd || stockError !== null || parseInt(stockToAdd, 10) <= 0}
                 onClick={() => {
                   const qty = parseInt(stockToAdd, 10);
-                  if (qty > 0) {
+                  if (qty > 0 && !isNaN(qty)) {
                     onAddStock?.(product, qty);
+                    setIsStockModalOpen(false);
+                    setStockToAdd("");
+                    setStockError(null);
                   }
-                  setIsStockModalOpen(false);
                 }}
-                className="rounded-lg bg-[#640C0C] hover:bg-[#7a1010] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors"
+                className="rounded-lg bg-[#640C0C] hover:bg-[#7a1010] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Update Stock
               </button>
