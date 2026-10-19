@@ -249,8 +249,7 @@ export default function ProductsInventoryTable({
               </tr>
             ) : (
               paginatedProducts.map((product) => {
-                // Use product images from API - images should be from Cloudinary
-                const imageSrc = product.image || product.imageUrl || product.images?.[0]?.imageUrl || null;
+                const imageSrc = product.image || product.imageUrl || undefined;
 
                 return (
                   <tr
