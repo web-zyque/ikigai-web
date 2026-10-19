@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { Search, Package, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
 
 export type InventoryStatus = "In Stock" | "Low Stock" | "Out of Stock";
 
@@ -33,134 +32,6 @@ export interface ProductsInventoryTableProps {
   onViewProduct?: (productId: string) => void;
 }
 
-export const ALL_DEMO_PRODUCTS: InventoryProduct[] = [
-  // 6 In Stock Products (Healthy stock above 5)
-  {
-    id: "prod-1",
-    name: "Xenon Matrix H11 LED Headlights",
-    category: "Lighting",
-    sku: "LED-H11-001",
-    price: "₹2,499",
-    stock: 18,
-    status: "In Stock",
-    image: "/images/category_lighting.jpg",
-  },
-  {
-    id: "prod-2",
-    name: 'Ultra-Beam 32" Curved Roof Light Bar',
-    category: "Roof Lights",
-    sku: "RLB-032-004",
-    price: "₹4,999",
-    stock: 12,
-    status: "In Stock",
-    image: "/images/category_lighting.jpg",
-  },
-  {
-    id: "prod-3",
-    name: "Premium Car Horn Set",
-    category: "Horns",
-    sku: "HRN-PRM-006",
-    price: "₹1,499",
-    stock: 20,
-    status: "In Stock",
-    image: "/images/category_car-electronics.jpg",
-  },
-  {
-    id: "prod-4",
-    name: 'Android 10" Car Stereo',
-    category: "Android Stereos",
-    sku: "STR-AND-007",
-    price: "₹12,999",
-    stock: 8,
-    status: "In Stock",
-    image: "/images/category_car-electronics.jpg",
-  },
-  {
-    id: "prod-5",
-    name: "LED Roof Marker Lights",
-    category: "Roof Lights",
-    sku: "LED-RFM-008",
-    price: "₹2,199",
-    stock: 15,
-    status: "In Stock",
-    image: "/images/category_lighting.jpg",
-  },
-  {
-    id: "prod-6",
-    name: "Projector Headlight Assembly",
-    category: "Headlights",
-    sku: "HDL-PRJ-009",
-    price: "₹8,499",
-    stock: 10,
-    status: "In Stock",
-    image: "/images/category_lighting.jpg",
-  },
-
-  // 5 Low Stock Products (5 units or fewer, but > 0)
-  {
-    id: "prod-7",
-    name: "Dual-Tone Amber Fog Lamp Kit",
-    category: "Fog Lamps",
-    sku: "FOG-AMB-002",
-    price: "₹1,799",
-    stock: 4,
-    status: "Low Stock",
-    image: "/images/category_lighting.jpg",
-  },
-  {
-    id: "prod-8",
-    name: "Aerodynamic Carbon Mirror Caps",
-    category: "Exterior Accessories",
-    sku: "MIR-CBN-005",
-    price: "₹1,299",
-    stock: 3,
-    status: "Low Stock",
-    image: "/images/category_exterior.jpg",
-  },
-  {
-    id: "prod-9",
-    name: "Premium LED Interior Light Kit",
-    category: "Interior Accessories",
-    sku: "INT-LED-010",
-    price: "₹999",
-    stock: 5,
-    status: "Low Stock",
-    image: "/images/category_interior.jpg",
-  },
-  {
-    id: "prod-10",
-    name: "Universal Parking Sensor Kit",
-    category: "Electronics",
-    sku: "PRK-SNS-011",
-    price: "₹1,899",
-    stock: 2,
-    status: "Low Stock",
-    image: "/images/category_car-electronics.jpg",
-  },
-  {
-    id: "prod-11",
-    name: "Chrome Door Handle Covers",
-    category: "Exterior Accessories",
-    sku: "DHC-CHM-012",
-    price: "₹849",
-    stock: 4,
-    status: "Low Stock",
-    image: "/images/category_exterior.jpg",
-  },
-
-  // 1 Out of Stock Product (Stock = 0)
-  {
-    id: "prod-12",
-    name: "Smoked LED Tail Light Assembly",
-    category: "Tail Lights",
-    sku: "TAIL-SMK-003",
-    price: "₹3,299",
-    stock: 0,
-    status: "Out of Stock",
-    image: "/images/category_lighting.jpg",
-  },
-];
-
 function ProductThumbnail({ src, alt }: { src?: string; alt: string }) {
   const [hasError, setHasError] = useState(false);
 
@@ -187,7 +58,7 @@ function ProductThumbnail({ src, alt }: { src?: string; alt: string }) {
 }
 
 export default function ProductsInventoryTable({
-  products = ALL_DEMO_PRODUCTS,
+  products = [],
   totalCount,
   title = "TOTAL PRODUCTS",
   subtitle,
@@ -378,10 +249,8 @@ export default function ProductsInventoryTable({
               </tr>
             ) : (
               paginatedProducts.map((product) => {
-                const imageSrc =
-                  product.image ||
-                  product.imageUrl ||
-                  DEMO_PRODUCTS_BY_ID[product.id]?.images?.[0]?.imageUrl;
+                // Use product images from API - images should be from Cloudinary
+                const imageSrc = product.image || product.imageUrl || product.images?.[0]?.imageUrl || null;
 
                 return (
                   <tr

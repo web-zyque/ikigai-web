@@ -5,7 +5,6 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProduct } from "@/hooks/use-products";
 import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
-import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
 import { GetProductsResponse, ProductResponse } from "@/types/products.types";
 import ProductsInventoryPage from "../page";
 
@@ -29,14 +28,10 @@ function ProductDetailsRouteContent() {
   ]);
   const cachedProduct = cachedProducts?.products.find((p) => p.id === productId);
 
-  // 2. Check demo products map
-  const demoProduct = DEMO_PRODUCTS_BY_ID[productId] || null;
+  // 2. Connect to backend API via useProduct hook
+  const { data: apiProduct, isLoading } = useProduct(productId);
 
-  // 3. Connect to backend API via useProduct hook
-  const { data: apiProduct } = useProduct(productId);
-
-  const product: ProductResponse | null =
-    apiProduct || cachedProduct || demoProduct || null;
+  const product: ProductResponse | null = apiProduct || cachedProduct || null;
 
   return (
     <>
