@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useMobileMenu } from "@/app/admin/layout";
 import { Package, Menu, Plus } from "lucide-react";
-import { useProducts, useProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/use-products";
+import { useProducts, useProduct, useUpdateProduct, useDeleteProduct, useAddStock } from "@/hooks/use-products";
 import { InventoryProduct } from "@/components/admin/ProductsInventoryTable";
 import ProductSummaryCards, { ProductCounts } from "@/components/admin/ProductSummaryCards";
 import ProductsTable from "@/components/admin/ProductsTable";
@@ -96,14 +96,20 @@ export default function ProductsInventoryPage() {
 
   const updateProductMutation = useUpdateProduct();
   const deleteProductMutation = useDeleteProduct();
+  const addStockMutation = useAddStock();
 
   const handleAddStock = (prod: ProductResponse, additionalStock: number) => {
-    updateProductMutation.mutate({
-      id: prod.id,
-      data: {
-        stockQuantity: prod.stockQuantity + additionalStock,
+    addStockMutation.mutate(
+      {
+        id: prod.id,
+        quantity: additionalStock,
       },
-    });
+      {
+        onSuccess: () => {
+          refetch();
+        },
+      }
+    );
   };
 
   const handleArchiveProduct = (prod: ProductResponse) => {

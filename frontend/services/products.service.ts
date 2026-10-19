@@ -24,6 +24,11 @@ export const productsApi = {
     return response.data;
   },
 
+  addStock: async (id: string, quantity: number): Promise<ProductResponse> => {
+    const response = await api.patch(`/products/${id}/stock`, { quantity });
+    return response.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/products/${id}`);
   },
