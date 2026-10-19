@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
 import { InventoryProduct, InventoryStatus } from "@/components/admin/ProductsInventoryTable";
-import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
 
 export interface ProductsTableProps {
   products: InventoryProduct[];

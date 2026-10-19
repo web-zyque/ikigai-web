@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import {
   X,
@@ -8,14 +8,13 @@ import {
   Image as ImageIcon,
   Check,
   AlertCircle,
-  Plus,
-  Trash2,
   ChevronRight,
   ChevronLeft,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import { useCategories, useCreateProduct } from "@/hooks/use-products";
-import { useUploadImage } from "@/hooks/use-upload";
+import { uploadApi } from "@/services/upload.service";
 
 export interface AddProductModalProps {
   isOpen: boolean;
@@ -34,12 +33,19 @@ const DEFAULT_CATEGORIES = [
   { id: "cat-interior", name: "Interior Accessories" },
 ];
 
+export type UploadStatus = 'pending' | 'uploading' | 'done' | 'error';
+
 export interface UploadedImageItem {
   id: string;
   file?: File;
   previewUrl: string;
   isMain: boolean;
   variantColor?: string;
+  uploadStatus: UploadStatus;
+  uploadProgress: number;
+  cloudinaryUrl?: string;
+  publicId?: string;
+  uploadError?: string;
 }
 
 export default function AddProductModal({
@@ -54,7 +60,6 @@ export default function AddProductModal({
   const availableCategories = apiCategories && apiCategories.length > 0 ? apiCategories : [];
 
   const createProductMutation = useCreateProduct();
-  const uploadImageMutation = useUploadImage();
 
   // Step 1: Basic details
   const [productName, setProductName] = useState("");
@@ -96,6 +101,12 @@ export default function AddProductModal({
 
   const handleClose = () => {
     if (isSubmitting) return;
+    // Revoke all pending object URLs to avoid memory leaks
+    uploadedImages.forEach((img) => {
+      if (img.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(img.previewUrl);
+      }
+    });
     setCurrentStep(1);
     setProductName("");
     setSku("");
@@ -170,34 +181,114 @@ export default function AddProductModal({
     setSizeValues((prev) => prev.filter((s) => s !== val));
   };
 
-  const handleFilesSelected = (files: FileList | File[], variantColor?: string) => {
-    const fileArray = Array.from(files).filter((file) => file.type.startsWith("image/"));
+  const uploadImageToServer = useCallback(async (itemId: string, file: File) => {
+    setUploadedImages((prev) =>
+      prev.map((img) =>
+        img.id === itemId
+          ? { ...img, uploadStatus: 'uploading' as UploadStatus, uploadProgress: 0, uploadError: undefined }
+          : img,
+      ),
+    );
+
+    try {
+      const result = await uploadApi.uploadImage(file, (percent) => {
+        setUploadedImages((prev) =>
+          prev.map((img) =>
+            img.id === itemId ? { ...img, uploadProgress: percent } : img,
+          ),
+        );
+      });
+
+      setUploadedImages((prev) =>
+        prev.map((img) =>
+          img.id === itemId
+            ? {
+                ...img,
+                uploadStatus: 'done' as UploadStatus,
+                uploadProgress: 100,
+                cloudinaryUrl: result.imageUrl,
+                publicId: result.publicId,
+                uploadError: undefined,
+              }
+            : img,
+        ),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Upload failed. Please retry.';
+      setUploadedImages((prev) =>
+        prev.map((img) =>
+          img.id === itemId
+            ? {
+                ...img,
+                uploadStatus: 'error' as UploadStatus,
+                uploadProgress: 0,
+                uploadError: message,
+              }
+            : img,
+        ),
+      );
+    }
+  }, []);
+
+  const handleFilesSelected = useCallback((files: FileList | File[], variantColor?: string) => {
+    const ALLOWED = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+    const fileArray = Array.from(files).filter((file) => ALLOWED.has(file.type));
     if (fileArray.length === 0) return;
 
     const newItems: UploadedImageItem[] = fileArray.map((file, idx) => ({
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${idx}`,
       file,
       previewUrl: URL.createObjectURL(file),
-      isMain: uploadedImages.length === 0 && idx === 0,
+      isMain: false, // will be set below
       variantColor,
+      uploadStatus: 'pending' as UploadStatus,
+      uploadProgress: 0,
     }));
 
-    setUploadedImages((prev) => [...prev, ...newItems]);
+    setUploadedImages((prev) => {
+      const combined = [...prev, ...newItems];
+      // Ensure there is exactly one main image
+      const hasMain = combined.some((img) => img.isMain);
+      if (!hasMain && combined.length > 0) {
+        combined[0] = { ...combined[0], isMain: true };
+      }
+      return combined;
+    });
+
     setErrors((prev) => {
       const copy = { ...prev };
       delete copy.images;
       return copy;
     });
-  };
+
+    // Start uploading each new item immediately
+    newItems.forEach((item) => {
+      if (item.file) {
+        uploadImageToServer(item.id, item.file);
+      }
+    });
+  }, [uploadImageToServer]);
 
   const handleRemoveImage = (idToRemove: string) => {
     setUploadedImages((prev) => {
+      const removing = prev.find((img) => img.id === idToRemove);
+      if (removing?.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(removing.previewUrl);
+      }
       const filtered = prev.filter((item) => item.id !== idToRemove);
       if (filtered.length > 0 && !filtered.some((item) => item.isMain)) {
-        filtered[0].isMain = true;
+        filtered[0] = { ...filtered[0], isMain: true };
       }
       return filtered;
     });
+  };
+
+  const handleRetryUpload = (id: string) => {
+    const item = uploadedImages.find((img) => img.id === id);
+    if (item?.file) {
+      uploadImageToServer(id, item.file);
+    }
   };
 
   const handleSetMainImage = (id: string) => {
@@ -253,6 +344,18 @@ export default function AddProductModal({
     const newErrors: Record<string, string> = {};
     if (uploadedImages.length < 3) {
       newErrors.images = `Minimum 3 images are required. Currently uploaded: ${uploadedImages.length}.`;
+    } else {
+      const inFlight = uploadedImages.filter(
+        (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
+      );
+      if (inFlight.length > 0) {
+        newErrors.images = `${inFlight.length} image(s) are still uploading. Please wait.`;
+      } else {
+        const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
+        if (failed.length > 0) {
+          newErrors.images = `${failed.length} image(s) failed to upload. Please retry or remove them.`;
+        }
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -317,22 +420,9 @@ export default function AddProductModal({
 
     setIsSubmitting(true);
     try {
-      const uploadPromises = uploadedImages.map(async (item) => {
-        if (item.file) {
-          try {
-            const res = await uploadImageMutation.mutateAsync(item.file);
-            return { ...item, finalUrl: res.url };
-          } catch {
-            return { ...item, finalUrl: item.previewUrl };
-          }
-        }
-        return { ...item, finalUrl: item.previewUrl };
-      });
-
-      const processedImages = await Promise.all(uploadPromises);
-
-      const imagesPayload = processedImages.map((img, idx) => ({
-        imageUrl: img.finalUrl,
+      // All images must already be uploaded (validated above). Use their cloudinaryUrl.
+      const imagesPayload = uploadedImages.map((img, idx) => ({
+        imageUrl: img.cloudinaryUrl ?? img.previewUrl,
         isMainImage: img.isMain,
         displayOrder: idx + 1,
         altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
@@ -371,28 +461,12 @@ export default function AddProductModal({
         images: imagesPayload,
       };
 
-      try {
-        const result = await createProductMutation.mutateAsync(productPayload);
-        onSuccess?.(result as unknown as Record<string, unknown>);
-        handleClose();
-      } catch {
-        // Fallback success handler
-        const categoryName = availableCategories.length > 0 
-          ? availableCategories.find((c) => c.id === selectedCategoryId)?.name 
-          : "Accessories";
-        
-        onSuccess?.({
-          id: `prod-${Date.now()}`,
-          name: productPayload.name,
-          sku: productPayload.sku,
-          category: categoryName || "Accessories",
-          sellingPrice: productPayload.sellingPrice,
-          stockQuantity: productPayload.stockQuantity,
-          inventoryStatus: productPayload.stockQuantity > 5 ? "in_stock" : "low_stock",
-          images: productPayload.images,
-        });
-        handleClose();
-      }
+      const result = await createProductMutation.mutateAsync(productPayload);
+      onSuccess?.(result as unknown as Record<string, unknown>);
+      handleClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create product.';
+      setErrors((prev) => ({ ...prev, submit: message }));
     } finally {
       setIsSubmitting(false);
     }
@@ -971,10 +1045,13 @@ export default function AddProductModal({
                         {uploadedImages.map((img, idx) => (
                           <div
                             key={img.id}
-                            className={`group relative rounded-[20px] border bg-[#0a0a0a] overflow-hidden p-2 flex flex-col justify-between transition-all ${img.isMain
-                                ? "border-white ring-1 ring-white"
-                                : "border-white/10 hover:border-white/30"
-                              }`}
+                            className={`group relative rounded-[20px] border bg-[#0a0a0a] overflow-hidden p-2 flex flex-col justify-between transition-all ${
+                              img.uploadStatus === 'error'
+                                ? "border-red-500/50"
+                                : img.isMain
+                                  ? "border-white ring-1 ring-white"
+                                  : "border-white/10 hover:border-white/30"
+                            }`}
                           >
                             <div className="relative w-full h-32 rounded-xl overflow-hidden bg-black/40 flex items-center justify-center">
                               <Image
@@ -986,7 +1063,7 @@ export default function AddProductModal({
                                 sizes="180px"
                               />
 
-                              {img.isMain && (
+                              {img.isMain && img.uploadStatus === 'done' && (
                                 <span className="absolute top-2 left-2 rounded-full bg-black/80 backdrop-blur-md border border-white/20 px-2 py-0.5 text-[10px] font-semibold text-white">
                                   Main
                                 </span>
@@ -995,13 +1072,42 @@ export default function AddProductModal({
                               <button
                                 type="button"
                                 onClick={() => handleRemoveImage(img.id)}
-                                className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-black/70 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                                className="absolute top-2 right-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/70 hover:bg-red-500 text-white transition-colors cursor-pointer"
                               >
                                 <X className="h-3 w-3" />
                               </button>
+
+                              {(img.uploadStatus === 'uploading' || img.uploadStatus === 'pending') && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-xl">
+                                  <Loader2 className="h-5 w-5 animate-spin text-white mb-1" />
+                                  <span className="text-[10px] text-white/80">{img.uploadProgress}%</span>
+                                  <div className="absolute bottom-0 left-0 h-0.5 bg-white/80 transition-all duration-200" style={{ width: `${img.uploadProgress}%` }} />
+                                </div>
+                              )}
+
+                              {img.uploadStatus === 'error' && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/80 rounded-xl gap-1 p-2">
+                                  <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                                  <span className="text-[10px] text-red-300 text-center leading-tight line-clamp-2">{img.uploadError ?? 'Upload failed'}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRetryUpload(img.id)}
+                                    className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-600/80 hover:bg-red-500 px-2 py-0.5 text-[10px] text-white cursor-pointer"
+                                  >
+                                    <RefreshCw className="h-2.5 w-2.5" />
+                                    Retry
+                                  </button>
+                                </div>
+                              )}
+
+                              {img.uploadStatus === 'done' && (
+                                <div className="absolute bottom-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500">
+                                  <Check className="h-2.5 w-2.5 text-white" />
+                                </div>
+                              )}
                             </div>
 
-                            {!img.isMain && (
+                            {!img.isMain && img.uploadStatus === 'done' && (
                               <button
                                 type="button"
                                 onClick={() => handleSetMainImage(img.id)}
@@ -1231,16 +1337,39 @@ export default function AddProductModal({
             <span>Previous</span>
           </button>
 
-          <div>
+          <div className="flex flex-col items-end gap-1">
+            {errors.submit && (
+              <span className="text-xs text-red-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.submit}
+              </span>
+            )}
             {currentStep < totalSteps ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white text-black hover:bg-white/90 px-6 py-2.5 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
-              >
-                <span>Continue</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              (() => {
+                const uploadsInFlight = currentStep === 2
+                  ? uploadedImages.some((img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading')
+                  : false;
+                return (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={uploadsInFlight}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white text-black hover:bg-white/90 px-6 py-2.5 text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadsInFlight ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Continue</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </button>
+                );
+              })()
             ) : (
               <button
                 type="button"
@@ -1267,3 +1396,4 @@ export default function AddProductModal({
     </div>
   );
 }
+

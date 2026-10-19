@@ -9,7 +9,6 @@ import ProductSummaryCards, { ProductCounts } from "@/components/admin/ProductSu
 import ProductsTable from "@/components/admin/ProductsTable";
 import AddProductModal from "@/components/admin/AddProductModal";
 import ProductDetailsModal from "@/components/admin/ProductDetailsModal";
-import { DEMO_PRODUCTS_BY_ID } from "@/data/demoProducts";
 import { ProductResponse } from "@/types/products.types";
 
 export default function ProductsInventoryPage() {
@@ -32,9 +31,6 @@ export default function ProductsInventoryPage() {
     if (productsData?.products) {
       const match = productsData.products.find((p) => p.id === selectedProductId);
       if (match) return match;
-    }
-    if (DEMO_PRODUCTS_BY_ID[selectedProductId]) {
-      return DEMO_PRODUCTS_BY_ID[selectedProductId];
     }
     return null;
   }, [selectedProductId, selectedApiProduct, productsData]);
