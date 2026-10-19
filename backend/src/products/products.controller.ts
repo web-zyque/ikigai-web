@@ -51,8 +51,10 @@ export class ProductsController {
 
   @Patch(':id')
   @UseGuards(StaffGuard)
-  @UsePipes(new ZodValidationPipe(UpdateProductSchema))
-  async updateProduct(@Param('id') id: string, @Body() dto: UpdateProductDto) {
+  async updateProduct(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateProductSchema)) dto: UpdateProductDto
+  ) {
     return this.productsService.updateProduct(id, dto);
   }
 
