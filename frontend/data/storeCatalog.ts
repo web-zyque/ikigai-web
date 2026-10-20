@@ -4,13 +4,20 @@ export interface StoreProduct {
   id: string | number;
   name: string;
   price: string;
+  mrpPrice?: string;
   image: string;
+  images?: string[];
   category: string;
   categoryLabel?: string;
   brand: string;
   partType?: string;
   vehicleCompatibility?: string[];
   description?: string;
+  features?: string[];
+  material?: string;
+  warranty?: string;
+  stockQuantity?: number;
+  inStock?: boolean;
 }
 
 export interface CategoryMeta {
@@ -172,13 +179,24 @@ const mappedDemoProducts: StoreProduct[] = DEMO_PRODUCTS_DETAILS.map((p) => ({
   id: p.id,
   name: p.name,
   price: `₹${parseFloat(p.sellingPrice).toLocaleString("en-IN")}`,
+  mrpPrice: p.mrpPrice ? `₹${parseFloat(p.mrpPrice).toLocaleString("en-IN")}` : undefined,
   image: p.images?.[0]?.imageUrl || "/images/category_lighting.jpg",
+  images: p.images && p.images.length > 0 ? p.images.map((img) => img.imageUrl) : ["/images/category_lighting.jpg"],
   category: mapDemoCategorySlug(p.category.slug),
   categoryLabel: p.category.name,
   brand: p.brand || "Ikigai Customs",
   partType: p.productType,
   vehicleCompatibility: p.vehicleCompatibility,
   description: p.description,
+  material: p.material,
+  warranty: p.warranty,
+  stockQuantity: p.stockQuantity,
+  inStock: p.inventoryStatus !== "out_of_stock",
+  features: [
+    "Direct OEM replacement fitment",
+    "Engineered for high stress and endurance",
+    "Backed by Ikigai quality assurance guarantee",
+  ],
 }));
 
 // Additional rich store products for parts, tires, wheels, exhaust, cooling, etc.
@@ -526,6 +544,27 @@ export const STORE_PRODUCTS: StoreProduct[] = [
   ...additionalStoreProducts,
 ];
 
+export type ProductItem = StoreProduct;
+
+export function getStoreProductById(id: string | number): StoreProduct | undefined {
+  const match = STORE_PRODUCTS.find((p) => String(p.id) === String(id));
+  if (match) {
+    if (!match.images || match.images.length === 0) {
+      match.images = [match.image];
+    }
+    if (!match.features || match.features.length === 0) {
+      match.features = [
+        "Direct bolt-on OEM replacement fitment",
+        "Tested under extreme driving and track endurance conditions",
+        "Backed by Ikigai certified quality guarantee",
+      ];
+    }
+  }
+  return match;
+}
+
+export const getProductById = getStoreProductById;
+
 export interface SearchIntentResult {
   query: string;
   type: "category" | "brand" | "product" | "general";
@@ -641,8 +680,9 @@ export interface SearchResultsOutput {
  */
 export function searchStoreCatalog(
   rawQuery: string,
-  options?: { category?: string; brand?: string }
+  options?: { category?: string; brand?: string; catalog?: StoreProduct[] }
 ): SearchResultsOutput {
+  const catalog = options?.catalog || STORE_PRODUCTS;
   const query = (rawQuery || "").trim();
   const lower = query.toLowerCase();
   const intent = detectSearchIntent(query);
@@ -652,7 +692,7 @@ export function searchStoreCatalog(
     .filter((t) => t.length > 0 && !["a", "an", "the", "for", "with", "in", "and", "or"].includes(t));
 
   // Score each product
-  const scored = STORE_PRODUCTS.map((product) => {
+  const scored = catalog.map((product) => {
     let score = 0;
     const pName = product.name.toLowerCase();
     const pBrand = product.brand.toLowerCase();
@@ -765,12 +805,12 @@ export function searchStoreCatalog(
 
   let related: StoreProduct[] = [];
   if (fallbackCategory) {
-    related = STORE_PRODUCTS.filter((p) => p.category === fallbackCategory);
+    related = catalog.filter((p) => p.category === fallbackCategory);
   }
 
   if (related.length === 0) {
     // Return top diverse products from across categories
-    related = STORE_PRODUCTS.slice(0, 10);
+    related = catalog.slice(0, 10);
   }
 
   return {

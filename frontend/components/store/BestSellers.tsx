@@ -118,14 +118,15 @@ export default function BestSellers() {
                   key={product.id}
                   className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
                 >
-                  <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
+                  <Link href={`/products/${product.id}`} className="block relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
                     <Image
                       src={product.image}
                       alt={product.name}
                       fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                       className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
                     />
-                  </div>
+                  </Link>
 
                   <div className="flex flex-col p-4 grow-0 sm:grow">
                     {product.brand && (
@@ -133,14 +134,16 @@ export default function BestSellers() {
                         {product.brand}
                       </p>
                     )}
-                    <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
-                      {product.name}
-                    </h3>
+                    <Link href={`/products/${product.id}`}>
+                      <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#e05252] transition-colors">
+                        {product.name}
+                      </h3>
+                    </Link>
                     <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
 
                     <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
                       <Link
-                        href={`/products?search=${encodeURIComponent(product.name)}`}
+                        href={`/products/${product.id}`}
                         className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
                       >
                         Buy Now

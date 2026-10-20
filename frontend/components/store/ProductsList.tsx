@@ -39,7 +39,7 @@ export default function ProductsList({
     setSearchInput(currentSearch);
   }
 
-  // Execute catalog search and scoring
+  // Execute catalog search and scoring exclusively from demo catalog
   const { results, intent, isRelatedFallback, totalMatches } = useMemo(() => {
     return searchStoreCatalog(currentSearch, {
       category: currentCategory,
