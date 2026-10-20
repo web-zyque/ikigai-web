@@ -135,7 +135,7 @@ export default function BestSellers() {
                       </p>
                     )}
                     <Link href={`/products/${product.id}`}>
-                      <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#e05252] transition-colors">
+                      <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#992222] transition-colors">
                         {product.name}
                       </h3>
                     </Link>
