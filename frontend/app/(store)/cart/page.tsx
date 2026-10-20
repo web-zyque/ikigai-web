@@ -27,7 +27,7 @@ export default function CartPage() {
             <div>
               <p className="text-white text-sm font-medium mb-1">Guest Cart</p>
               <p className="text-white/60 text-xs leading-relaxed">
-                You're browsing as a guest. Your cart is saved locally. 
+                You&apos;re browsing as a guest. Your cart is saved locally. 
                 <Link href="/login?redirect=/cart" className="text-[#640C0C] hover:underline ml-1">
                   Log in
                 </Link> to proceed with checkout.

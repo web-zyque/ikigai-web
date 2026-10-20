@@ -52,12 +52,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       </Link>
       <div className="flex flex-col p-4 grow">
         {product.brand && (
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
             {product.brand}
           </p>
         )}
         <Link href={productUrl}>
-          <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#e05252] transition-colors">
+          <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#992222] transition-colors">
             {product.name}
           </h3>
         </Link>

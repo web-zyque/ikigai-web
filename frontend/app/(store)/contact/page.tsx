@@ -9,26 +9,6 @@ import {
   Phone,
 } from "lucide-react"
 
-const contactMethods = [
-  {
-    icon: Phone,
-    title: "Call Us",
-    description: "Speak with our team",
-    value: "+91 9876543210",
-  },
-  {
-    icon: Mail,
-    title: "Email Us",
-    description: "Send us your enquiry",
-    value: "ikigaiautomotive@gmail.com",
-  },
-  {
-    icon: MessageCircle,
-    title: "WhatsApp",
-    description: "Chat with our team",
-    value: "+91 9876543210",
-  },
-]
 
 const inputClass =
   "w-full rounded-xl border border-white/10 bg-[#121212] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/25 focus:border-[#640C0C]"
@@ -64,37 +44,6 @@ export default function ContactPageC() {
         </div>
       </section>
 
-      <section className="hidden py-10 sm:block lg:block sm:py-14">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-6 sm:grid-cols-2 lg:grid-cols-3 lg:px-12">
-          {contactMethods.map((method) => {
-            const Icon = method.icon
-
-            return (
-              <div
-                key={method.title}
-                className="flex items-start gap-4 rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5 transition-colors hover:border-white/15 sm:p-6"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#121212]">
-                  <Icon className="h-5 w-5 text-[#640C0C]" />
-                </div>
-
-                <div className="min-w-0">
-                  <h2 className="font-semibold">{method.title}</h2>
-
-                  <p className="mt-1 text-sm text-white/40">
-                    {method.description}
-                  </p>
-
-                  <p className="mt-3 break-words text-sm text-white/70">
-                    {method.value}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
       <section className="pb-16 sm:pb-24">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 lg:grid-cols-[0.75fr_1.25fr] lg:gap-8 lg:px-12">
           <aside className="flex flex-col rounded-[20px] border border-white/10 bg-[#0a0a0a] p-6 sm:p-8">
@@ -120,7 +69,7 @@ export default function ContactPageC() {
                 <div>
                   <h3 className="text-sm font-medium">Email Support</h3>
                   <p className="mt-1 text-sm text-white/40">
-                    ikigaiautomotive@gmail.com
+                    ikigaicustoms8800@gmail.com
                   </p>
                 </div>
               </div>
@@ -131,7 +80,7 @@ export default function ContactPageC() {
                 <div>
                   <h3 className="text-sm font-medium">Phone Support</h3>
                   <p className="mt-1 text-sm text-white/40">
-                    +91 9876543210
+                    +91 9061107425
                   </p>
                 </div>
               </div>
@@ -156,7 +105,7 @@ export default function ContactPageC() {
                   <p className="mt-1 text-sm leading-relaxed text-white/40">
                     ikigai Customs car accessories,
                     <br />
-                    Cheruvattor Road, East Paipra Road,
+                    Cheruvattor Road, East Paipra Road, Pezhakkappilly
                     <br />
                     Muvattupuzha - Ernakulam - 686673
                   </p>
