@@ -23,9 +23,11 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { cartItems, addToCart } = useCart();
 
-  const isAdded = cartItems.some(item => item.id === product.id);
+  const isAdded = cartItems.some((item) => String(item.id) === String(product.id));
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (isAdded) return;
     addToCart({
       id: product.id,
@@ -35,30 +37,38 @@ export default function ProductCard({ product }: ProductCardProps) {
     });
   };
 
+  const productUrl = `/products/${product.id}`;
+
   return (
     <div className="group/card flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300">
-      <div className="relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
+      <Link href={productUrl} className="block relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
         <Image
           src={product.image}
           alt={product.name}
           fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
           className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
         />
-      </div>
+      </Link>
       <div className="flex flex-col p-4 grow">
         {product.brand && (
           <p className="text-[9px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
             {product.brand}
           </p>
         )}
-        <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1">
-          {product.name}
-        </h3>
+        <Link href={productUrl}>
+          <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#e05252] transition-colors">
+            {product.name}
+          </h3>
+        </Link>
         <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
         <div className="mt-auto flex w-full gap-2 transition-all duration-300">
-          <button className={`${isAdded ? 'w-full' : 'w-[70%]'} rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}>
+          <Link
+            href={productUrl}
+            className={`${isAdded ? "w-full" : "w-[70%]"} flex items-center justify-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}
+          >
             Buy Now
-          </button>
+          </Link>
           {!isAdded && (
             <button
               onClick={handleAddToCart}
