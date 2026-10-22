@@ -26,8 +26,11 @@ export const CreateProductSchema = z.object({
   
   images: z.array(z.object({
     imageUrl: z.string().url(),
+    cloudinaryPublicId: z.string().optional(),
     isMainImage: z.boolean().default(false),
+    displayOrder: z.number().int().default(0),
     altText: z.string().optional(),
+    variantColor: z.string().optional(), // Color name to associate image with variant
   })).min(1, 'At least one image is required'),
 });
 
@@ -85,9 +88,25 @@ export interface ProductResponse {
   images: {
     id: string;
     imageUrl: string;
+    cloudinaryPublicId?: string;
     isMainImage: boolean;
     displayOrder: number;
     altText?: string;
+    variantId?: string;
+  }[];
+  variants?: {
+    id: string;
+    colorName: string;
+    sku?: string;
+    stockQuantity: number;
+    images: {
+      id: string;
+      imageUrl: string;
+      cloudinaryPublicId?: string;
+      isMainImage: boolean;
+      displayOrder: number;
+      altText?: string;
+    }[];
   }[];
   createdAt: Date;
   updatedAt: Date;

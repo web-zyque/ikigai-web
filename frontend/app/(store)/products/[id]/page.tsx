@@ -57,24 +57,45 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const { data: allProductsData } = useStoreProducts({ limit: 100 });
 
   const productColors = useMemo(() => {
-    if (!apiProduct?.color) return [];
-    const colorNames = parseColorString(apiProduct.color);
-    return colorNames.map(name => getColorInfo(name));
+    if (!apiProduct?.variants || apiProduct.variants.length === 0) {
+
+      if (!apiProduct?.color) return [];
+      const colorNames = parseColorString(apiProduct.color);
+      return colorNames.map(name => getColorInfo(name));
+    }
+    
+    return apiProduct.variants.map(variant => getColorInfo(variant.colorName));
   }, [apiProduct]);
 
   const [selectedColor, setSelectedColor] = useState("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
   
   useEffect(() => {
     if (productColors.length > 0 && !selectedColor) {
       setSelectedColor(productColors[0].name);
+      if (apiProduct?.variants && apiProduct.variants.length > 0) {
+        setSelectedVariantId(apiProduct.variants[0].id);
+      }
     }
-  }, [productColors]);
+  }, [productColors, apiProduct]);
+
+  const variantImages = useMemo(() => {
+    if (!apiProduct) return [];
+    
+    if (apiProduct.variants && apiProduct.variants.length > 0 && selectedVariantId) {
+      const variant = apiProduct.variants.find(v => v.id === selectedVariantId);
+      if (variant && variant.images.length > 0) {
+        return variant.images.map(img => img.imageUrl);
+      }
+    }
+    
+    return apiProduct.images.map(img => img.imageUrl);
+  }, [apiProduct, selectedVariantId]);
 
   const product: ProductDetailItem | null = useMemo(() => {
     if (!apiProduct) return null;
 
     const storeProduct = mapProductToStoreProduct(apiProduct);
-    const rawImages = storeProduct.images?.length ? storeProduct.images : [storeProduct.image];
     
     return {
       id: storeProduct.id,
@@ -82,7 +103,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       price: storeProduct.price,
       mrpPrice: storeProduct.mrpPrice,
       image: storeProduct.image,
-      images: rawImages,
+      images: variantImages.length > 0 ? variantImages : (storeProduct.images?.length ? storeProduct.images : [storeProduct.image]),
       category: storeProduct.category,
       categoryLabel: storeProduct.categoryLabel,
       brand: storeProduct.brand,
@@ -99,7 +120,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       stockQuantity: storeProduct.stockQuantity ?? 10,
       partType: storeProduct.partType,
     };
-  }, [apiProduct]);
+  }, [apiProduct, variantImages]);
 
   const images = useMemo(() => {
     if (product?.images && product.images.length > 0) return product.images;
@@ -363,11 +384,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   Colors
                 </span>
                 <div className="flex items-center gap-2.5">
-                  {productColors.map((col) => (
+                  {productColors.map((col, idx) => (
                     <button
                       key={col.name}
                       type="button"
-                      onClick={() => setSelectedColor(col.name)}
+                      onClick={() => {
+                        setSelectedColor(col.name);
+                        setSelectedImageIndex(0); // Reset to first image when switching colors
+                        if (apiProduct?.variants && apiProduct.variants[idx]) {
+                          setSelectedVariantId(apiProduct.variants[idx].id);
+                        }
+                      }}
                       className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
                         selectedColor === col.name
                           ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"

@@ -9,7 +9,7 @@ import { and, asc, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm';
 import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
-import { categories, productImages, products } from '../db/schema';
+import { categories, productImages, products, productVariants } from '../db/schema';
 import type { 
   CreateCategoryDto, 
   CreateProductDto, 
@@ -35,13 +35,34 @@ export class ProductsService {
       throw new BadRequestException('Category not found');
     }
 
-    const mainImages = dto.images.filter(img => img.isMainImage);
-    if (mainImages.length !== 1) {
-      throw new BadRequestException('Exactly one main image is required');
+    const colorNames = dto.color ? dto.color.split(',').map(c => c.trim()).filter(Boolean) : [];
+    
+    if (colorNames.length > 0) {
+      const imagesByColor = dto.images.reduce((acc, img) => {
+        const color = img.variantColor || '';
+        if (!acc[color]) acc[color] = [];
+        acc[color].push(img);
+        return acc;
+      }, {} as Record<string, typeof dto.images>);
+
+      for (const colorName of colorNames) {
+        const colorImages = imagesByColor[colorName] || [];
+        if (colorImages.length === 0) {
+          throw new BadRequestException(`At least one image is required for color variant: ${colorName}`);
+        }
+        const mainImages = colorImages.filter(img => img.isMainImage);
+        if (mainImages.length !== 1) {
+          throw new BadRequestException(`Exactly one main image is required for color variant: ${colorName}`);
+        }
+      }
+    } else {
+      const mainImages = dto.images.filter(img => img.isMainImage);
+      if (mainImages.length !== 1) {
+        throw new BadRequestException('Exactly one main image is required');
+      }
     }
 
     try {
-      // Create product first
       const [newProduct] = await this.db
         .insert(products)
         .values({
@@ -65,14 +86,37 @@ export class ProductsService {
         })
         .returning();
 
-      // Create product images separately
-      const imageData = dto.images.map((img, index) => ({
-        productId: newProduct.id,
-        imageUrl: img.imageUrl,
-        isMainImage: img.isMainImage,
-        displayOrder: img.isMainImage ? 0 : index + 1,
-        altText: img.altText,
-      }));
+      const variantMap = new Map<string, string>(); // colorName -> variantId
+      if (colorNames.length > 0) {
+        const variantsToInsert = colorNames.map(colorName => ({
+          productId: newProduct.id,
+          colorName,
+          stockQuantity: dto.stockQuantity,
+        }));
+
+        const createdVariants = await this.db
+          .insert(productVariants)
+          .values(variantsToInsert)
+          .returning();
+
+        createdVariants.forEach(variant => {
+          variantMap.set(variant.colorName, variant.id);
+        });
+      }
+
+      const imageData = dto.images.map((img, index) => {
+        const variantId = img.variantColor ? variantMap.get(img.variantColor) : undefined;
+        
+        return {
+          productId: newProduct.id,
+          variantId: variantId || null,
+          imageUrl: img.imageUrl,
+          cloudinaryPublicId: img.cloudinaryPublicId || null,
+          isMainImage: img.isMainImage,
+          displayOrder: img.displayOrder || (img.isMainImage ? 0 : index + 1),
+          altText: img.altText || null,
+        };
+      });
 
       await this.db.insert(productImages).values(imageData);
 
@@ -158,22 +202,44 @@ export class ProductsService {
     ]);
 
     const productIds = productsData.map(p => p.product.id);
-    const images = productIds.length > 0 
-      ? await this.db
-          .select()
-          .from(productImages)
-          .where(inArray(productImages.productId, productIds))
-          .orderBy(asc(productImages.displayOrder))
-      : [];
+    
+    const [images, variants] = await Promise.all([
+      productIds.length > 0 
+        ? this.db
+            .select()
+            .from(productImages)
+            .where(inArray(productImages.productId, productIds))
+            .orderBy(asc(productImages.displayOrder))
+        : [],
+      productIds.length > 0
+        ? this.db
+            .select()
+            .from(productVariants)
+            .where(inArray(productVariants.productId, productIds))
+        : [],
+    ]);
 
-    const imagesByProduct = images.reduce((acc, img) => {
-      if (!acc[img.productId]) acc[img.productId] = [];
-      acc[img.productId].push(img);
-      return acc;
-    }, {} as Record<string, typeof images>);
+    type ImageMap = Record<string, (typeof productImages.$inferSelect)[]>;
+    const imagesByProduct: ImageMap = {};
+    images.forEach((img: typeof productImages.$inferSelect) => {
+      if (!imagesByProduct[img.productId]) imagesByProduct[img.productId] = [];
+      imagesByProduct[img.productId].push(img);
+    });
+
+    type VariantMap = Record<string, (typeof productVariants.$inferSelect)[]>;
+    const variantsByProduct: VariantMap = {};
+    variants.forEach((variant: typeof productVariants.$inferSelect) => {
+      if (!variantsByProduct[variant.productId]) variantsByProduct[variant.productId] = [];
+      variantsByProduct[variant.productId].push(variant);
+    });
 
     const formattedProducts = productsData.map(({ product, category }) => 
-      this.formatProductResponse(product, category!, imagesByProduct[product.id] || [])
+      this.formatProductResponse(
+        product, 
+        category!, 
+        imagesByProduct[product.id] || [],
+        variantsByProduct[product.id] || []
+      )
     );
 
     return {
@@ -199,13 +265,19 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    const images = await this.db
-      .select()
-      .from(productImages)
-      .where(eq(productImages.productId, id))
-      .orderBy(asc(productImages.displayOrder));
+    const [images, variants] = await Promise.all([
+      this.db
+        .select()
+        .from(productImages)
+        .where(eq(productImages.productId, id))
+        .orderBy(asc(productImages.displayOrder)),
+      this.db
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.productId, id)),
+    ]);
 
-    return this.formatProductResponse(productData.product, productData.category!, images);
+    return this.formatProductResponse(productData.product, productData.category!, images, variants);
   }
 
   async updateProduct(id: string, dto: UpdateProductDto): Promise<ProductResponse> {
@@ -246,34 +318,79 @@ export class ProductsService {
 
       updateData.updatedAt = new Date();
 
-      if (Object.keys(updateData).length > 1) { // More than just updatedAt
+      if (Object.keys(updateData).length > 1) {
         await this.db
           .update(products)
           .set(updateData)
           .where(eq(products.id, id));
       }
 
-      // Update images if provided
-      if (dto.images) {
-        // Ensure only one main image
-        const mainImages = dto.images.filter(img => img.isMainImage);
-        if (mainImages.length !== 1) {
-          throw new BadRequestException('Exactly one main image is required');
-        }
-
-        // Delete existing images first
+      if (dto.images || dto.color !== undefined) {
+        const colorNames = (dto.color || existingProduct.color || '').split(',').map(c => c.trim()).filter(Boolean);
+        
+        await this.db.delete(productVariants).where(eq(productVariants.productId, id));
         await this.db.delete(productImages).where(eq(productImages.productId, id));
 
-        // Create new images
-        const imageData = dto.images.map((img, index) => ({
-          productId: id,
-          imageUrl: img.imageUrl,
-          isMainImage: img.isMainImage,
-          displayOrder: img.isMainImage ? 0 : index + 1,
-          altText: img.altText,
-        }));
+        const variantMap = new Map<string, string>();
+        if (colorNames.length > 0) {
+          const variantsToInsert = colorNames.map(colorName => ({
+            productId: id,
+            colorName,
+            stockQuantity: dto.stockQuantity !== undefined ? dto.stockQuantity : existingProduct.stockQuantity,
+          }));
 
-        await this.db.insert(productImages).values(imageData);
+          const createdVariants = await this.db
+            .insert(productVariants)
+            .values(variantsToInsert)
+            .returning();
+
+          createdVariants.forEach(variant => {
+            variantMap.set(variant.colorName, variant.id);
+          });
+        }
+
+        if (dto.images) {
+          if (colorNames.length > 0) {
+            const imagesByColor = dto.images.reduce((acc, img) => {
+              const color = img.variantColor || '';
+              if (!acc[color]) acc[color] = [];
+              acc[color].push(img);
+              return acc;
+            }, {} as Record<string, typeof dto.images>);
+
+            for (const colorName of colorNames) {
+              const colorImages = imagesByColor[colorName] || [];
+              if (colorImages.length === 0) {
+                throw new BadRequestException(`At least one image is required for color variant: ${colorName}`);
+              }
+              const mainImages = colorImages.filter(img => img.isMainImage);
+              if (mainImages.length !== 1) {
+                throw new BadRequestException(`Exactly one main image is required for color variant: ${colorName}`);
+              }
+            }
+          } else {
+            const mainImages = dto.images.filter(img => img.isMainImage);
+            if (mainImages.length !== 1) {
+              throw new BadRequestException('Exactly one main image is required');
+            }
+          }
+
+          const imageData = dto.images.map((img, index) => {
+            const variantId = img.variantColor ? variantMap.get(img.variantColor) : undefined;
+            
+            return {
+              productId: id,
+              variantId: variantId || null,
+              imageUrl: img.imageUrl,
+              cloudinaryPublicId: img.cloudinaryPublicId || null,
+              isMainImage: img.isMainImage,
+              displayOrder: img.displayOrder || (img.isMainImage ? 0 : index + 1),
+              altText: img.altText || null,
+            };
+          });
+
+          await this.db.insert(productImages).values(imageData);
+        }
       }
 
       return this.getProductById(id);
@@ -360,7 +477,8 @@ export class ProductsService {
   private formatProductResponse(
     product: typeof products.$inferSelect,
     category: typeof categories.$inferSelect,
-    images: (typeof productImages.$inferSelect)[]
+    images: (typeof productImages.$inferSelect)[],
+    variants: (typeof productVariants.$inferSelect)[] = []
   ): ProductResponse {
 
     let inventoryStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -371,6 +489,28 @@ export class ProductsService {
     } else {
       inventoryStatus = 'in_stock';
     }
+
+    const imagesByVariant = images.reduce((acc, img) => {
+      const key = img.variantId || 'noVariant';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(img);
+      return acc;
+    }, {} as Record<string, typeof images>);
+
+    const formattedVariants = variants.map(variant => ({
+      id: variant.id,
+      colorName: variant.colorName,
+      sku: variant.sku || undefined,
+      stockQuantity: variant.stockQuantity,
+      images: (imagesByVariant[variant.id] || []).map(img => ({
+        id: img.id,
+        imageUrl: img.imageUrl,
+        cloudinaryPublicId: img.cloudinaryPublicId || undefined,
+        isMainImage: img.isMainImage,
+        displayOrder: img.displayOrder,
+        altText: img.altText || undefined,
+      })),
+    }));
 
     return {
       id: product.id,
@@ -399,10 +539,13 @@ export class ProductsService {
       images: images.map(img => ({
         id: img.id,
         imageUrl: img.imageUrl,
+        cloudinaryPublicId: img.cloudinaryPublicId || undefined,
         isMainImage: img.isMainImage,
         displayOrder: img.displayOrder,
         altText: img.altText || undefined,
+        variantId: img.variantId || undefined,
       })),
+      variants: formattedVariants.length > 0 ? formattedVariants : undefined,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };

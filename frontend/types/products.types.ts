@@ -18,8 +18,11 @@ export interface CreateProductRequest {
   warranty?: string;
   images: {
     imageUrl: string;
+    cloudinaryPublicId?: string;
     isMainImage: boolean;
+    displayOrder?: number;
     altText?: string;
+    variantColor?: string;
   }[];
 }
 
@@ -50,9 +53,25 @@ export interface ProductResponse {
   images: {
     id: string;
     imageUrl: string;
+    cloudinaryPublicId?: string;
     isMainImage: boolean;
     displayOrder: number;
     altText?: string;
+    variantId?: string;
+  }[];
+  variants?: {
+    id: string;
+    colorName: string;
+    sku?: string;
+    stockQuantity: number;
+    images: {
+      id: string;
+      imageUrl: string;
+      cloudinaryPublicId?: string;
+      isMainImage: boolean;
+      displayOrder: number;
+      altText?: string;
+    }[];
   }[];
   createdAt: string;
   updatedAt: string;

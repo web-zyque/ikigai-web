@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import {
   X,
@@ -250,7 +250,7 @@ export default function AddProductModal({
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${idx}`,
       file,
       previewUrl: URL.createObjectURL(file),
-      isMain: false, // will be set below
+      isMain: false, // will be set below per variant
       variantColor,
       uploadStatus: 'pending' as UploadStatus,
       uploadProgress: 0,
@@ -258,11 +258,27 @@ export default function AddProductModal({
 
     setUploadedImages((prev) => {
       const combined = [...prev, ...newItems];
-      // Ensure there is exactly one main image
-      const hasMain = combined.some((img) => img.isMain);
-      if (!hasMain && combined.length > 0) {
-        combined[0] = { ...combined[0], isMain: true };
+      
+      if (variantColor) {
+        // For color variants: ensure each color has exactly one main image
+        const colorImages = combined.filter(img => img.variantColor === variantColor);
+        const hasMainForColor = colorImages.some(img => img.isMain);
+        
+        if (!hasMainForColor && colorImages.length > 0) {
+          // Set the first image of this color as main
+          const firstColorImageIndex = combined.findIndex(img => img.variantColor === variantColor);
+          if (firstColorImageIndex >= 0) {
+            combined[firstColorImageIndex] = { ...combined[firstColorImageIndex], isMain: true };
+          }
+        }
+      } else {
+        // For products without variants: ensure exactly one main image overall
+        const hasMain = combined.some((img) => img.isMain);
+        if (!hasMain && combined.length > 0) {
+          combined[0] = { ...combined[0], isMain: true };
+        }
       }
+      
       return combined;
     });
 
@@ -286,10 +302,34 @@ export default function AddProductModal({
       if (removing?.previewUrl?.startsWith('blob:')) {
         URL.revokeObjectURL(removing.previewUrl);
       }
+      
       const filtered = prev.filter((item) => item.id !== idToRemove);
-      if (filtered.length > 0 && !filtered.some((item) => item.isMain)) {
-        filtered[0] = { ...filtered[0], isMain: true };
+      
+      // If the removed image was main, set another image from the same variant as main
+      if (removing?.isMain && filtered.length > 0) {
+        const variantColor = removing.variantColor;
+        
+        if (variantColor) {
+          // For color variants: set first image of same color as main
+          const sameColorImages = filtered.filter(img => img.variantColor === variantColor);
+          if (sameColorImages.length > 0) {
+            const firstColorIndex = filtered.findIndex(img => img.variantColor === variantColor);
+            if (firstColorIndex >= 0) {
+              filtered[firstColorIndex] = { ...filtered[firstColorIndex], isMain: true };
+            }
+          }
+        } else {
+          // For products without variants: set first overall image as main
+          const imagesWithoutVariant = filtered.filter(img => !img.variantColor);
+          if (imagesWithoutVariant.length > 0) {
+            const firstIndex = filtered.findIndex(img => !img.variantColor);
+            if (firstIndex >= 0) {
+              filtered[firstIndex] = { ...filtered[firstIndex], isMain: true };
+            }
+          }
+        }
       }
+      
       return filtered;
     });
   };
@@ -302,12 +342,19 @@ export default function AddProductModal({
   };
 
   const handleSetMainImage = (id: string) => {
-    setUploadedImages((prev) =>
-      prev.map((item) => ({
+    setUploadedImages((prev) => {
+      // Find the image being set as main to get its variant color
+      const targetImage = prev.find(img => img.id === id);
+      if (!targetImage) return prev;
+      
+      const variantColor = targetImage.variantColor;
+      
+      // Only update images within the same variant (or no variant)
+      return prev.map((item) => ({
         ...item,
-        isMain: item.id === id,
-      }))
-    );
+        isMain: item.variantColor === variantColor ? item.id === id : item.isMain,
+      }));
+    });
   };
 
   const validateStep1 = (): boolean => {
@@ -352,21 +399,67 @@ export default function AddProductModal({
 
   const validateStep2 = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (uploadedImages.length < 3) {
-      newErrors.images = `Minimum 3 images are required. Currently uploaded: ${uploadedImages.length}.`;
+    
+    // Check if color variants are enabled
+    if (hasColorVariants && colorValues.length > 0) {
+      // Group images by color
+      const imagesByColor: Record<string, typeof uploadedImages> = {};
+      uploadedImages.forEach(img => {
+        const color = img.variantColor || '';
+        if (!imagesByColor[color]) imagesByColor[color] = [];
+        imagesByColor[color].push(img);
+      });
+      
+      // Validate each color has minimum 3 images
+      const missingColors: string[] = [];
+      const uploadingColors: string[] = [];
+      const failedColors: string[] = [];
+      
+      colorValues.forEach(color => {
+        const colorImages = imagesByColor[color] || [];
+        const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+        const inFlightImages = colorImages.filter(img => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading');
+        const failedImages = colorImages.filter(img => img.uploadStatus === 'error');
+        
+        if (doneImages.length < 3) {
+          missingColors.push(`${color} (${doneImages.length}/3)`);
+        }
+        
+        if (inFlightImages.length > 0) {
+          uploadingColors.push(`${color} (${inFlightImages.length} uploading)`);
+        }
+        
+        if (failedImages.length > 0) {
+          failedColors.push(`${color} (${failedImages.length} failed)`);
+        }
+      });
+      
+      if (missingColors.length > 0) {
+        newErrors.images = `Minimum 3 images required per color. Missing: ${missingColors.join(', ')}`;
+      } else if (uploadingColors.length > 0) {
+        newErrors.images = `Images still uploading: ${uploadingColors.join(', ')}. Please wait.`;
+      } else if (failedColors.length > 0) {
+        newErrors.images = `Upload failed for: ${failedColors.join(', ')}. Please retry or remove.`;
+      }
     } else {
-      const inFlight = uploadedImages.filter(
-        (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
-      );
-      if (inFlight.length > 0) {
-        newErrors.images = `${inFlight.length} image(s) are still uploading. Please wait.`;
+      // No color variants - validate overall images
+      if (uploadedImages.length < 3) {
+        newErrors.images = `Minimum 3 images are required. Currently uploaded: ${uploadedImages.length}.`;
       } else {
-        const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
-        if (failed.length > 0) {
-          newErrors.images = `${failed.length} image(s) failed to upload. Please retry or remove them.`;
+        const inFlight = uploadedImages.filter(
+          (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
+        );
+        if (inFlight.length > 0) {
+          newErrors.images = `${inFlight.length} image(s) are still uploading. Please wait.`;
+        } else {
+          const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
+          if (failed.length > 0) {
+            newErrors.images = `${failed.length} image(s) failed to upload. Please retry or remove them.`;
+          }
         }
       }
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -422,6 +515,51 @@ export default function AddProductModal({
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  // Check if Step 2 (images) is ready to proceed
+  const isStep2Valid = useMemo(() => {
+    if (hasColorVariants && colorValues.length > 0) {
+      // Group images by color
+      const imagesByColor: Record<string, typeof uploadedImages> = {};
+      uploadedImages.forEach(img => {
+        const color = img.variantColor || '';
+        if (!imagesByColor[color]) imagesByColor[color] = [];
+        imagesByColor[color].push(img);
+      });
+      
+      // Check each color has minimum 3 successfully uploaded images
+      for (const color of colorValues) {
+        const colorImages = imagesByColor[color] || [];
+        const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+        const inFlightImages = colorImages.filter(img => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading');
+        const failedImages = colorImages.filter(img => img.uploadStatus === 'error');
+        
+        // Not enough images uploaded for this color
+        if (doneImages.length < 3) return false;
+        
+        // Still uploading
+        if (inFlightImages.length > 0) return false;
+        
+        // Has failed uploads
+        if (failedImages.length > 0) return false;
+      }
+      
+      return true;
+    } else {
+      // No color variants - check overall images
+      if (uploadedImages.length < 3) return false;
+      
+      const inFlight = uploadedImages.filter(
+        (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
+      );
+      if (inFlight.length > 0) return false;
+      
+      const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
+      if (failed.length > 0) return false;
+      
+      return true;
+    }
+  }, [uploadedImages, hasColorVariants, colorValues]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep1() || !validateStep2() || !validateStep3()) {
@@ -433,9 +571,11 @@ export default function AddProductModal({
       // All images must already be uploaded (validated above). Use their cloudinaryUrl.
       const imagesPayload = uploadedImages.map((img, idx) => ({
         imageUrl: img.cloudinaryUrl ?? img.previewUrl,
+        cloudinaryPublicId: img.publicId,
         isMainImage: img.isMain,
         displayOrder: idx + 1,
         altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
+        variantColor: img.variantColor, // Add variant color association
       }));
 
       const vehicleCompatibilityArray = vehicleCompatibility
@@ -898,6 +1038,13 @@ export default function AddProductModal({
                       (img) => img.variantColor === colorName
                     );
                     const isDragOverThis = draggingColor === colorName;
+                    
+                    // Calculate progress for this color
+                    const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+                    const uploadingImages = colorImages.filter(img => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading');
+                    const failedImages = colorImages.filter(img => img.uploadStatus === 'error');
+                    const minRequired = 3;
+                    const isColorComplete = doneImages.length >= minRequired;
 
                     return (
                       <div
@@ -905,11 +1052,39 @@ export default function AddProductModal({
                         className="rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5 space-y-4"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-base font-bold text-white capitalize">{colorName}</span>
-                            <span className="text-xs text-white/40">
-                              ({colorImages.length} images)
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col">
+                              <span className="text-base font-bold text-white capitalize">{colorName}</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs font-medium ${
+                                  isColorComplete 
+                                    ? 'text-green-400' 
+                                    : doneImages.length > 0 
+                                      ? 'text-yellow-400' 
+                                      : 'text-white/40'
+                                }`}>
+                                  {doneImages.length}/{minRequired} uploaded
+                                </span>
+                                {uploadingImages.length > 0 && (
+                                  <span className="text-xs text-blue-400 flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    {uploadingImages.length} uploading
+                                  </span>
+                                )}
+                                {failedImages.length > 0 && (
+                                  <span className="text-xs text-red-400 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    {failedImages.length} failed
+                                  </span>
+                                )}
+                                {isColorComplete && (
+                                  <span className="text-xs text-green-400 flex items-center gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Complete
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           <label className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 px-4 py-2 text-xs font-semibold text-white transition-colors cursor-pointer">
@@ -988,9 +1163,15 @@ export default function AddProductModal({
                               ))}
                             </div>
                           ) : (
-                            <span className="text-xs text-white/40">
-                              No images uploaded for {colorName} yet
-                            </span>
+                            <div className="flex flex-col items-center justify-center py-6 text-center">
+                              <ImageIcon className="h-8 w-8 text-white/20 mb-2" />
+                              <span className="text-xs text-white/40 mb-1">
+                                No images uploaded for {colorName} yet
+                              </span>
+                              <span className="text-xs text-white/30">
+                                Minimum {minRequired} images required
+                              </span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1367,11 +1548,13 @@ export default function AddProductModal({
                 const uploadsInFlight = currentStep === 2
                   ? uploadedImages.some((img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading')
                   : false;
+                const isDisabled = currentStep === 2 ? !isStep2Valid : uploadsInFlight;
+                
                 return (
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={uploadsInFlight}
+                    disabled={isDisabled}
                     className="inline-flex items-center gap-1.5 rounded-full bg-white text-black hover:bg-white/90 px-6 py-2.5 text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {uploadsInFlight ? (

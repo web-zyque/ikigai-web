@@ -33,6 +33,7 @@ export interface UploadedImageItem {
   file?: File;
   previewUrl: string;
   isMain: boolean;
+  variantColor?: string;
   uploadStatus: UploadStatus;
   uploadProgress: number;
   cloudinaryUrl?: string;
@@ -350,8 +351,11 @@ export default function EditProductModal({
     try {
       const imagesPayload = uploadedImages.map((img, idx) => ({
         imageUrl: img.cloudinaryUrl ?? img.previewUrl,
+        cloudinaryPublicId: img.publicId,
         isMainImage: img.isMain,
-        altText: productName,
+        displayOrder: idx + 1,
+        altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
+        variantColor: img.variantColor,
       }));
 
       const vehicleCompatibilityArray = vehicleCompatibility
