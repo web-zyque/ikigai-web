@@ -29,6 +29,13 @@
       "when": 1792092624943,
       "tag": "0003_dapper_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792685374445,
+      "tag": "0004_chief_swarm",
+      "breakpoints": true
     }
   ]
 }

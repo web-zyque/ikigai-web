@@ -82,10 +82,22 @@ export const products = pgTable('products', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const productVariants = pgTable('product_variants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  colorName: text('color_name').notNull(),
+  sku: text('sku'),
+  stockQuantity: integer('stock_quantity').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const productImages = pgTable('product_images', {
   id: uuid('id').defaultRandom().primaryKey(),
   productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  variantId: uuid('variant_id').references(() => productVariants.id, { onDelete: 'cascade' }),
   imageUrl: text('image_url').notNull(),
+  cloudinaryPublicId: text('cloudinary_public_id'),
   isMainImage: boolean('is_main_image').default(false).notNull(),
   displayOrder: integer('display_order').default(0).notNull(),
   altText: text('alt_text'),
