@@ -17,6 +17,7 @@ import {
 import { useCategories, useUpdateProduct } from "@/hooks/use-products";
 import { uploadApi } from "@/services/upload.service";
 import { ProductResponse } from "@/types/products.types";
+import { normalizeColorName, parseColorString, getColorInfo } from "@/lib/color-utils";
 
 export interface EditProductModalProps {
   isOpen: boolean;

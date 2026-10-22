@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCategories, useCreateProduct } from "@/hooks/use-products";
 import { uploadApi } from "@/services/upload.service";
+import { normalizeColorName, parseColorString, getColorInfo } from "@/lib/color-utils";
 
 export interface AddProductModalProps {
   isOpen: boolean;
@@ -150,13 +151,22 @@ export default function AddProductModal({
 
   const handleAddColorValue = () => {
     const trimmed = newColorInput.trim();
-    if (trimmed && !colorValues.includes(trimmed)) {
+    if (!trimmed) return;
+    
+    // Case-insensitive duplicate check
+    const normalized = normalizeColorName(trimmed);
+    const isDuplicate = colorValues.some(c => normalizeColorName(c) === normalized);
+    
+    if (!isDuplicate) {
       setColorValues((prev) => [...prev, trimmed]);
       setNewColorInput("");
       // Clear color variant error if adding a value
       if (errors.colorVariants) {
         setErrors((prev) => ({ ...prev, colorVariants: "" }));
       }
+    } else {
+      // Show error for duplicate
+      setErrors((prev) => ({ ...prev, colorVariants: `"${trimmed}" already added` }));
     }
   };
 
@@ -743,21 +753,29 @@ export default function AddProductModal({
                     {hasColorVariants && (
                       <div className="flex-1 max-w-xl w-full flex items-center gap-2">
                         <div className="flex-1 flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-[#121212] px-3 py-1.5 min-h-[42px]">
-                          {colorValues.map((color) => (
-                            <span
-                              key={color}
-                              className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-white"
-                            >
-                              {color}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveColorValue(color)}
-                                className="text-white/40 hover:text-white"
+                          {colorValues.map((color) => {
+                            const colorInfo = getColorInfo(color);
+                            return (
+                              <span
+                                key={color}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 pl-1 pr-2.5 py-1 text-xs text-white"
                               >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
-                          ))}
+                                <span
+                                  className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+                                  style={{ backgroundColor: colorInfo.hex }}
+                                  title={`${color} (${colorInfo.hex})`}
+                                />
+                                {color}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveColorValue(color)}
+                                  className="text-white/40 hover:text-white ml-0.5"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            );
+                          })}
                           <input
                             type="text"
                             placeholder="Add color + Enter"

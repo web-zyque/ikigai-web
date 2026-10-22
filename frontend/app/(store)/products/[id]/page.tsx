@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { useCart } from "@/context/CartContext";
 import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
 import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
+import { parseColorString, getColorInfo } from "@/lib/color-utils";
 
 export interface ProductDetailItem {
   id: string | number;
@@ -30,13 +31,6 @@ export interface ProductDetailItem {
   partType?: string;
 }
 
-const colorVariants = [
-  { name: "Matte Black", hex: "#171717", isLight: false },
-  { name: "Gunmetal", hex: "#3f3f46", isLight: false },
-  { name: "Crimson Red", hex: "#640C0C", isLight: false },
-  { name: "Silver", hex: "#d4d4d8", isLight: true },
-];
-
 const tabs = [
   { id: "description", label: "Description" },
   { id: "features", label: "Key Features" },
@@ -51,7 +45,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const { cartItems, addToCart } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState("Matte Black");
   const [selectedSize, setSelectedSize] = useState("18 inch");
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
   const [quantity, setQuantity] = useState(1);
@@ -62,6 +55,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const { data: apiProduct, isLoading, error } = useStoreProduct(productId);
   
   const { data: allProductsData } = useStoreProducts({ limit: 100 });
+
+  const productColors = useMemo(() => {
+    if (!apiProduct?.color) return [];
+    const colorNames = parseColorString(apiProduct.color);
+    return colorNames.map(name => getColorInfo(name));
+  }, [apiProduct]);
+
+  const [selectedColor, setSelectedColor] = useState("");
+  
+  useEffect(() => {
+    if (productColors.length > 0 && !selectedColor) {
+      setSelectedColor(productColors[0].name);
+    }
+  }, [productColors]);
 
   const product: ProductDetailItem | null = useMemo(() => {
     if (!apiProduct) return null;
@@ -350,32 +357,35 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               {product.description}
             </p>
 
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Colors
-              </span>
-              <div className="flex items-center gap-2.5">
-                {colorVariants.map((col) => (
-                  <button
-                    key={col.name}
-                    type="button"
-                    onClick={() => setSelectedColor(col.name)}
-                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
-                      selectedColor === col.name
-                        ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
-                        : "border-white/20 hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: col.hex }}
-                    aria-label={col.name}
-                  >
-                    {selectedColor === col.name && (
-                      <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
-                    )}
-                  </button>
-                ))}
+            {productColors.length > 0 && (
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Colors
+                </span>
+                <div className="flex items-center gap-2.5">
+                  {productColors.map((col) => (
+                    <button
+                      key={col.name}
+                      type="button"
+                      onClick={() => setSelectedColor(col.name)}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
+                        selectedColor === col.name
+                          ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
+                          : "border-white/20 hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: col.hex }}
+                      aria-label={col.name}
+                      title={col.name}
+                    >
+                      {selectedColor === col.name && (
+                        <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
               </div>
-              <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
-            </div>
+            )}
 
             <div className="flex items-center gap-3 mb-6">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
