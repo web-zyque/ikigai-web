@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import {
   X,
@@ -14,9 +14,11 @@ import {
   Image as ImageIcon,
   Calendar,
   Car,
+  Check,
 } from "lucide-react";
 import { ProductResponse } from "@/types/products.types";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { parseColorString, getColorInfo } from "@/lib/color-utils";
 
 export interface ProductDetailsModalProps {
   product: ProductResponse | null;
@@ -39,6 +41,8 @@ export default function ProductDetailsModal({
 }: ProductDetailsModalProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
 
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -46,10 +50,47 @@ export default function ProductDetailsModal({
   const [stockToAdd, setStockToAdd] = useState("");
   const [stockError, setStockError] = useState<string | null>(null);
 
+  const productColors = useMemo(() => {
+    if (!product) return [];
+    
+    if (product.variants && product.variants.length > 0) {
+      return product.variants.map(variant => getColorInfo(variant.colorName));
+    } else if (product.color) {
+      const colorNames = parseColorString(product.color);
+      return colorNames.map(name => getColorInfo(name));
+    }
+    
+    return [];
+  }, [product]);
+
+  const variantImages = useMemo(() => {
+    if (!product) return [];
+    
+    if (product.variants && product.variants.length > 0 && selectedVariantId) {
+      const variant = product.variants.find(v => v.id === selectedVariantId);
+      if (variant && variant.images.length > 0) {
+        return variant.images;
+      }
+    }
+    
+    return product.images || [];
+  }, [product, selectedVariantId]);
+
+  useEffect(() => {
+    if (productColors.length > 0 && !selectedColor) {
+      setSelectedColor(productColors[0].name);
+      if (product?.variants && product.variants.length > 0) {
+        setSelectedVariantId(product.variants[0].id);
+      }
+    }
+  }, [productColors, product]);
+
   useEffect(() => {
     setSelectedImageIndex(0);
     setStockToAdd("");
     setStockError(null);
+    setSelectedColor("");
+    setSelectedVariantId("");
   }, [product?.id, isOpen]);
 
   useEffect(() => {
@@ -70,7 +111,7 @@ export default function ProductDetailsModal({
 
   const selling = parseFloat(product.sellingPrice) || 0;
   const mrp = product.mrpPrice ? parseFloat(product.mrpPrice) : 0;
-  const images = product.images || [];
+  const images = variantImages;
   const currentImage = images[selectedImageIndex] || images[0] || null;
 
   const getStatusTextClass = (status: ProductResponse["inventoryStatus"]) => {
@@ -388,6 +429,43 @@ export default function ProductDetailsModal({
                   {images.length} {images.length === 1 ? "Image" : "Images"}
                 </span>
               </div>
+
+              {/* Color Variant Selector */}
+              {productColors.length > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <span className="text-xs font-medium text-white/70">
+                    Select Color:
+                  </span>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {productColors.map((col, idx) => (
+                      <button
+                        key={col.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedColor(col.name);
+                          setSelectedImageIndex(0); // Reset to first image
+                          if (product?.variants && product.variants[idx]) {
+                            setSelectedVariantId(product.variants[idx].id);
+                          }
+                        }}
+                        className={`w-7 h-7 rounded-full border transition-all flex items-center justify-center ${
+                          selectedColor === col.name
+                            ? "ring-2 ring-white ring-offset-2 ring-offset-[#121212] border-white scale-110"
+                            : "border-white/30 hover:scale-105 opacity-70 hover:opacity-100"
+                        }`}
+                        style={{ backgroundColor: col.hex }}
+                        aria-label={col.name}
+                        title={col.name}
+                      >
+                        {selectedColor === col.name && (
+                          <Check className={`w-3.5 h-3.5 ${col.isLight ? "text-black" : "text-white"}`} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs text-white/50">({selectedColor})</span>
+                </div>
+              )}
 
               {images.length > 0 ? (
                 <div className="space-y-3">
