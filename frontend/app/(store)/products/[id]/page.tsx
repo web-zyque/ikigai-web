@@ -4,9 +4,10 @@ import { use, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2 } from "lucide-react";
+import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2, Loader2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { getStoreProductById, STORE_PRODUCTS } from "@/data/storeCatalog";
+import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
+import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
 
 export interface ProductDetailItem {
@@ -58,36 +59,40 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const productId = resolvedParams.id;
 
-  // Retrieve the exact product details for the clicked product
-  const product: ProductDetailItem | null = useMemo(() => {
-    const found = getStoreProductById(productId);
-    if (!found) return null;
+  const { data: apiProduct, isLoading, error } = useStoreProduct(productId);
+  
+  const { data: allProductsData } = useStoreProducts({ limit: 100 });
 
-    const rawImages = found.images?.length ? found.images : [found.image];
+  const product: ProductDetailItem | null = useMemo(() => {
+    if (!apiProduct) return null;
+
+    const storeProduct = mapProductToStoreProduct(apiProduct);
+    const rawImages = storeProduct.images?.length ? storeProduct.images : [storeProduct.image];
+    
     return {
-      id: found.id,
-      name: found.name,
-      price: found.price,
-      mrpPrice: found.mrpPrice,
-      image: found.image,
+      id: storeProduct.id,
+      name: storeProduct.name,
+      price: storeProduct.price,
+      mrpPrice: storeProduct.mrpPrice,
+      image: storeProduct.image,
       images: rawImages,
-      category: found.category,
-      categoryLabel: found.categoryLabel,
-      brand: found.brand,
-      description: found.description || "Premium automotive upgrade engineered for precision fitment and performance.",
-      features: found.features || [
+      category: storeProduct.category,
+      categoryLabel: storeProduct.categoryLabel,
+      brand: storeProduct.brand,
+      description: storeProduct.description || "Premium automotive upgrade engineered for precision fitment and performance.",
+      features: storeProduct.features || [
         "Direct OEM replacement fitment",
         "Engineered for high stress and endurance",
         "Backed by Ikigai quality assurance guarantee",
       ],
-      compatibility: found.vehicleCompatibility?.length ? found.vehicleCompatibility : ["Universal fitment"],
-      material: found.material || "High-grade automotive alloy",
-      warranty: found.warranty || "1 Year Limited Warranty",
-      inStock: found.inStock ?? true,
-      stockQuantity: found.stockQuantity ?? 10,
-      partType: found.partType,
+      compatibility: storeProduct.vehicleCompatibility?.length ? storeProduct.vehicleCompatibility : ["Universal fitment"],
+      material: storeProduct.material || "High-grade automotive alloy",
+      warranty: storeProduct.warranty || "1 Year Limited Warranty",
+      inStock: storeProduct.inStock ?? true,
+      stockQuantity: storeProduct.stockQuantity ?? 10,
+      partType: storeProduct.partType,
     };
-  }, [productId]);
+  }, [apiProduct]);
 
   const images = useMemo(() => {
     if (product?.images && product.images.length > 0) return product.images;
@@ -101,20 +106,31 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }, [cartItems, product]);
 
   const relatedProducts = useMemo(() => {
-    if (!product) return [];
+    if (!product || !allProductsData?.products) return [];
 
-    const sameCategory = STORE_PRODUCTS.filter(
+    const allStoreProducts = mapProductsToStoreProducts(allProductsData.products);
+    
+    const sameCategory = allStoreProducts.filter(
       (p) => String(p.id) !== String(product.id) && p.category === product.category
     );
     if (sameCategory.length >= 6) return sameCategory.slice(0, 6);
 
-    const otherProducts = STORE_PRODUCTS.filter(
+    const otherProducts = allStoreProducts.filter(
       (p) => String(p.id) !== String(product.id) && p.category !== product.category
     );
     return [...sameCategory, ...otherProducts].slice(0, 6);
-  }, [product]);
+  }, [product, allProductsData]);
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+        <Loader2 className="h-12 w-12 text-[#640C0C] animate-spin mb-4" />
+        <p className="text-neutral-400">Loading product details...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
