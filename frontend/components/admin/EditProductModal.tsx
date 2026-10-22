@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import {
   X,
@@ -63,9 +63,15 @@ export default function EditProductModal({
   const [brand, setBrand] = useState("");
   const [description, setDescription] = useState("");
 
+  // Step 1 Attributes / Variants
+  const [hasColorVariants, setHasColorVariants] = useState(false);
+  const [colorValues, setColorValues] = useState<string[]>([]);
+  const [newColorInput, setNewColorInput] = useState("");
+
   // Step 2: Images
   const [uploadedImages, setUploadedImages] = useState<UploadedImageItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggingColor, setDraggingColor] = useState<string | null>(null);
 
   // Step 3: Pricing, Inventory, Specifications
   const [sellingPrice, setSellingPrice] = useState("");
@@ -84,6 +90,31 @@ export default function EditProductModal({
 
   const mainFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Color management functions
+  const handleAddColorValue = () => {
+    const trimmed = newColorInput.trim();
+    if (!trimmed) return;
+    
+    // Case-insensitive duplicate check
+    const normalized = normalizeColorName(trimmed);
+    const isDuplicate = colorValues.some(c => normalizeColorName(c) === normalized);
+    
+    if (!isDuplicate) {
+      setColorValues((prev) => [...prev, trimmed]);
+      setNewColorInput("");
+      // Clear color variant error if adding a value
+      if (errors.colorVariants) {
+        setErrors((prev) => ({ ...prev, colorVariants: "" }));
+      }
+    }
+  };
+
+  const handleRemoveColorValue = (val: string) => {
+    setColorValues((prev) => prev.filter((c) => c !== val));
+    // Remove images associated with this color
+    setUploadedImages((prev) => prev.filter((img) => img.variantColor !== val));
+  };
+
   // Prepopulate form when product changes
   useEffect(() => {
     if (product && isOpen) {
@@ -93,17 +124,46 @@ export default function EditProductModal({
       setBrand(product.brand || "");
       setDescription(product.description || "");
       
-      // Populate images from existing product
-      const existingImages: UploadedImageItem[] = product.images.map((img) => ({
-        id: img.id,
-        existingImageId: img.id,
-        previewUrl: img.imageUrl,
-        cloudinaryUrl: img.imageUrl,
-        isMain: img.isMainImage,
-        uploadStatus: 'done' as UploadStatus,
-        uploadProgress: 100,
-      }));
-      setUploadedImages(existingImages);
+      // Populate color variants if they exist
+      if (product.variants && product.variants.length > 0) {
+        setHasColorVariants(true);
+        const colors = product.variants.map(v => v.colorName);
+        setColorValues(colors);
+        
+        // Populate images from variants
+        const existingImages: UploadedImageItem[] = [];
+        product.variants.forEach((variant) => {
+          variant.images.forEach((img) => {
+            existingImages.push({
+              id: img.id,
+              existingImageId: img.id,
+              previewUrl: img.imageUrl,
+              cloudinaryUrl: img.imageUrl,
+              publicId: img.cloudinaryPublicId,
+              isMain: img.isMainImage,
+              variantColor: variant.colorName,
+              uploadStatus: 'done' as UploadStatus,
+              uploadProgress: 100,
+            });
+          });
+        });
+        setUploadedImages(existingImages);
+      } else {
+        // No variants - populate images without color assignment
+        setHasColorVariants(false);
+        setColorValues([]);
+        const existingImages: UploadedImageItem[] = product.images.map((img) => ({
+          id: img.id,
+          existingImageId: img.id,
+          previewUrl: img.imageUrl,
+          cloudinaryUrl: img.imageUrl,
+          publicId: img.cloudinaryPublicId,
+          isMain: img.isMainImage,
+          uploadStatus: 'done' as UploadStatus,
+          uploadProgress: 100,
+        }));
+        setUploadedImages(existingImages);
+      }
 
       setSellingPrice(product.sellingPrice);
       setMrpPrice(product.mrpPrice || "");
@@ -194,7 +254,7 @@ export default function EditProductModal({
     }
   }, []);
 
-  const handleFilesSelected = useCallback((files: FileList | File[]) => {
+  const handleFilesSelected = useCallback((files: FileList | File[], variantColor?: string) => {
     const ALLOWED = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
     const fileArray = Array.from(files).filter((file) => ALLOWED.has(file.type));
     if (fileArray.length === 0) return;
@@ -204,16 +264,34 @@ export default function EditProductModal({
       file,
       previewUrl: URL.createObjectURL(file),
       isMain: false,
+      variantColor,
       uploadStatus: 'pending' as UploadStatus,
       uploadProgress: 0,
     }));
 
     setUploadedImages((prev) => {
       const combined = [...prev, ...newItems];
-      const hasMain = combined.some((img) => img.isMain);
-      if (!hasMain && combined.length > 0) {
-        combined[0] = { ...combined[0], isMain: true };
+      
+      if (variantColor) {
+        // For color variants: ensure each color has exactly one main image
+        const colorImages = combined.filter(img => img.variantColor === variantColor);
+        const hasMainForColor = colorImages.some(img => img.isMain);
+        if (!hasMainForColor && colorImages.length > 0) {
+          // Set first image of this color as main
+          const firstColorImage = colorImages[0];
+          const idx = combined.findIndex(img => img.id === firstColorImage.id);
+          if (idx !== -1) {
+            combined[idx] = { ...combined[idx], isMain: true };
+          }
+        }
+      } else {
+        // No variants: ensure one main image
+        const hasMain = combined.some((img) => img.isMain);
+        if (!hasMain && combined.length > 0) {
+          combined[0] = { ...combined[0], isMain: true };
+        }
       }
+      
       return combined;
     });
 
@@ -238,9 +316,25 @@ export default function EditProductModal({
         URL.revokeObjectURL(removing.previewUrl);
       }
       const filtered = prev.filter((item) => item.id !== idToRemove);
-      if (filtered.length > 0 && !filtered.some((item) => item.isMain)) {
-        filtered[0] = { ...filtered[0], isMain: true };
+      
+      if (removing?.variantColor) {
+        // For color variants: if removed image was main, promote next image of same color
+        if (removing.isMain) {
+          const sameColorImages = filtered.filter(img => img.variantColor === removing.variantColor);
+          if (sameColorImages.length > 0) {
+            const idx = filtered.findIndex(img => img.id === sameColorImages[0].id);
+            if (idx !== -1) {
+              filtered[idx] = { ...filtered[idx], isMain: true };
+            }
+          }
+        }
+      } else {
+        // No variants: if removed was main, promote first image
+        if (filtered.length > 0 && !filtered.some((item) => item.isMain)) {
+          filtered[0] = { ...filtered[0], isMain: true };
+        }
       }
+      
       return filtered;
     });
   };
@@ -253,12 +347,23 @@ export default function EditProductModal({
   };
 
   const handleSetMainImage = (id: string) => {
-    setUploadedImages((prev) =>
-      prev.map((item) => ({
-        ...item,
-        isMain: item.id === id,
-      }))
-    );
+    setUploadedImages((prev) => {
+      const targetImage = prev.find(img => img.id === id);
+      if (!targetImage) return prev;
+      
+      return prev.map((item) => {
+        if (targetImage.variantColor) {
+          // For color variants: only affect images of the same color
+          if (item.variantColor === targetImage.variantColor) {
+            return { ...item, isMain: item.id === id };
+          }
+          return item;
+        } else {
+          // No variants: affect all images
+          return { ...item, isMain: item.id === id };
+        }
+      });
+    });
   };
 
   const validateStep1 = (): boolean => {
@@ -276,21 +381,59 @@ export default function EditProductModal({
 
   const validateStep2 = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (uploadedImages.length === 0) {
-      newErrors.images = "At least one image is required";
+    
+    // Check if color variants are enabled
+    if (hasColorVariants && colorValues.length > 0) {
+      // Group images by color
+      const imagesByColor: Record<string, typeof uploadedImages> = {};
+      uploadedImages.forEach(img => {
+        if (img.variantColor) {
+          if (!imagesByColor[img.variantColor]) {
+            imagesByColor[img.variantColor] = [];
+          }
+          imagesByColor[img.variantColor].push(img);
+        }
+      });
+      
+      const failedColors: string[] = [];
+      
+      colorValues.forEach(color => {
+        const colorImages = imagesByColor[color] || [];
+        const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+        const uploading = colorImages.filter(img => img.uploadStatus === 'uploading' || img.uploadStatus === 'pending');
+        const failed = colorImages.filter(img => img.uploadStatus === 'error');
+        
+        if (uploading.length > 0) {
+          failedColors.push(`${color}: ${uploading.length} uploading`);
+        } else if (failed.length > 0) {
+          failedColors.push(`${color}: ${failed.length} failed`);
+        } else if (doneImages.length < 3) {
+          failedColors.push(`${color}: needs ${3 - doneImages.length} more`);
+        }
+      });
+      
+      if (failedColors.length > 0) {
+        newErrors.images = `Issues: ${failedColors.join('; ')}`;
+      }
     } else {
-      const inFlight = uploadedImages.filter(
-        (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
-      );
-      if (inFlight.length > 0) {
-        newErrors.images = `${inFlight.length} image(s) are still uploading. Please wait.`;
+      // No color variants - validate overall images
+      if (uploadedImages.length < 3) {
+        newErrors.images = `Minimum 3 images are required. Currently uploaded: ${uploadedImages.length}.`;
       } else {
-        const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
-        if (failed.length > 0) {
-          newErrors.images = `${failed.length} image(s) failed to upload. Please retry or remove them.`;
+        const inFlight = uploadedImages.filter(
+          (img) => img.uploadStatus === 'pending' || img.uploadStatus === 'uploading',
+        );
+        if (inFlight.length > 0) {
+          newErrors.images = `${inFlight.length} image(s) are still uploading. Please wait.`;
+        } else {
+          const failed = uploadedImages.filter((img) => img.uploadStatus === 'error');
+          if (failed.length > 0) {
+            newErrors.images = `${failed.length} image(s) failed to upload. Please retry or remove them.`;
+          }
         }
       }
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -342,6 +485,48 @@ export default function EditProductModal({
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
+  // Check if Step 2 (images) is ready to proceed
+  const isStep2Valid = useMemo(() => {
+    if (hasColorVariants && colorValues.length > 0) {
+      // Group images by color
+      const imagesByColor: Record<string, typeof uploadedImages> = {};
+      uploadedImages.forEach(img => {
+        if (img.variantColor) {
+          if (!imagesByColor[img.variantColor]) {
+            imagesByColor[img.variantColor] = [];
+          }
+          imagesByColor[img.variantColor].push(img);
+        }
+      });
+      
+      // Check each color has minimum 3 successfully uploaded images
+      for (const color of colorValues) {
+        const colorImages = imagesByColor[color] || [];
+        const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+        const uploading = colorImages.filter(img => img.uploadStatus === 'uploading' || img.uploadStatus === 'pending');
+        const failed = colorImages.filter(img => img.uploadStatus === 'error');
+        
+        // If any images are still uploading or failed, not valid
+        if (uploading.length > 0 || failed.length > 0) {
+          return false;
+        }
+        
+        // If less than 3 done images, not valid
+        if (doneImages.length < 3) {
+          return false;
+        }
+      }
+      
+      return true;
+    } else {
+      // No color variants - check overall images
+      if (uploadedImages.length < 3) return false;
+      
+      const allDone = uploadedImages.every(img => img.uploadStatus === 'done');
+      return allDone;
+    }
+  }, [uploadedImages, hasColorVariants, colorValues]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -349,13 +534,17 @@ export default function EditProductModal({
 
     setIsSubmitting(true);
     try {
+      const colorString =
+        hasColorVariants && colorValues.length > 0 ? colorValues.join(", ") : undefined;
+
+      // Build images payload with variantColor property
       const imagesPayload = uploadedImages.map((img, idx) => ({
         imageUrl: img.cloudinaryUrl ?? img.previewUrl,
         cloudinaryPublicId: img.publicId,
         isMainImage: img.isMain,
         displayOrder: idx + 1,
         altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
-        variantColor: img.variantColor,
+        variantColor: img.variantColor, // Include variantColor for backend
       }));
 
       const vehicleCompatibilityArray = vehicleCompatibility
@@ -374,7 +563,7 @@ export default function EditProductModal({
         lowStockThreshold: lowStockThreshold === "" || lowStockThreshold === undefined ? 5 : Number(lowStockThreshold),
         vehicleCompatibility: vehicleCompatibilityArray,
         productType: productType.trim() || undefined,
-        color: color.trim() || undefined,
+        color: colorString || color.trim() || undefined,
         dimensions: dimensions.trim() || undefined,
         warranty: warranty.trim() || undefined,
         material: material.trim() || undefined,
@@ -621,6 +810,79 @@ export default function EditProductModal({
                     }`}
                   />
                 </div>
+
+                {/* Color Variants Toggle */}
+                <div className="md:col-span-2 border-t border-white/5 pt-5 mt-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHasColorVariants((prev) => !prev);
+                          if (errors.colorVariants) setErrors((prev) => ({ ...prev, colorVariants: "" }));
+                        }}
+                        className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${hasColorVariants ? "bg-[#640C0C]" : "bg-white/20"
+                          }`}
+                      >
+                        <div
+                          className={`h-5 w-5 rounded-full bg-white transition-transform ${hasColorVariants ? "translate-x-5" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                      <div>
+                        <span className="text-sm font-medium text-white">Color Variants</span>
+                        <p className="text-xs text-white/40">Enable to configure specific color options</p>
+                      </div>
+                    </div>
+
+                    {hasColorVariants && (
+                      <div className="flex-1 max-w-xl w-full flex items-center gap-2">
+                        <div className="flex-1 flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-[#121212] px-3 py-1.5 min-h-[42px]">
+                          {colorValues.map((color) => {
+                            const colorInfo = getColorInfo(color);
+                            return (
+                              <span
+                                key={color}
+                                className="inline-flex items-center gap-1.5 bg-white/10 rounded-full pl-2.5 pr-1 py-0.5 text-xs text-white"
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/20 shrink-0"
+                                  style={{ backgroundColor: colorInfo.hex }}
+                                />
+                                {color}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveColorValue(color)}
+                                  className="ml-0.5 p-0.5 hover:bg-white/20 rounded-full transition-colors"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            );
+                          })}
+                          <input
+                            type="text"
+                            placeholder="Add color + Enter"
+                            value={newColorInput}
+                            onChange={(e) => setNewColorInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddColorValue();
+                              }
+                            }}
+                            className="flex-1 min-w-[100px] bg-transparent border-none outline-none text-xs text-white placeholder-white/40 px-1 py-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {errors.colorVariants && (
+                    <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {errors.colorVariants}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -639,118 +901,313 @@ export default function EditProductModal({
                 )}
               </div>
 
-              {/* Upload Area */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  if (e.dataTransfer.files) {
-                    handleFilesSelected(e.dataTransfer.files);
-                  }
-                }}
-                className={`relative flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-8 transition-colors cursor-pointer ${
-                  isDragging
-                    ? "border-[#640C0C] bg-[#640C0C]/10"
-                    : "border-white/20 bg-[#0a0a0a] hover:border-white/40"
-                }`}
-                onClick={() => mainFileInputRef.current?.click()}
-              >
-                <Upload className="h-10 w-10 text-white/40 mb-3" />
-                <p className="text-sm font-medium text-white/80 mb-1">
-                  Drop images here or click to browse
-                </p>
-                <p className="text-xs text-white/40">
-                  Supports JPEG, PNG, WEBP
-                </p>
-                <input
-                  ref={mainFileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={(e) => {
-                    if (e.target.files) handleFilesSelected(e.target.files);
-                  }}
-                  className="hidden"
-                />
-              </div>
+              {/* When Color Variants are active: show per-color upload zones */}
+              {hasColorVariants && colorValues.length > 0 ? (
+                <div className="space-y-5">
+                  {colorValues.map((colorName) => {
+                    const colorImages = uploadedImages.filter(
+                      (img) => img.variantColor === colorName
+                    );
+                    const doneImages = colorImages.filter(img => img.uploadStatus === 'done');
+                    const uploadingImages = colorImages.filter(img => img.uploadStatus === 'uploading' || img.uploadStatus === 'pending');
+                    const failedImages = colorImages.filter(img => img.uploadStatus === 'error');
+                    
+                    const colorInfo = getColorInfo(colorName);
+                    
+                    let statusBadge = null;
+                    if (uploadingImages.length > 0) {
+                      statusBadge = (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Uploading {uploadingImages.length}
+                        </span>
+                      );
+                    } else if (failedImages.length > 0) {
+                      statusBadge = (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">
+                          <AlertCircle className="w-3 h-3" />
+                          {failedImages.length} failed
+                        </span>
+                      );
+                    } else if (doneImages.length >= 3) {
+                      statusBadge = (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">
+                          <Check className="w-3 h-3" />
+                          Complete
+                        </span>
+                      );
+                    } else if (doneImages.length > 0) {
+                      statusBadge = (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">
+                          {doneImages.length}/3 uploaded
+                        </span>
+                      );
+                    } else {
+                      statusBadge = (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/40 font-medium">
+                          0/3 uploaded
+                        </span>
+                      );
+                    }
 
-              {/* Uploaded Images Grid */}
-              {uploadedImages.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {uploadedImages.map((img) => (
-                    <div
-                      key={img.id}
-                      className="relative aspect-square rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden group"
-                    >
-                      <Image
-                        src={img.previewUrl}
-                        alt="Product"
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
-                      
-                      {/* Upload Progress */}
-                      {img.uploadStatus === 'uploading' && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                          <div className="text-center">
-                            <Loader2 className="h-6 w-6 text-white animate-spin mx-auto mb-2" />
-                            <p className="text-xs text-white">{img.uploadProgress}%</p>
+                    return (
+                      <div
+                        key={colorName}
+                        className="rounded-[20px] border border-white/10 bg-[#0a0a0a] p-5"
+                      >
+                        {/* Color Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className="w-5 h-5 rounded-full border-2 border-white/30 shrink-0"
+                              style={{ backgroundColor: colorInfo.hex }}
+                            />
+                            <span className="text-sm font-semibold text-white">{colorName}</span>
+                          </div>
+                          {statusBadge}
+                        </div>
+
+                        {/* Inner drop zone per color */}
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDraggingColor(colorName);
+                          }}
+                          onDragLeave={(e) => {
+                            e.stopPropagation();
+                            setDraggingColor(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDraggingColor(null);
+                            if (e.dataTransfer.files) {
+                              handleFilesSelected(e.dataTransfer.files, colorName);
+                            }
+                          }}
+                          className={`relative rounded-xl border-2 border-dashed p-4 transition-colors cursor-pointer mb-4 ${
+                            draggingColor === colorName
+                              ? "border-[#640C0C] bg-[#640C0C]/10"
+                              : "border-white/20 bg-black/20 hover:border-white/40"
+                          }`}
+                          onClick={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.multiple = true;
+                            input.accept = "image/jpeg,image/jpg,image/png,image/webp";
+                            input.onchange = (e: Event) => {
+                              const target = e.target as HTMLInputElement;
+                              if (target.files) handleFilesSelected(target.files, colorName);
+                            };
+                            input.click();
+                          }}
+                        >
+                          <div className="flex flex-col items-center justify-center py-4">
+                            <ImageIcon className="h-8 w-8 text-white/40 mb-2" />
+                            <p className="text-xs font-medium text-white/80 mb-0.5">
+                              Drop images for {colorName} or click to upload
+                            </p>
+                            <p className="text-[10px] text-white/40">
+                              Minimum 3 images required
+                            </p>
                           </div>
                         </div>
-                      )}
 
-                      {/* Upload Error */}
-                      {img.uploadStatus === 'error' && (
-                        <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRetryUpload(img.id)}
-                            className="flex flex-col items-center gap-2 p-3 bg-black/60 rounded-lg"
-                          >
-                            <RefreshCw className="h-5 w-5 text-white" />
-                            <span className="text-xs text-white">Retry</span>
-                          </button>
-                        </div>
-                      )}
+                        {/* Images Grid for this color */}
+                        {colorImages.length > 0 && (
+                          <div className="grid grid-cols-3 gap-3">
+                            {colorImages.map((img) => (
+                              <div
+                                key={img.id}
+                                className="relative aspect-square rounded-xl border border-white/10 bg-black overflow-hidden group"
+                              >
+                                <Image
+                                  src={img.previewUrl}
+                                  alt={colorName}
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
 
-                      {/* Actions Overlay */}
-                      {img.uploadStatus === 'done' && (
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSetMainImage(img.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                              img.isMain
-                                ? "bg-white text-black"
-                                : "bg-white/20 text-white hover:bg-white/30"
-                            }`}
-                          >
-                            {img.isMain ? "Main" : "Set Main"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveImage(img.id)}
-                            className="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
+                                {/* Upload Progress */}
+                                {img.uploadStatus === 'uploading' && (
+                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Loader2 className="h-5 w-5 text-white animate-spin mx-auto mb-1" />
+                                      <p className="text-[10px] text-white">{img.uploadProgress}%</p>
+                                    </div>
+                                  </div>
+                                )}
 
-                      {/* Main Badge */}
-                      {img.isMain && img.uploadStatus === 'done' && (
-                        <div className="absolute top-2 left-2 bg-white text-black px-2 py-1 rounded-md text-xs font-semibold">
-                          Main
+                                {/* Upload Error */}
+                                {img.uploadStatus === 'error' && (
+                                  <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRetryUpload(img.id)}
+                                      className="flex flex-col items-center gap-1 p-2 bg-black/60 rounded-lg"
+                                    >
+                                      <RefreshCw className="h-4 w-4 text-white" />
+                                      <span className="text-[10px] text-white">Retry</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Actions Overlay */}
+                                {img.uploadStatus === 'done' && (
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetMainImage(img.id)}
+                                      className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
+                                        img.isMain
+                                          ? "bg-white text-black"
+                                          : "bg-white/20 text-white hover:bg-white/30"
+                                      }`}
+                                    >
+                                      {img.isMain ? "Main" : "Set"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveImage(img.id)}
+                                      className="p-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Main Badge */}
+                                {img.isMain && img.uploadStatus === 'done' && (
+                                  <div className="absolute top-1.5 left-1.5 bg-white text-black px-1.5 py-0.5 rounded text-[10px] font-semibold">
+                                    Main
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Standard Main Big Upload Zone when color variants are OFF */
+                <div className="space-y-4">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files) {
+                        handleFilesSelected(e.dataTransfer.files);
+                      }
+                    }}
+                    className={`relative flex flex-col items-center justify-center rounded-[20px] border-2 border-dashed p-8 transition-colors cursor-pointer ${
+                      isDragging
+                        ? "border-[#640C0C] bg-[#640C0C]/10"
+                        : "border-white/20 bg-[#0a0a0a] hover:border-white/40"
+                    }`}
+                    onClick={() => mainFileInputRef.current?.click()}
+                  >
+                    <Upload className="h-10 w-10 text-white/40 mb-3" />
+                    <p className="text-sm font-medium text-white/80 mb-1">
+                      Drop images here or click to browse
+                    </p>
+                    <p className="text-xs text-white/40">
+                      Supports JPEG, PNG, WEBP · Minimum 3 images required
+                    </p>
+                    <input
+                      ref={mainFileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={(e) => {
+                        if (e.target.files) handleFilesSelected(e.target.files);
+                      }}
+                      className="hidden"
+                    />
+                  </div>
+
+                  {/* Uploaded Images Grid */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {uploadedImages.map((img) => (
+                        <div
+                          key={img.id}
+                          className="relative aspect-square rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden group"
+                        >
+                          <Image
+                            src={img.previewUrl}
+                            alt="Product"
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+
+                          {/* Upload Progress */}
+                          {img.uploadStatus === 'uploading' && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                              <div className="text-center">
+                                <Loader2 className="h-6 w-6 text-white animate-spin mx-auto mb-2" />
+                                <p className="text-xs text-white">{img.uploadProgress}%</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Upload Error */}
+                          {img.uploadStatus === 'error' && (
+                            <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRetryUpload(img.id)}
+                                className="flex flex-col items-center gap-2 p-3 bg-black/60 rounded-lg"
+                              >
+                                <RefreshCw className="h-5 w-5 text-white" />
+                                <span className="text-xs text-white">Retry</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Actions Overlay */}
+                          {img.uploadStatus === 'done' && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSetMainImage(img.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                  img.isMain
+                                    ? "bg-white text-black"
+                                    : "bg-white/20 text-white hover:bg-white/30"
+                                }`}
+                              >
+                                {img.isMain ? "Main" : "Set Main"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(img.id)}
+                                className="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Main Badge */}
+                          {img.isMain && img.uploadStatus === 'done' && (
+                            <div className="absolute top-2 left-2 bg-white text-black px-2 py-1 rounded-md text-xs font-semibold">
+                              Main
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
@@ -950,7 +1407,8 @@ export default function EditProductModal({
             <button
               type="button"
               onClick={handleNext}
-              className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-5 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
+              disabled={currentStep === 2 && !isStep2Valid}
+              className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-5 py-2 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>Next Step</span>
               <ChevronRight className="h-4 w-4" />
