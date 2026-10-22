@@ -3,10 +3,13 @@
 import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Inter } from "next/font/google";
-import { SlidersHorizontal, X, Search, Sparkles, RotateCcw } from "lucide-react";
+import { SlidersHorizontal, X, Search, Sparkles, RotateCcw, Loader2 } from "lucide-react";
 import FilterSidebar, { categoryGroups } from "@/components/store/FilterSidebar";
 import ProductCard from "@/components/store/ProductCard";
-import { searchStoreCatalog, detectSearchIntent } from "@/data/storeCatalog";
+import { detectSearchIntent, STORE_CATEGORIES, STORE_BRANDS } from "@/data/storeCatalog";
+import { useStoreProducts } from "@/hooks/use-store-products";
+import { mapProductsToStoreProducts } from "@/lib/product-mapper";
+import type { StoreProduct } from "@/data/storeCatalog";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +27,6 @@ export default function ProductsList({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Read latest params or fallback to props
   const currentCategory = searchParams.get("category") ?? initialCategory;
   const currentSearch = searchParams.get("search") ?? searchParams.get("q") ?? initialSearch;
   const currentBrand = searchParams.get("brand") ?? initialBrand;
@@ -33,19 +35,54 @@ export default function ProductsList({
   const [searchInput, setSearchInput] = useState(currentSearch);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  // Sync input value when URL query changes without triggering cascading renders
   if (currentSearch !== prevSearch) {
     setPrevSearch(currentSearch);
     setSearchInput(currentSearch);
   }
 
-  // Execute catalog search and scoring exclusively from demo catalog
-  const { results, intent, isRelatedFallback, totalMatches } = useMemo(() => {
-    return searchStoreCatalog(currentSearch, {
-      category: currentCategory,
-      brand: currentBrand,
-    });
-  }, [currentSearch, currentCategory, currentBrand]);
+  const categoryId = useMemo(() => {
+    if (!currentCategory || currentCategory === "all") return undefined;
+    const category = STORE_CATEGORIES.find(cat => cat.slug === currentCategory);
+
+    return currentCategory;
+  }, [currentCategory]);
+
+  const { data: apiData, isLoading, error } = useStoreProducts({
+    search: currentSearch || undefined,
+  
+  });
+
+  const results = useMemo(() => {
+    if (!apiData?.products || apiData.products.length === 0) return [];
+    
+    let products = mapProductsToStoreProducts(apiData.products);
+    
+    if (currentCategory && currentCategory !== "all") {
+      products = products.filter(p => p.category === currentCategory);
+    }
+    
+    if (currentBrand) {
+      const brandLower = currentBrand.toLowerCase();
+      products = products.filter(p => 
+        p.brand.toLowerCase().includes(brandLower)
+      );
+    }
+    
+    if (currentSearch) {
+      const searchLower = currentSearch.toLowerCase();
+      products = products.filter(p => 
+        p.name.toLowerCase().includes(searchLower) ||
+        p.brand.toLowerCase().includes(searchLower) ||
+        p.description?.toLowerCase().includes(searchLower) ||
+        p.partType?.toLowerCase().includes(searchLower) ||
+        p.vehicleCompatibility?.some(v => v.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    return products;
+  }, [apiData, currentCategory, currentBrand, currentSearch]);
+
+  const intent = useMemo(() => detectSearchIntent(currentSearch), [currentSearch]);
 
   const updateUrl = (updates: {
     category?: string | null;
@@ -261,20 +298,27 @@ export default function ProductsList({
                 </button>
               </div>
             )}
-
-            {/* Related products alert banner */}
-            {isRelatedFallback && currentSearch && (
-              <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 p-3.5 text-xs text-white/70">
-                <Sparkles className="h-4 w-4 text-[#e05252] shrink-0" />
-                <p>
-                  No exact match for <strong>&ldquo;{currentSearch}&rdquo;</strong>. Showing mostly related products and popular parts below:
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Product Grid */}
-          {results.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 text-[#640C0C] animate-spin mb-4" />
+              <p className="text-sm text-white/60">Loading products...</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-red-500/10 border border-red-500/20">
+                <X className="h-7 w-7 text-red-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white/80 mb-2">
+                Failed to load products
+              </h2>
+              <p className="text-sm text-white/40 max-w-sm mb-6">
+                We couldn&apos;t fetch products from the server. Please try again later.
+              </p>
+            </div>
+          ) : results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="mb-4 grid h-16 w-16 place-items-center rounded-full bg-white/5 border border-white/10">
                 <Search className="h-7 w-7 text-white/30" />
