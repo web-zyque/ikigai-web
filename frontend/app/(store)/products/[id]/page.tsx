@@ -20,14 +20,14 @@ export interface ProductDetailItem {
   images: string[];
   category: string;
   categoryLabel?: string;
-  brand: string;
-  description: string;
-  features: string[];
-  compatibility: string[];
+  brand?: string;
+  description?: string;
+  features?: string[];
+  compatibility?: string[];
   material?: string;
   warranty?: string;
-  inStock: boolean;
-  stockQuantity: number;
+  inStock?: boolean;
+  stockQuantity?: number;
   partType?: string;
 }
 
@@ -38,14 +38,11 @@ const tabs = [
   { id: "shipping", label: "Shipping & Return" },
 ] as const;
 
-const sizeVariants = ["15 inch", "16 inch", "17 inch", "18 inch", "19 inch"];
-
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
   const { cartItems, addToCart } = useCart();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState("18 inch");
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
@@ -85,48 +82,44 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     if (apiProduct.variants && apiProduct.variants.length > 0 && selectedVariantId) {
       const variant = apiProduct.variants.find(v => v.id === selectedVariantId);
       if (variant && variant.images.length > 0) {
-        return variant.images.map(img => img.imageUrl);
+        return variant.images;
       }
     }
     
-    return apiProduct.images.map(img => img.imageUrl);
+    // Fallback to all product images
+    return apiProduct.images || [];
   }, [apiProduct, selectedVariantId]);
 
   const product: ProductDetailItem | null = useMemo(() => {
     if (!apiProduct) return null;
 
     const storeProduct = mapProductToStoreProduct(apiProduct);
+    const imageUrls = variantImages.length > 0 
+      ? variantImages.map(img => img.imageUrl) 
+      : (apiProduct.images?.length ? apiProduct.images.map(img => img.imageUrl) : []);
     
     return {
       id: storeProduct.id,
       name: storeProduct.name,
       price: storeProduct.price,
       mrpPrice: storeProduct.mrpPrice,
-      image: storeProduct.image,
-      images: variantImages.length > 0 ? variantImages : (storeProduct.images?.length ? storeProduct.images : [storeProduct.image]),
+      image: imageUrls[0] || storeProduct.image,
+      images: imageUrls,
       category: storeProduct.category,
       categoryLabel: storeProduct.categoryLabel,
       brand: storeProduct.brand,
-      description: storeProduct.description || "Premium automotive upgrade engineered for precision fitment and performance.",
-      features: storeProduct.features || [
-        "Direct OEM replacement fitment",
-        "Engineered for high stress and endurance",
-        "Backed by Ikigai quality assurance guarantee",
-      ],
-      compatibility: storeProduct.vehicleCompatibility?.length ? storeProduct.vehicleCompatibility : ["Universal fitment"],
-      material: storeProduct.material || "High-grade automotive alloy",
-      warranty: storeProduct.warranty || "1 Year Limited Warranty",
-      inStock: storeProduct.inStock ?? true,
-      stockQuantity: storeProduct.stockQuantity ?? 10,
+      description: storeProduct.description,
+      features: storeProduct.features,
+      compatibility: storeProduct.vehicleCompatibility,
+      material: storeProduct.material,
+      warranty: storeProduct.warranty,
+      inStock: storeProduct.inStock,
+      stockQuantity: storeProduct.stockQuantity,
       partType: storeProduct.partType,
     };
   }, [apiProduct, variantImages]);
 
-  const images = useMemo(() => {
-    if (product?.images && product.images.length > 0) return product.images;
-    if (product?.image) return [product.image];
-    return ["/images/category_brakes.jpg"];
-  }, [product]);
+  const images = useMemo(() => product?.images || [], [product]);
 
   const isAdded = useMemo(() => {
     if (!product) return false;
@@ -220,10 +213,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="lg:col-span-7 flex flex-col gap-4">
             <div className="relative aspect-4/3 w-full rounded-[24px] bg-[#0a0a0a] border border-white/5 overflow-hidden flex items-center justify-center p-8 group">
               <Image
-                src={images[selectedImageIndex] || product.image}
+                src={images[selectedImageIndex]}
                 alt={product.name}
                 fill
-                priority
+                priority={selectedImageIndex === 0}
                 sizes="(max-width: 1024px) 100vw, 55vw"
                 className="object-contain mix-blend-screen p-8 transition-transform duration-500 group-hover:scale-105"
               />
@@ -252,6 +245,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       src={img}
                       alt={`${product.name} view ${idx + 1}`}
                       fill
+                      priority={idx < 4}
                       sizes="80px"
                       className="object-contain mix-blend-screen p-2"
                     />
@@ -413,28 +407,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
               </div>
             )}
-
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Size
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {sizeVariants.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                      selectedSize === size
-                        ? "bg-[#640C0C] border-[#640C0C] text-white shadow-sm"
-                        : "bg-[#121212] border-white/10 text-neutral-300 hover:border-white/30 hover:text-white"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className="rounded-2xl bg-[#121212] border border-white/5 p-5 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-white">Specifications</h2>
