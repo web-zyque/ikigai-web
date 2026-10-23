@@ -104,29 +104,32 @@ export default function SettingsPage() {
   }
 
   return (
-      <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 w-full flex flex-col justify-start">
-        <div className="flex items-center justify-between pb-2">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => setMobileOpen((previous) => !previous)}
-              aria-label="Toggle navigation menu"
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-[#640C0C] transition-colors lg:hidden"
-            >
-              <Menu className="h-4 w-4" />
-            </button>
-            <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">
-              Settings
-            </h1>
-          </div>
-        </div>
+    <>
+      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 backdrop-blur-md lg:px-12">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setMobileOpen((previous) => !previous)}
+            aria-label="Toggle navigation menu"
+            className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition-colors hover:bg-[#640C0C] lg:hidden"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
 
-        <div className="pt-2 pb-3 border-b border-white/10">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Settings
+          </h1>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-6 py-7 lg:px-12">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-white">
             Store Configuration
           </h2>
-          <p className="mt-1 text-xs sm:text-sm text-white/40">
-            Manage delivery charges, threshold rules, and storefront payment gateways.
+
+          <p className="mt-2 text-sm text-white/45">
+            Manage shipping charges and available payment methods.
           </p>
         </div>
         {successMessage && (
@@ -248,5 +251,6 @@ export default function SettingsPage() {
           hasChanges={hasChanges}
         />
       </main>
+    </>
   );
 }

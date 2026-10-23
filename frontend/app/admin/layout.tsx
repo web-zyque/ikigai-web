@@ -71,7 +71,7 @@ export default function AdminLayout({
             isCollapsed={isCollapsed}
             onToggleCollapse={toggleCollapse}
           />
-          <div className="flex flex-1 flex-col w-full min-w-0 overflow-x-hidden transition-all duration-300">
+          <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden transition-all duration-300">
             {children}
           </div>
         </div>
