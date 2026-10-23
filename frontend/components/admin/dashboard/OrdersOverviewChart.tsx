@@ -74,36 +74,31 @@ function getNiceMax(maxVal: number): number {
 
 export default function OrdersOverviewChart({
   title = "Orders Overview",
-  subtitle = "Track order volume over time",
 }: OrdersOverviewChartProps) {
   const [timeframe, setTimeframe] = useState<TimeframeType>("daily");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const data = DATASETS[timeframe];
 
-  // SVG coordinate dimensions
+  // SVG coordinate dimensions for the bezier curve
   const viewWidth = 1000;
-  const viewHeight = 240;
-  const paddingLeft = 45;
-  const paddingRight = 25;
-  const paddingTop = 25;
-  const paddingBottom = 40;
-
-  const chartWidth = viewWidth - paddingLeft - paddingRight;
+  const viewHeight = 300;
+  const paddingTop = 15;
+  const paddingBottom = 15;
   const chartHeight = viewHeight - paddingTop - paddingBottom;
-  const baselineY = paddingTop + chartHeight;
 
   const rawMax = Math.max(...data.map((d) => d.orders), 1);
   const yMax = getNiceMax(rawMax);
 
-  // Compute calculated point positions
+  // Compute calculated point positions for SVG curve
   const points = useMemo(() => {
+    if (data.length === 0) return [];
     return data.map((item, index) => {
-      const x = paddingLeft + (index / (data.length - 1)) * chartWidth;
+      const x = data.length > 1 ? (index / (data.length - 1)) * viewWidth : viewWidth / 2;
       const y = paddingTop + chartHeight - (item.orders / yMax) * chartHeight;
       return { x, y, ...item };
     });
-  }, [data, chartWidth, chartHeight, paddingLeft, paddingTop, yMax]);
+  }, [data, yMax, chartHeight, paddingTop, viewWidth]);
 
   // Generate smooth cubic bezier line path
   const linePath = useMemo(() => {
@@ -120,36 +115,29 @@ export default function OrdersOverviewChart({
     return path;
   }, [points]);
 
-  // Generate flat fill area path beneath the line (no gradient used)
+  // Generate flat fill area path beneath the line (no gradient)
   const areaPath = useMemo(() => {
     if (points.length < 2) return "";
     const first = points[0];
     const last = points[points.length - 1];
-    return `${linePath} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
-  }, [linePath, points, baselineY]);
+    return `${linePath} L ${last.x} ${viewHeight} L ${first.x} ${viewHeight} Z`;
+  }, [linePath, points, viewHeight]);
 
-  // 4 reference horizontal gridlines
-  const gridLines = useMemo(() => {
-    return [0, 1, 2, 3].map((step) => {
-      const value = Math.round((yMax / 3) * step);
-      const y = baselineY - (step / 3) * chartHeight;
-      return { value, y };
-    });
-  }, [yMax, baselineY, chartHeight]);
+  // 4 reference horizontal steps (0%, 33.3%, 66.7%, 100%)
+  const ySteps = useMemo(() => [0, 1, 2, 3], []);
 
-  const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
+  const activePoint = hoveredIndex !== null && data[hoveredIndex] ? data[hoveredIndex] : null;
 
   return (
     <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
-      {/* Card Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 px-6 py-5 bg-[#121212]">
-        <div>
-          <h2 className="text-base font-bold tracking-tight text-white">{title}</h2>
-          <p className="mt-1 text-xs text-white/60">{subtitle}</p>
-        </div>
+      {/* Card Header Section: Aligned on a single line on mobile and desktop */}
+      <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3.5 sm:px-6 py-3 sm:py-4 bg-[#121212]">
+        <h2 className="text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0">
+          {title}
+        </h2>
 
         {/* Timeframe Controls: [ Daily ] [ Weekly ] [ Monthly ] [ Yearly ] */}
-        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#0a0a0a] p-1 self-start sm:self-auto overflow-x-auto max-w-full">
+        <div className="flex items-center gap-0.5 sm:gap-1 rounded-full border border-white/10 bg-[#0a0a0a] p-0.5 sm:p-1 shrink-0">
           {TIMEFRAME_OPTIONS.map((option) => {
             const isActive = timeframe === option.id;
             return (
@@ -160,7 +148,7 @@ export default function OrdersOverviewChart({
                   setTimeframe(option.id);
                   setHoveredIndex(null);
                 }}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                className={`rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-center text-[10px] sm:text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
                     ? "bg-[#640C0C] text-white shadow-sm shadow-[#640C0C]/30 font-semibold"
                     : "text-white/50 hover:text-white"
@@ -174,136 +162,170 @@ export default function OrdersOverviewChart({
       </div>
 
       {/* Main Chart Area */}
-      <div className="relative p-6">
-        <div className="relative h-56 sm:h-64 w-full">
-          {/* Tooltip Overlay */}
-          {activePoint && (
-            <div
-              style={{
-                left: `${(activePoint.x / viewWidth) * 100}%`,
-                top: `${(activePoint.y / viewHeight) * 100}%`,
-              }}
-              className="absolute -translate-x-1/2 -translate-y-12 pointer-events-none z-20 whitespace-nowrap rounded-lg bg-[#0a0a0a] border border-white/10 px-3 py-1.5 text-xs shadow-xl"
-            >
-              <div className="font-semibold text-white">
-                {activePoint.orders.toLocaleString()} orders
-              </div>
-              <div className="text-[10px] text-white/50">
-                {activePoint.fullLabel}
-              </div>
-            </div>
-          )}
-
-          {/* Responsive SVG Line Chart */}
-          <svg
-            viewBox={`0 0 ${viewWidth} ${viewHeight}`}
-            className="w-full h-full overflow-visible"
-            preserveAspectRatio="none"
-          >
-            {/* Horizontal Gridlines and Y-axis Labels */}
-            {gridLines.map((grid) => (
-              <g key={grid.value}>
-                <line
-                  x1={paddingLeft}
-                  y1={grid.y}
-                  x2={viewWidth - paddingRight}
-                  y2={grid.y}
-                  stroke="rgba(255, 255, 255, 0.06)"
-                  strokeDasharray="4 4"
-                  strokeWidth="1"
-                />
-                <text
-                  x={paddingLeft - 10}
-                  y={grid.y + 3.5}
-                  textAnchor="end"
-                  fill="rgba(255, 255, 255, 0.4)"
-                  fontSize="11"
-                  fontFamily="inherit"
-                >
-                  {grid.value >= 1000 ? `${(grid.value / 1000).toFixed(0)}k` : grid.value}
-                </text>
-              </g>
-            ))}
-
-            {/* Flat Solid Fill under the curve (no gradient) */}
-            {areaPath && (
-              <path
-                d={areaPath}
-                fill="rgba(100, 12, 12, 0.08)"
-              />
-            )}
-
-            {/* Main Line Stroke */}
-            {linePath && (
-              <path
-                d={linePath}
-                fill="none"
-                stroke="#640C0C"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* Hover guideline */}
-            {activePoint && (
-              <line
-                x1={activePoint.x}
-                y1={paddingTop}
-                x2={activePoint.x}
-                y2={baselineY}
-                stroke="rgba(255, 255, 255, 0.2)"
-                strokeDasharray="3 3"
-                strokeWidth="1"
-              />
-            )}
-
-            {/* Data Point Dots & X-axis Labels */}
-            {points.map((pt, i) => {
-              const isHovered = hoveredIndex === i;
+      <div className="relative p-4 sm:p-6">
+        <div className="flex w-full">
+          {/* Y-Axis Column: HTML text labels, shrink-0, perfectly crisp and never distorted */}
+          <div className="relative h-48 sm:h-60 w-7 sm:w-9 shrink-0 select-none mr-2 sm:mr-3">
+            {ySteps.map((step) => {
+              const value = Math.round((yMax / 3) * step);
+              const bottomPercent = (step / 3) * 100;
               return (
-                <g key={pt.label}>
-                  {/* Point Circle */}
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={isHovered ? 6 : 3.5}
-                    fill={isHovered ? "#640C0C" : "#121212"}
-                    stroke={isHovered ? "#ffffff" : "#640C0C"}
-                    strokeWidth={isHovered ? 2 : 2}
-                    className="transition-all duration-150"
+                <div
+                  key={step}
+                  style={{ bottom: `${bottomPercent}%` }}
+                  className="absolute right-0 translate-y-1/2 shrink-0 text-right leading-none"
+                >
+                  <span className="text-[10px] sm:text-xs text-white/40 font-medium shrink-0 whitespace-nowrap block">
+                    {value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Plot Surface and X-Axis Area */}
+          <div className="relative flex-1 min-w-0 flex flex-col">
+            {/* Chart Canvas Area */}
+            <div className="relative h-48 sm:h-60 w-full">
+              {/* Horizontal reference gridlines */}
+              {ySteps.map((step) => (
+                <div
+                  key={step}
+                  style={{ bottom: `${(step / 3) * 100}%` }}
+                  className={`absolute left-0 right-0 border-b border-white/5 pointer-events-none ${
+                    step === 0 ? "border-solid border-white/10" : "border-dashed"
+                  }`}
+                />
+              ))}
+
+              {/* Responsive SVG Bezier Curve (only line & fill, no text or circles to prevent squishing) */}
+              <svg
+                viewBox={`0 0 ${viewWidth} ${viewHeight}`}
+                className="absolute inset-0 w-full h-full overflow-visible"
+                preserveAspectRatio="none"
+              >
+                {areaPath && (
+                  <path
+                    d={areaPath}
+                    fill="rgba(100, 12, 12, 0.08)"
                   />
+                )}
+                {linePath && (
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#640C0C"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+              </svg>
 
-                  {/* X-axis Label */}
-                  <text
-                    x={pt.x}
-                    y={viewHeight - 12}
-                    textAnchor="middle"
-                    fill={isHovered ? "#ffffff" : "rgba(255, 255, 255, 0.45)"}
-                    fontSize="11"
-                    fontWeight={isHovered ? "600" : "500"}
-                    fontFamily="inherit"
-                    className="transition-colors duration-150"
+              {/* Vertical hover line indicator */}
+              {hoveredIndex !== null && (
+                <div
+                  style={{
+                    left: `${(hoveredIndex / (data.length - 1)) * 100}%`,
+                  }}
+                  className="absolute top-0 bottom-0 w-px border-l border-dashed border-white/20 pointer-events-none z-10"
+                />
+              )}
+
+              {/* Interactive Data Point Dots: HTML circles (always perfectly round, never oval) */}
+              {data.map((item, i) => {
+                const isHovered = hoveredIndex === i;
+                const leftPercent = (i / (data.length - 1)) * 100;
+                const valueRatio = item.orders / yMax;
+                const topPercent =
+                  ((paddingTop + chartHeight - valueRatio * chartHeight) / viewHeight) * 100;
+
+                return (
+                  <div
+                    key={item.label}
+                    style={{
+                      left: `${leftPercent}%`,
+                      top: `${topPercent}%`,
+                    }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 shrink-0"
                   >
-                    {pt.label}
-                  </text>
+                    <div
+                      className={`rounded-full transition-all duration-150 shrink-0 ${
+                        isHovered
+                          ? "w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#640C0C] border-2 border-white shadow-lg shadow-black scale-110"
+                          : "w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#121212] border-[1.5px] sm:border-2 border-[#640C0C]"
+                      }`}
+                    />
+                  </div>
+                );
+              })}
 
-                  {/* Interactive invisible hit area for easy hover on desktop & touch on mobile */}
-                  <rect
-                    x={pt.x - chartWidth / (data.length * 2)}
-                    y={0}
-                    width={chartWidth / data.length}
-                    height={viewHeight}
-                    fill="transparent"
-                    className="cursor-pointer"
+              {/* Full-height touch and hover interactive slices */}
+              <div className="absolute inset-0 flex z-20">
+                {data.map((item, i) => (
+                  <div
+                    key={item.label}
+                    className="flex-1 h-full cursor-pointer"
                     onMouseEnter={() => setHoveredIndex(i)}
                     onMouseLeave={() => setHoveredIndex(null)}
                     onClick={() => setHoveredIndex(i)}
                   />
-                </g>
-              );
-            })}
-          </svg>
+                ))}
+              </div>
+
+              {/* Floating Tooltip */}
+              {hoveredIndex !== null && activePoint && (
+                <div
+                  style={{
+                    left: `${(hoveredIndex / (data.length - 1)) * 100}%`,
+                    top: `${
+                      ((paddingTop + chartHeight - (activePoint.orders / yMax) * chartHeight) /
+                        viewHeight) *
+                      100
+                    }%`,
+                  }}
+                  className={`absolute -translate-y-12 pointer-events-none z-30 whitespace-nowrap rounded-lg bg-[#0a0a0a] border border-white/10 px-3 py-1.5 text-xs shadow-xl shrink-0 ${
+                    hoveredIndex === 0
+                      ? "translate-x-1"
+                      : hoveredIndex === data.length - 1
+                      ? "-translate-x-full"
+                      : "-translate-x-1/2"
+                  }`}
+                >
+                  <div className="font-semibold text-white">
+                    {activePoint.orders.toLocaleString()} orders
+                  </div>
+                  <div className="text-[10px] text-white/50">
+                    {activePoint.fullLabel}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* X-Axis Row: HTML text labels, shrink-0, centered directly below each data point */}
+            <div className="relative w-full h-6 mt-3 select-none shrink-0">
+              {data.map((item, i) => {
+                const isHovered = hoveredIndex === i;
+                const leftPercent = (i / (data.length - 1)) * 100;
+
+                return (
+                  <div
+                    key={item.label}
+                    style={{ left: `${leftPercent}%` }}
+                    className="absolute -translate-x-1/2 top-0 shrink-0 text-center"
+                  >
+                    <span
+                      className={`text-[10px] sm:text-xs transition-colors duration-150 shrink-0 font-medium block whitespace-nowrap leading-none ${
+                        isHovered ? "text-white font-semibold" : "text-white/45"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
