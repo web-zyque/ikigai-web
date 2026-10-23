@@ -26,6 +26,7 @@ import {
   CheckCircle2,
   X,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 import { useMe, useLogout } from "@/hooks/auth";
 import { hasAuthSession } from "@/lib/auth-storage";
@@ -171,7 +172,14 @@ function ProfileContent() {
 
   const { data: user, isLoading, isError, error, isFetching } = useMe();
   const logoutMutation = useLogout();
-  const { cartItems } = useCart();
+  const { cartItems, removeFromCart } = useCart();
+
+  const cartTotal = useMemo(() => {
+    return cartItems.reduce(
+      (sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
+      0
+    );
+  }, [cartItems]);
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [formData, setFormData] = useState({
@@ -423,26 +431,84 @@ function ProfileContent() {
     <div className="min-h-screen bg-black text-white selection:bg-[#640C0C]/40 selection:text-white pb-16">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Navigation: Admin Sidebar styles with crisp white icon for active tab */}
           <aside className="lg:col-span-4 space-y-4">
-            {/* User Profile Card */}
-            <div className="flex items-center gap-3.5 p-4 rounded-[20px] bg-[#121212] border border-white/5">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-sm font-bold text-white shadow-md">
-                <span>{initials}</span>
-                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#121212]" />
+            <div className="flex items-center justify-between gap-3.5 p-3.5 sm:p-4 rounded-[20px] bg-[#121212] border border-white/5">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-sm font-bold text-white shadow-md">
+                  <span>{initials}</span>
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-[#121212]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-white truncate">
+                    {user?.fullName || "Member"}
+                  </h2>
+                  <p className="text-[11px] font-mono text-white/50 truncate">
+                    {user?.phone || user?.email}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-bold text-white truncate">
-                  {user?.fullName || "Member"}
-                </h2>
-                <p className="text-[11px] font-mono text-white/50 truncate">
-                  {user?.phone || user?.email}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLogoutDialogOpen(true)}
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-medium border border-red-500/20 shrink-0 cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Logout</span>
+              </button>
             </div>
 
-            {/* Navigation List */}
-            <nav className="rounded-[20px] bg-[#121212] border border-white/5 p-2.5 space-y-1">
+            <nav className="lg:hidden flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden border-b border-white/10">
+              {navMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.key);
+                      router.replace(`/profile?tab=${item.key}`, { scroll: false });
+                    }}
+                    className={`relative flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "border-[#640C0C] bg-[#640C0C]/10 text-white"
+                        : "border-transparent text-white/50 hover:border-transparent hover:bg-white/[0.03] hover:text-white/80"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        isActive ? "text-white" : "text-white/60"
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                    {item.key === "orders" && mockOrders.length > 0 && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          isActive
+                            ? "bg-white/20 text-white font-bold"
+                            : "bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {mockOrders.length}
+                      </span>
+                    )}
+                    {item.key === "cart" && cartItems.length > 0 && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                          isActive
+                            ? "bg-white/20 text-white font-bold"
+                            : "bg-white/10 text-white/60"
+                        }`}
+                      >
+                        {cartItems.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <nav className="hidden lg:block rounded-[20px] bg-[#121212] border border-white/5 p-2.5 space-y-1">
               <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 mb-2 pt-1">
                 Account Navigation
               </p>
@@ -531,46 +597,56 @@ function ProfileContent() {
                 )}
 
                 {/* Profile Header Banner */}
-                <div className="p-6 sm:p-7 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-5 bg-gradient-to-r from-white/[0.03] to-transparent">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#640C0C]/80 via-[#202020] to-black border border-white/20 text-xl font-bold text-white shadow-xl">
+                <div className="p-4 sm:p-7 border-b border-white/10 flex items-center justify-between gap-3 bg-gradient-to-r from-white/[0.03] to-transparent">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="relative shrink-0">
+                      <div className="flex h-13 w-13 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#640C0C]/80 via-[#202020] to-black border border-white/20 text-base sm:text-xl font-bold text-white shadow-xl">
                         {initials}
                       </div>
                       <div
-                        className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#121212] border border-emerald-500/30 text-emerald-400"
+                        className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#121212] border border-emerald-500/30 text-emerald-400"
                         title="Verified Account"
                       >
-                        <CheckCircle2 className="h-3 w-3 fill-emerald-500/20 text-emerald-400" />
+                        <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-emerald-500/20 text-emerald-400" />
                       </div>
                     </div>
 
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-white">
+                        <h3 className="text-sm sm:text-lg font-bold text-white truncate">
                           {formData.name || "Customer Account"}
                         </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400 shrink-0">
                           <ShieldCheck className="h-3 w-3" />
-                          Verified
+                          <span className="hidden sm:inline">Verified</span>
                         </span>
                       </div>
-                      <p className="text-xs text-white/40 font-mono mt-0.5">
+                      <p className="text-[11px] sm:text-xs text-white/40 font-mono mt-0.5 truncate">
                         Member ID: #{user?.id ? user.id.slice(0, 8).toUpperCase() : "IK-001"}
                       </p>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="shrink-0">
                     {!isEditingInfo ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingInfo(true)}
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-white bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/15 transition-all cursor-pointer shadow-sm hover:border-white/30"
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-[#640C0C]" />
-                        <span>Edit Information</span>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingInfo(true)}
+                          className="sm:hidden p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-white transition-all cursor-pointer shadow-sm hover:border-white/30"
+                          aria-label="Edit Profile"
+                        >
+                          <Pencil className="h-4 w-4 text-[#640C0C]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingInfo(true)}
+                          className="hidden sm:inline-flex items-center gap-2 text-xs font-semibold text-white bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/15 transition-all cursor-pointer shadow-sm hover:border-white/30"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-[#640C0C]" />
+                          <span>Edit Information</span>
+                        </button>
+                      </>
                     ) : (
                       <button
                         type="button"
@@ -745,9 +821,46 @@ function ProfileContent() {
             {/* 2. Direct Orders Table with Rounded Search Box and Admin Pill Switcher */}
             {activeTab === "orders" && (
               <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 px-6 py-4 bg-[#121212]">
-                  {/* Left: Tab switcher */}
-                  <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/5 w-fit overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 px-4 sm:px-6 py-4 bg-[#121212]">
+                  <div className="flex sm:hidden items-center gap-2 w-full">
+                    <div className="relative shrink-0 w-32">
+                      <select
+                        value={ordersFilter}
+                        onChange={(e) => setOrdersFilter(e.target.value)}
+                        className="w-full h-9 rounded-full bg-[#0a0a0a] border border-white/10 pl-3 pr-7 text-xs text-white appearance-none outline-none focus:border-white/30 cursor-pointer"
+                      >
+                        {orderTabs.map((tab) => (
+                          <option key={tab} value={tab} className="bg-[#121212] text-white">
+                            {tab}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/50 pointer-events-none" />
+                    </div>
+
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={ordersSearch}
+                        onChange={(e) => setOrdersSearch(e.target.value)}
+                        placeholder="Search orders..."
+                        className="w-full h-9 rounded-full bg-[#0a0a0a] border border-white/10 pl-8 pr-7 text-xs text-white placeholder-white/40 outline-none focus:border-white/30"
+                      />
+                      {ordersSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setOrdersSearch("")}
+                          aria-label="Clear search"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full flex items-center justify-center text-white/40 hover:text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/5 w-fit overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {orderTabs.map((tab) => {
                       const isActive = ordersFilter === tab;
                       return (
@@ -767,8 +880,7 @@ function ProfileContent() {
                     })}
                   </div>
 
-                  {/* Right: Fully rounded search box */}
-                  <div className="flex items-center gap-2.5">
+                  <div className="hidden sm:flex items-center gap-2.5">
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
                       <input
@@ -792,7 +904,6 @@ function ProfileContent() {
                   </div>
                 </div>
 
-                {/* Table Columns */}
                 <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-white/10 text-xs font-semibold text-white/50 uppercase tracking-wider bg-white/[0.02]">
                   <div className="col-span-3">Order ID</div>
                   <div className="col-span-5">Product Name</div>
@@ -801,7 +912,6 @@ function ProfileContent() {
                   <div className="col-span-1 text-center">Action</div>
                 </div>
 
-                {/* Table Rows */}
                 <div className="divide-y divide-white/5" ref={dropdownRef}>
                   {filteredOrders.length === 0 ? (
                     <div className="p-12 text-center">
@@ -809,94 +919,173 @@ function ProfileContent() {
                     </div>
                   ) : (
                     filteredOrders.map((order) => (
-                      <div
-                        key={order.id}
-                        onClick={() => router.push(`/orders/${order.id}`)}
-                        className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center px-6 py-4 hover:bg-white/[0.04] transition-colors relative cursor-pointer"
-                      >
-                        <div className="md:hidden flex justify-between items-center">
-                          <span className="text-xs font-mono text-white/50">{order.id}</span>
-                          <span className="text-xs text-white/40">{order.date}</span>
-                        </div>
+                      <div key={order.id} className="hover:bg-white/[0.02] transition-colors">
+                        <div
+                          className="md:hidden p-4 space-y-2.5 cursor-pointer relative"
+                          onClick={() => router.push(`/orders/${order.id}`)}
+                        >
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-16 h-16 bg-[#0a0a0a] rounded-xl border border-white/10 p-1 shrink-0 flex items-center justify-center">
+                              <img
+                                src={order.image}
+                                alt={order.productName}
+                                className="object-contain w-full h-full mix-blend-screen"
+                              />
+                            </div>
 
-                        <div className="col-span-3 hidden md:block text-xs font-mono font-medium text-white/70">
-                          {order.id}
-                        </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs sm:text-sm font-semibold text-white line-clamp-1">
+                                  {order.productName}
+                                </p>
 
-                        <div className="col-span-1 md:col-span-5 flex items-center gap-3">
-                          <div className="w-11 h-11 bg-[#0a0a0a] rounded-lg border border-white/5 p-1 shrink-0 flex items-center justify-center">
-                            <img
-                              src={order.image}
-                              alt={order.productName}
-                              className="object-contain w-full h-full mix-blend-screen"
-                            />
+                                <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setOpenDropdownId(openDropdownId === order.id ? null : order.id)
+                                    }
+                                    className="p-1 -mr-1 -mt-1 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                                    aria-label="Order actions"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+
+                                  {openDropdownId === order.id && (
+                                    <div className="absolute right-0 top-full mt-1 w-44 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden text-xs">
+                                      <button
+                                        type="button"
+                                        onClick={() => alert("Invoice download initiated.")}
+                                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+                                      >
+                                        <Download className="w-3.5 h-3.5" />
+                                        <span>Download Invoice</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => router.push(`/products`)}
+                                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+                                      >
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        <span>Buy Again</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab("returns");
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 border-t border-white/5 cursor-pointer"
+                                      >
+                                        <Undo2 className="w-3.5 h-3.5" />
+                                        <span>Request Return</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[11px] text-white/50 font-mono">
+                                <span>{order.id}</span>
+                                <span>•</span>
+                                <span>{order.date}</span>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs pt-0.5">
+                                <span className="font-semibold text-white">
+                                  ₹{order.amount.toLocaleString("en-IN")}
+                                </span>
+                                <span className={`font-medium ${getStatusColor(order.status)}`}>
+                                  {order.status}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs sm:text-sm font-medium text-white line-clamp-1">
-                              {order.productName}
-                            </p>
-                            <p className="text-[11px] text-white/40 md:hidden">
-                              ₹{order.amount.toLocaleString("en-IN")}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="col-span-2 hidden md:block text-xs text-white/60">
-                          {order.date}
-                        </div>
-
-                        <div className="col-span-1 flex md:justify-center justify-between items-center">
-                          <span className={`text-xs font-medium ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
                         </div>
 
                         <div
-                          className="col-span-1 flex justify-end md:justify-center relative"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={() => router.push(`/orders/${order.id}`)}
+                          className="hidden md:grid grid-cols-12 gap-3 items-center px-6 py-4 hover:bg-white/[0.04] transition-colors relative cursor-pointer"
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOpenDropdownId(openDropdownId === order.id ? null : order.id)
-                            }
-                            className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-                            aria-label="Order actions"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                          <div className="col-span-3 text-xs font-mono font-medium text-white/70">
+                            {order.id}
+                          </div>
 
-                          {openDropdownId === order.id && (
-                            <div className="absolute right-0 top-9 w-44 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden text-xs">
-                              <button
-                                type="button"
-                                onClick={() => alert("Invoice download initiated.")}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download Invoice</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => router.push(`/products`)}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span>Buy Again</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveTab("returns");
-                                  setOpenDropdownId(null);
-                                }}
-                                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 border-t border-white/5"
-                              >
-                                <Undo2 className="w-3.5 h-3.5" />
-                                <span>Request Return</span>
-                              </button>
+                          <div className="col-span-5 flex items-center gap-3">
+                            <div className="w-11 h-11 bg-[#0a0a0a] rounded-lg border border-white/5 p-1 shrink-0 flex items-center justify-center">
+                              <img
+                                src={order.image}
+                                alt={order.productName}
+                                className="object-contain w-full h-full mix-blend-screen"
+                              />
                             </div>
-                          )}
+                            <div>
+                              <p className="text-xs sm:text-sm font-medium text-white line-clamp-1">
+                                {order.productName}
+                              </p>
+                              <p className="text-[11px] text-white/40">
+                                ₹{order.amount.toLocaleString("en-IN")}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="col-span-2 text-xs text-white/60">
+                            {order.date}
+                          </div>
+
+                          <div className="col-span-1 flex justify-center items-center">
+                            <span className={`text-xs font-medium ${getStatusColor(order.status)}`}>
+                              {order.status}
+                            </span>
+                          </div>
+
+                          <div
+                            className="col-span-1 flex justify-center relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenDropdownId(openDropdownId === order.id ? null : order.id)
+                              }
+                              className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                              aria-label="Order actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {openDropdownId === order.id && (
+                              <div className="absolute right-0 top-9 w-44 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-30 overflow-hidden text-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => alert("Invoice download initiated.")}
+                                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download Invoice</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => router.push(`/products`)}
+                                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>Buy Again</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveTab("returns");
+                                    setOpenDropdownId(null);
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-white/80 hover:text-white hover:bg-white/10 border-t border-white/5 cursor-pointer"
+                                >
+                                  <Undo2 className="w-3.5 h-3.5" />
+                                  <span>Request Return</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))
@@ -905,7 +1094,6 @@ function ProfileContent() {
               </div>
             )}
 
-            {/* 3. Returns & Refund Table: Refund button to far right, no search bar */}
             {activeTab === "returns" && (
               <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
                 {refundSuccessMessage && (
@@ -915,10 +1103,34 @@ function ProfileContent() {
                   </div>
                 )}
 
-                {/* Filter Bar: Tabs on left, Request a Refund to far right */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 px-6 py-4 bg-[#121212]">
-                  {/* Left: Tab switcher */}
-                  <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/5 w-fit overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 px-4 sm:px-6 py-4 bg-[#121212]">
+                  <div className="flex sm:hidden items-center justify-between gap-2.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setRequestRefundModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 h-9 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-3.5 text-xs font-semibold text-white shrink-0 cursor-pointer shadow-md"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Request Refund</span>
+                    </button>
+
+                    <div className="relative shrink-0 w-36">
+                      <select
+                        value={returnsFilter}
+                        onChange={(e) => setReturnsFilter(e.target.value)}
+                        className="w-full h-9 rounded-full bg-[#0a0a0a] border border-white/10 pl-3 pr-7 text-xs text-white appearance-none outline-none focus:border-white/30 cursor-pointer"
+                      >
+                        {returnTabs.map((tab) => (
+                          <option key={tab} value={tab} className="bg-[#121212] text-white">
+                            {tab}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/50 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/5 w-fit overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {returnTabs.map((tab) => {
                       const isActive = returnsFilter === tab;
                       return (
@@ -938,8 +1150,7 @@ function ProfileContent() {
                     })}
                   </div>
 
-                  {/* Far Right: Request a Refund button */}
-                  <div>
+                  <div className="hidden sm:block">
                     <button
                       type="button"
                       onClick={() => setRequestRefundModalOpen(true)}
@@ -966,44 +1177,86 @@ function ProfileContent() {
                     </div>
                   ) : (
                     filteredReturns.map((ret) => (
-                      <div
-                        key={ret.id}
-                        className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center px-6 py-4 hover:bg-white/[0.04] transition-colors"
-                      >
-                        <div className="col-span-2 font-mono text-xs font-semibold text-white/80">
-                          {ret.id}
-                        </div>
+                      <div key={ret.id} className="hover:bg-white/[0.02] transition-colors">
+                        <div className="md:hidden p-4 space-y-2.5">
+                          <div className="flex items-start gap-3.5">
+                            <div className="w-16 h-16 bg-[#0a0a0a] rounded-xl border border-white/10 p-1 shrink-0 flex items-center justify-center">
+                              <img
+                                src={ret.image}
+                                alt={ret.productName}
+                                className="object-contain w-full h-full mix-blend-screen"
+                              />
+                            </div>
 
-                        <div className="col-span-4 flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#0a0a0a] rounded-lg border border-white/5 p-1 shrink-0 flex items-center justify-center">
-                            <img
-                              src={ret.image}
-                              alt={ret.productName}
-                              className="object-contain w-full h-full mix-blend-screen"
-                            />
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="text-xs sm:text-sm font-semibold text-white line-clamp-1">
+                                {ret.productName}
+                              </p>
+
+                              <div className="flex items-center gap-2 text-[11px] text-white/50 font-mono">
+                                <span>{ret.id}</span>
+                                <span>•</span>
+                                <span>{ret.requestedOn}</span>
+                              </div>
+
+                              <div className="text-[11px] text-white/40">
+                                Order #{ret.orderId}
+                              </div>
+
+                              {ret.reason && (
+                                <p className="text-[11px] text-white/50 italic line-clamp-1">
+                                  {ret.reason}
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between text-xs pt-0.5">
+                                <span className="font-semibold text-white">
+                                  ₹{ret.amount.toLocaleString("en-IN")}
+                                </span>
+                                <span className={`font-medium ${getStatusColor(ret.status)}`}>
+                                  {ret.status}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs sm:text-sm font-medium text-white line-clamp-1">
-                              {ret.productName}
-                            </p>
-                            <p className="text-[11px] text-white/40">
-                              Order #{ret.orderId}
-                            </p>
+                        </div>
+
+                        <div className="hidden md:grid grid-cols-12 gap-3 items-center px-6 py-4 hover:bg-white/[0.04] transition-colors">
+                          <div className="col-span-2 font-mono text-xs font-semibold text-white/80">
+                            {ret.id}
                           </div>
-                        </div>
 
-                        <div className="col-span-2 text-xs text-white/60">
-                          {ret.requestedOn}
-                        </div>
+                          <div className="col-span-4 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-[#0a0a0a] rounded-lg border border-white/5 p-1 shrink-0 flex items-center justify-center">
+                              <img
+                                src={ret.image}
+                                alt={ret.productName}
+                                className="object-contain w-full h-full mix-blend-screen"
+                              />
+                            </div>
+                            <div>
+                              <p className="text-xs sm:text-sm font-medium text-white line-clamp-1">
+                                {ret.productName}
+                              </p>
+                              <p className="text-[11px] text-white/40">
+                                Order #{ret.orderId}
+                              </p>
+                            </div>
+                          </div>
 
-                        <div className="col-span-2">
-                          <span className={`text-xs font-medium ${getStatusColor(ret.status)}`}>
-                            {ret.status}
-                          </span>
-                        </div>
+                          <div className="col-span-2 text-xs text-white/60">
+                            {ret.requestedOn}
+                          </div>
 
-                        <div className="col-span-2 text-right text-xs sm:text-sm font-semibold text-white">
-                          ₹{ret.amount.toLocaleString("en-IN")}
+                          <div className="col-span-2">
+                            <span className={`text-xs font-medium ${getStatusColor(ret.status)}`}>
+                              {ret.status}
+                            </span>
+                          </div>
+
+                          <div className="col-span-2 text-right text-xs sm:text-sm font-semibold text-white">
+                            ₹{ret.amount.toLocaleString("en-IN")}
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1012,35 +1265,44 @@ function ProfileContent() {
               </div>
             )}
 
-            {/* 4. My Cart Preview (Max 6 items, click item -> cart, View All button at top) */}
             {activeTab === "cart" && (
-              <div className="rounded-[20px] bg-[#121212] border border-white/10 p-6 sm:p-7 space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white">
+              <div className="rounded-[20px] bg-[#121212] border border-white/10 p-4 sm:p-7 space-y-5">
+                <div className="sm:hidden flex items-center justify-end pb-3 border-b border-white/10">
+                  <Link
+                    href="/cart"
+                    className="inline-flex items-center gap-1.5 h-8 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-3.5 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-md shrink-0 cursor-pointer"
+                  >
+                    <span>View Cart</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+
+                <div className="hidden sm:flex items-center justify-between pb-4 border-b border-white/10">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-9 w-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0">
                       <ShoppingCart className="h-4 w-4" />
                     </div>
-                    <div>
-                      <h3 className="text-sm sm:text-base font-bold text-white">
+                    <div className="min-w-0">
+                      <h3 className="text-sm sm:text-base font-bold text-white truncate">
                         Cart Products ({cartItems.length})
                       </h3>
-                      <p className="text-[11px] text-white/40">
-                        Showing recent items added to your cart
+                      <p className="text-[11px] text-white/40 truncate">
+                        Items currently in your cart
                       </p>
                     </div>
                   </div>
 
                   <Link
                     href="/cart"
-                    className="inline-flex items-center gap-2 h-9 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4.5 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-md cursor-pointer"
+                    className="inline-flex items-center gap-1.5 h-9 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4.5 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-md shrink-0 cursor-pointer"
                   >
-                    <span>View All Cart</span>
+                    <span>View Cart</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
 
                 {cartItems.length === 0 ? (
-                  <div className="p-12 text-center space-y-3">
+                  <div className="p-8 sm:p-12 text-center space-y-3">
                     <ShoppingCart className="h-8 w-8 text-white/20 mx-auto" />
                     <p className="text-xs text-white/40">Your cart is currently empty.</p>
                     <Link href="/products" className="inline-block pt-1">
@@ -1050,33 +1312,75 @@ function ProfileContent() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                    {cartItems.slice(0, 6).map((item) => (
-                      <Link
-                        key={item.id}
-                        href="/cart"
-                        className="group flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#0a0a0a] border border-white/5 hover:border-[#640C0C]/50 hover:bg-white/[0.03] transition-all cursor-pointer"
-                      >
-                        <div className="w-14 h-14 bg-black rounded-xl border border-white/5 p-1 shrink-0 flex items-center justify-center">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="object-contain w-full h-full mix-blend-screen"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-white/90">
-                            {item.name}
-                          </p>
-                          <div className="flex items-center justify-between mt-1 text-xs">
-                            <span className="text-white/50 text-[11px]">Qty: {item.quantity}</span>
-                            <span className="font-semibold text-white">
-                              ₹{(item.price * item.quantity).toLocaleString("en-IN")}
-                            </span>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {cartItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="group flex items-center gap-3 p-3 rounded-2xl bg-[#0a0a0a] border border-white/5 hover:border-[#640C0C]/50 hover:bg-white/[0.03] transition-all relative"
+                        >
+                          <Link
+                            href="/cart"
+                            className="w-16 h-16 bg-black rounded-xl border border-white/10 p-1.5 shrink-0 flex items-center justify-center cursor-pointer"
+                          >
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="object-contain w-full h-full mix-blend-screen"
+                            />
+                          </Link>
+                          <div className="min-w-0 flex-1">
+                            <Link href="/cart" className="block cursor-pointer">
+                              <p className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-white/90">
+                                {item.name}
+                              </p>
+                            </Link>
+                            {item.color && (
+                              <p className="text-[10px] text-white/40 mt-0.5">
+                                Color: {item.color}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between mt-1 text-xs">
+                              <span className="text-white/50 text-[11px] bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                Qty: {item.quantity}
+                              </span>
+                              <span className="font-semibold text-white text-xs sm:text-sm">
+                                ₹{(item.price * item.quantity).toLocaleString("en-IN")}
+                              </span>
+                            </div>
                           </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              removeFromCart(item.id);
+                            }}
+                            aria-label="Remove item"
+                            className="p-1.5 text-white/30 hover:text-red-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      </Link>
-                    ))}
+                      ))}
+                    </div>
+
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center justify-between sm:justify-start sm:gap-4">
+                        <span className="text-xs text-white/50">
+                          Total ({cartItems.reduce((acc, i) => acc + i.quantity, 0)} items):
+                        </span>
+                        <span className="text-sm sm:text-base font-bold text-white">
+                          ₹{cartTotal.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <Link href="/cart" className="w-full sm:w-auto">
+                          <Button className="w-full sm:w-auto rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-xs h-9 px-5 font-semibold text-white">
+                            Proceed to Checkout
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
