@@ -217,10 +217,11 @@ export default function ReportsPage() {
           >
             <Menu className="h-4 w-4" />
           </button>
+          <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">Reports</h1>
         </div>
       </header>
 
-      <main className="flex-1 px-6 lg:px-12 py-4 space-y-6 max-w-7xl w-full">
+      <main className="flex-1 px-6 lg:px-12 py-1 space-y-6 max-w-7xl w-full">
         <ReportsHeader
           activeTab={activeTab}
           onTabChange={setActiveTab}

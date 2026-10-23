@@ -44,7 +44,7 @@ export default function ProductSummaryCards({
                 {counts.inStock}
               </span>
             </div>
-            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Available above low-stock threshold</span>
+            <span className="mt-1 text-[11px] sm:text-xs text-white/40">Available above stock threshold</span>
           </div>
 
           <div className="flex flex-col justify-between py-2 md:py-0 px-2 sm:px-4">
