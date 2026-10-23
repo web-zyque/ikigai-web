@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -152,7 +152,7 @@ function getInitials(name?: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function ProfileContent() {
+export default function ProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
@@ -1483,22 +1483,5 @@ function ProfileContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function ProfilePage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex-1 min-h-[60vh] bg-black flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4" />
-            <p className="text-white/60 text-xs">Loading profile...</p>
-          </div>
-        </div>
-      }
-    >
-      <ProfileContent />
-    </Suspense>
   );
 }
