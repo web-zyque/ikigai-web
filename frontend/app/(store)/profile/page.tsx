@@ -32,6 +32,8 @@ import { useMe, useLogout } from "@/hooks/auth";
 import { hasAuthSession } from "@/lib/auth-storage";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
+import { getStoredAddresses, saveStoredAddresses } from "@/lib/address-storage";
+
 
 type TabKey =
   | "profile"
@@ -53,30 +55,8 @@ interface Address {
   isDefault: boolean;
 }
 
-const INITIAL_ADDRESSES: Address[] = [
-  {
-    id: "addr-1",
-    name: "Alex Jander",
-    phone: "+91 98765 43210",
-    type: "Home",
-    addressLine: "Flat 402, Skyline Heights, MG Road",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560001",
-    isDefault: true,
-  },
-  {
-    id: "addr-2",
-    name: "Alex Jander (Work)",
-    phone: "+91 98765 43210",
-    type: "Work",
-    addressLine: "Plot 14, Tech Corridor, Whitefield",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560066",
-    isDefault: false,
-  },
-];
+const INITIAL_ADDRESSES: Address[] = [];
+
 
 const mockOrders = [
   {
@@ -228,7 +208,15 @@ function ProfileContent() {
   useEffect(() => {
     setMounted(true);
     document.title = "My Profile | Ikigai Customs";
+    setAddresses(getStoredAddresses());
   }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      saveStoredAddresses(addresses);
+    }
+  }, [addresses, mounted]);
+
 
   useEffect(() => {
     const tab = searchParams?.get("tab") as TabKey;
