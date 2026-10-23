@@ -48,7 +48,10 @@ export const GetProductsQuerySchema = z.object({
 export const CreateCategorySchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
+
+export const UpdateCategorySchema = CreateCategorySchema.partial();
 
 export const AddStockSchema = z.object({
   quantity: z.number().int().positive('Quantity must be a positive integer'),
@@ -58,6 +61,7 @@ export type CreateProductDto = z.infer<typeof CreateProductSchema>;
 export type UpdateProductDto = z.infer<typeof UpdateProductSchema>;
 export type GetProductsQueryDto = z.infer<typeof GetProductsQuerySchema>;
 export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;
+export type UpdateCategoryDto = z.infer<typeof UpdateCategorySchema>;
 export type AddStockDto = z.infer<typeof AddStockSchema>;
 
 
@@ -117,6 +121,7 @@ export interface CategoryResponse {
   name: string;
   slug: string;
   description?: string;
+  imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }

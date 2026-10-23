@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, X, ChevronLeft, ChevronRight, FolderTree, Plus } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight, ChartBarStacked, Plus } from "lucide-react";
 import { CategoryResponse } from "@/types/products.types";
 
 export interface CategoryRowItem extends CategoryResponse {
@@ -12,6 +12,7 @@ export interface CategoriesTableProps {
   categories: CategoryRowItem[];
   isLoading?: boolean;
   onAddCategory?: () => void;
+  onViewCategory?: (category: CategoryRowItem) => void;
   totalCount?: number;
   page?: number;
   pageSize?: number;
@@ -26,6 +27,7 @@ export default function CategoriesTable({
   categories,
   isLoading = false,
   onAddCategory,
+  onViewCategory,
   totalCount: externalTotalCount,
   page: externalPage,
   pageSize = DEFAULT_PAGE_SIZE,
@@ -139,9 +141,7 @@ export default function CategoriesTable({
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-white/5 bg-[#0a0a0a] text-white/40">
-              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
-                Category ID
-              </th>
+
               <th className="px-6 py-3.5 font-medium uppercase tracking-wider">
                 Category Name
               </th>
@@ -167,7 +167,7 @@ export default function CategoriesTable({
               <tr>
                 <td colSpan={4} className="py-16 text-center">
                   <div className="flex flex-col items-center justify-center max-w-sm mx-auto px-4 text-center">
-                    <FolderTree className="h-10 w-10 text-white/20 mb-3" />
+                    <ChartBarStacked className="h-10 w-10 text-white/20 mb-3" />
                     <p className="text-sm font-semibold text-white">No categories available yet.</p>
                     <p className="text-xs text-white/40 mt-1 mb-4">
                       Get started by creating the first category for your store catalog.
@@ -195,33 +195,34 @@ export default function CategoriesTable({
               paginatedCategories.map((cat) => (
                 <tr
                   key={cat.id}
-                  className="hover:bg-white/[0.02] transition-colors"
+                  onClick={() => onViewCategory?.(cat)}
+                  className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-[11px] text-white/50">
-                    {cat.id}
-                  </td>
 
-                  <td className="px-6 py-4 min-w-[200px]">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-white text-sm">
-                        {cat.name}
-                      </span>
-                      {cat.description && (
-                        <span className="text-[11px] text-white/40 line-clamp-1 mt-0.5">
-                          {cat.description}
+
+                  <td className="px-6 py-4 min-w-[220px]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-white group-hover:text-white transition-colors truncate">
+                          {cat.name}
                         </span>
-                      )}
+                        {cat.description && (
+                          <span className="text-[11px] text-white/40 line-clamp-1 mt-0.5">
+                            {cat.description}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="font-mono text-xs text-white/70 bg-white/[0.04] px-2.5 py-1 rounded-md border border-white/5 inline-block">
+                  <td className="px-6 py-4 font-medium whitespace-nowrap">
+                    <span className=" text-xs text-white bg-white/[0.04] px-2 py-0.5 rounded-md border group-hover:border-[#640C0C]/50 transition-colors duration-100 border-white/10 inline-block">
                       {cat.slug}
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <span className="font-semibold text-white/90 text-sm">
+                  <td className="px-12 font-bold py-4 whitespace-nowrap text-right">
+                    <span className="text-white/90 text-[13px]">
                       {cat.productsCount}
                     </span>
                   </td>
@@ -249,11 +250,10 @@ export default function CategoriesTable({
             disabled={safeCurrentPage <= 1}
             onClick={() => handlePageChange(safeCurrentPage - 1)}
             aria-label="Previous page"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors ${
-              safeCurrentPage <= 1
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors ${safeCurrentPage <= 1
                 ? "border-white/5 bg-white/[0.02] text-white/20 cursor-not-allowed"
                 : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-            }`}
+              }`}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -263,11 +263,10 @@ export default function CategoriesTable({
             disabled={safeCurrentPage >= totalPages}
             onClick={() => handlePageChange(safeCurrentPage + 1)}
             aria-label="Next page"
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors ${
-              safeCurrentPage >= totalPages
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs transition-colors ${safeCurrentPage >= totalPages
                 ? "border-white/5 bg-white/[0.02] text-white/20 cursor-not-allowed"
                 : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
-            }`}
+              }`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>

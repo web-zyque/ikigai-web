@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
-  FolderTree,
+  ChartBarStacked,
   ShoppingCart,
   UserCheck,
   BarChart3,
@@ -42,7 +42,7 @@ export interface SidebarProps {
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
   { label: "Products", icon: Package, href: "/admin/products" },
-  { label: "Categories", icon: FolderTree, href: "/admin/categories" },
+  { label: "Categories", icon: ChartBarStacked, href: "/admin/categories" },
   { label: "Orders", icon: ShoppingCart, href: "/admin/orders" },
   { label: "Staff", icon: UserCheck, href: "/admin/staff" },
   { label: "Reports", icon: BarChart3, href: "/admin/reports" },
@@ -77,9 +77,8 @@ export default function AdminSidebar({
 
       <aside
         aria-label="Admin Sidebar"
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-white/5 bg-black transition-[width,transform] duration-300 ease-in-out will-change-[width] overflow-hidden lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          mobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0"
-        } ${isCollapsed ? "lg:w-20" : "lg:w-64"}`}
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col border-r border-white/5 bg-black transition-[width,transform] duration-300 ease-in-out will-change-[width] overflow-hidden lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0"
+          } ${isCollapsed ? "lg:w-20" : "lg:w-64"}`}
       >
         <div className="w-64 flex flex-col h-full select-none">
           {/* Header */}
@@ -147,9 +146,8 @@ export default function AdminSidebar({
           {/* Navigation Items */}
           <div className="flex-1 overflow-y-auto px-3.5 py-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <p
-              className={`px-3 text-xs font-semibold uppercase tracking-widest text-white/40 mb-3 transition-opacity duration-200 ${
-                isCollapsed ? "opacity-0" : "opacity-100"
-              }`}
+              className={`px-3 text-xs font-semibold uppercase tracking-widest text-white/40 mb-3 transition-opacity duration-200 ${isCollapsed ? "opacity-0" : "opacity-100"
+                }`}
             >
               Navigation
             </p>
@@ -161,34 +159,31 @@ export default function AdminSidebar({
                   item.active !== undefined
                     ? item.active
                     : item.href
-                    ? item.href === "/admin"
-                      ? pathname === "/admin"
-                      : pathname.startsWith(item.href)
-                    : false;
+                      ? item.href === "/admin"
+                        ? pathname === "/admin"
+                        : pathname.startsWith(item.href)
+                      : false;
 
                 const content = (
                   <>
                     <div
-                      className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all duration-200 ${
-                        isCollapsed
+                      className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all duration-200 ${isCollapsed
                           ? isActive
                             ? "bg-white/[0.08] text-white"
                             : "text-white/60 group-hover:bg-white/[0.04] group-hover:text-white"
                           : ""
-                      }`}
+                        }`}
                     >
                       <Icon
-                        className={`h-4 w-4 transition-colors ${
-                          isActive
+                        className={`h-4 w-4 transition-colors ${isActive
                             ? "text-[#640C0C]"
                             : "text-white/40 group-hover:text-white/80"
-                        }`}
+                          }`}
                       />
                     </div>
                     <span
-                      className={`text-sm whitespace-nowrap pl-2.5 transition-opacity duration-200 ${
-                        isCollapsed ? "opacity-0" : "opacity-100"
-                      }`}
+                      className={`text-sm whitespace-nowrap pl-2.5 transition-opacity duration-200 ${isCollapsed ? "opacity-0" : "opacity-100"
+                        }`}
                     >
                       {item.label}
                     </span>
@@ -199,9 +194,8 @@ export default function AdminSidebar({
                   ? "bg-white/[0.08] text-white font-semibold"
                   : "text-white/60 hover:text-white hover:bg-white/[0.04]";
 
-                const navItemClass = `group flex items-center h-11 rounded-xl transition-colors cursor-pointer ${
-                  isCollapsed ? "" : expandedClasses
-                }`;
+                const navItemClass = `group flex items-center h-11 rounded-xl transition-colors cursor-pointer ${isCollapsed ? "" : expandedClasses
+                  }`;
 
                 return item.href ? (
                   <Link
@@ -234,9 +228,8 @@ export default function AdminSidebar({
               </div>
             </div>
             <div
-              className={`flex flex-col min-w-0 pl-2.5 transition-opacity duration-200 ${
-                isCollapsed ? "opacity-0" : "opacity-100"
-              }`}
+              className={`flex flex-col min-w-0 pl-2.5 transition-opacity duration-200 ${isCollapsed ? "opacity-0" : "opacity-100"
+                }`}
             >
               <span className="text-sm font-medium text-white truncate whitespace-nowrap">
                 {profile.name}

@@ -6,13 +6,17 @@ import { useMobileMenu } from "@/app/admin/layout";
 import { useCategories, useProducts } from "@/hooks/use-products";
 import CategoriesTable, { CategoryRowItem } from "@/components/admin/categories/CategoriesTable";
 import AddCategoryModal from "@/components/admin/categories/AddCategoryModal";
+import EditCategoryModal from "@/components/admin/categories/EditCategoryModal";
+import CategoryDetailsModal from "@/components/admin/categories/CategoryDetailsModal";
 
 export default function CategoriesPage() {
   const { setMobileOpen } = useMobileMenu();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const { data: categoriesData, isLoading: isCategoriesLoading, refetch: refetchCategories } = useCategories();
-  const { data: productsData, isLoading: isProductsLoading } = useProducts({ limit: 100 });
+  const { data: productsData, isLoading: isProductsLoading, refetch: refetchProducts } = useProducts({ limit: 100 });
 
   const categoriesList: CategoryRowItem[] = useMemo(() => {
     const countMap: Record<string, number> = {};
@@ -31,12 +35,32 @@ export default function CategoriesPage() {
     }));
   }, [categoriesData, productsData]);
 
+  const selectedCategory = useMemo(() => {
+    if (!selectedCategoryId) return null;
+    return categoriesList.find((cat) => cat.id === selectedCategoryId) || null;
+  }, [selectedCategoryId, categoriesList]);
+
+  const assignedProducts = useMemo(() => {
+    if (!selectedCategoryId || !productsData?.products) return [];
+    return productsData.products.filter((p) => p.category?.id === selectedCategoryId);
+  }, [selectedCategoryId, productsData]);
+
   const isLoading = isCategoriesLoading || isProductsLoading;
+
+  const handleEditCategorySuccess = () => {
+    refetchCategories();
+    refetchProducts();
+    setIsEditModalOpen(false);
+  };
+
+  const handleAddCategorySuccess = () => {
+    refetchCategories();
+  };
 
   return (
     <>
       <main className="flex-1 px-4 lg:px-8 py-6 space-y-4 max-w-7xl w-full flex flex-col justify-start">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+        <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -47,17 +71,15 @@ export default function CategoriesPage() {
               <Menu className="h-4 w-4" />
             </button>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Categories</h1>
-              <p className="text-xs text-white/60 mt-0.5">
-                Manage the categories available in your store.
-              </p>
+              <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">Categories</h1>
+
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer self-start sm:self-auto sm:ml-auto"
+            className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-95 shadow-lg shrink-0 cursor-pointer  ml-auto"
           >
             <Plus className="h-4 w-4" />
             <span>Add Category</span>
@@ -68,13 +90,29 @@ export default function CategoriesPage() {
           categories={categoriesList}
           isLoading={isLoading}
           onAddCategory={() => setIsAddModalOpen(true)}
+          onViewCategory={(cat) => setSelectedCategoryId(cat.id)}
         />
       </main>
 
       <AddCategoryModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => refetchCategories()}
+        onSuccess={handleAddCategorySuccess}
+      />
+
+      <EditCategoryModal
+        isOpen={Boolean(isEditModalOpen && selectedCategory)}
+        category={selectedCategory}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={handleEditCategorySuccess}
+      />
+
+      <CategoryDetailsModal
+        category={selectedCategory}
+        isOpen={Boolean(selectedCategoryId && selectedCategory && !isEditModalOpen)}
+        onClose={() => setSelectedCategoryId(null)}
+        onEdit={() => setIsEditModalOpen(true)}
+        assignedProducts={assignedProducts}
       />
     </>
   );
