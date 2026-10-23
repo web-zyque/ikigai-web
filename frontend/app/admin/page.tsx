@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Menu } from "lucide-react";
 
 import { useMobileMenu } from "@/app/admin/layout";
@@ -13,7 +13,9 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-white/5 bg-black/90 px-6 lg:px-12 backdrop-blur-md">
+      <main className="flex-1 px-4 lg:px-8 py-6 space-y-6 max-w-7xl w-full flex flex-col justify-start">
+        {/* Mobile Header / Sidebar Toggle */}
+        <div className="flex items-center justify-between pb-2">
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -23,22 +25,21 @@ export default function AdminDashboardPage() {
             >
               <Menu className="h-4 w-4" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Dashboard</h1>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">
+              Dashboard
+            </h1>
           </div>
-        </header>
+        </div>
 
-        <main className="flex-1 px-6 lg:px-12 py-8 space-y-8 max-w-7xl w-full">
-          {/* 1. Existing Dashboard Summary Cards */}
-          <SummaryCards />
+        {/* 1. Dashboard Summary Cards */}
+        <SummaryCards />
 
-          {/* 2. Orders Analytics / Orders Overview Graph */}
-          <OrdersOverviewChart />
+        {/* 2. Orders Analytics / Orders Overview Graph */}
+        <OrdersOverviewChart />
 
-          {/* 3. Existing Recent Orders Section */}
-          <RecentOrdersTable />
-        </main>
+        {/* 3. Recent Orders Section */}
+        <RecentOrdersTable />
+      </main>
     </>
   );
-}
+}
