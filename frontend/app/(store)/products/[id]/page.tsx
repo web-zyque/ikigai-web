@@ -182,8 +182,21 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleBuyNow = () => {
-    handleAddToCart();
-    router.push("/cart");
+    const isAlreadyInCart = cartItems.some(
+      (item) => String(item.id) === String(product.id)
+    );
+    if (!isAlreadyInCart) {
+      for (let i = 0; i < quantity; i++) {
+        addToCart({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          color: selectedColor,
+        });
+      }
+    }
+    router.push("/checkout");
   };
 
   const handleShare = () => {

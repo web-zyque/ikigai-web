@@ -123,14 +123,9 @@ export default function CartPage() {
 
               <Button 
                 disabled={cartItems.length === 0}
-                className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 onClick={() => {
-                  if (!user) {
-                    window.location.href = '/login?redirect=/cart';
-                  } else {
-                    // Existing checkout logic (if implemented)
-                    alert('Checkout functionality to be implemented');
-                  }
+                  window.location.href = '/checkout';
                 }}
               >
                 Go to Checkout

@@ -16,7 +16,9 @@ interface CartContextType {
   addToCart: (product: { id: string | number; name: string; price: string; image: string; color?: string }) => void;
   removeFromCart: (id: string | number) => void;
   updateQuantity: (id: string | number, delta: number) => void;
+  clearCart: () => void;
 }
+
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -99,8 +101,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity }}>
+    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, updateQuantity, clearCart }}>
       {children}
       {toastVisible && (
         <div className="fixed top-4 right-4 sm:right-6 z-[100] animate-in fade-in slide-in-from-top-5 duration-300">
