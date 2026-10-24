@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-7xl space-y-6 px-4 py-6 lg:px-8">
+      <main className="flex-1 w-full space-y-6 px-4 py-6 lg:px-8 flex flex-col justify-start">
         {/* 1. Dashboard Summary Cards */}
         <SummaryCards />
 
