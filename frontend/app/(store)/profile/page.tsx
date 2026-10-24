@@ -43,14 +43,7 @@ function ProfileContent() {
 
   const { data: user, isLoading, isError, error, isFetching } = useMe();
   const logoutMutation = useLogout();
-  const { cartItems, removeFromCart } = useCart();
-
-  const cartTotal = useMemo(() => {
-    return cartItems.reduce(
-      (sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1),
-      0
-    );
-  }, [cartItems]);
+  const { cartItems } = useCart();
 
   const [orders] = useState<ProfileOrder[]>([]);
   const [refunds] = useState<ProfileRefund[]>([]);
