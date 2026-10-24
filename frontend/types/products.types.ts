@@ -82,6 +82,7 @@ export interface CategoryResponse {
   name: string;
   slug: string;
   description?: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

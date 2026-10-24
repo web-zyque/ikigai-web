@@ -12,6 +12,7 @@ import * as schema from '../db/schema';
 import { categories, productImages, products, productVariants } from '../db/schema';
 import type { 
   CreateCategoryDto, 
+  UpdateCategoryDto,
   CreateProductDto, 
   GetProductsQueryDto, 
   UpdateProductDto,
@@ -447,12 +448,59 @@ export class ProductsService {
           name: dto.name,
           slug,
           description: dto.description,
+          imageUrl: dto.imageUrl,
         })
         .returning();
 
       return {
         ...newCategory,
         description: newCategory.description || undefined,
+        imageUrl: newCategory.imageUrl || undefined,
+      };
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        throw new ConflictException('Category name already exists');
+      }
+      throw error;
+    }
+  }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto): Promise<CategoryResponse> {
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (dto.name !== undefined) {
+      updateData.name = dto.name;
+      updateData.slug = dto.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    if (dto.description !== undefined) {
+      updateData.description = dto.description;
+    }
+
+    if (dto.imageUrl !== undefined) {
+      updateData.imageUrl = dto.imageUrl;
+    }
+
+    try {
+      const [updated] = await this.db
+        .update(categories)
+        .set(updateData)
+        .where(eq(categories.id, id))
+        .returning();
+
+      if (!updated) {
+        throw new NotFoundException('Category not found');
+      }
+
+      return {
+        ...updated,
+        description: updated.description || undefined,
+        imageUrl: updated.imageUrl || undefined,
       };
     } catch (error: any) {
       if (error?.code === '23505') {
@@ -471,6 +519,7 @@ export class ProductsService {
     return result.map(cat => ({
       ...cat,
       description: cat.description || undefined,
+      imageUrl: cat.imageUrl || undefined,
     }));
   }
 

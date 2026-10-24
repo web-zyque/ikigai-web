@@ -49,6 +49,7 @@ export const categories = pgTable('categories', {
   name: text('name').notNull().unique(),
   slug: text('slug').notNull().unique(),
   description: text('description'),
+  imageUrl: text('image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
