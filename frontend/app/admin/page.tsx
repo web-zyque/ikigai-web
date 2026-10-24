@@ -34,12 +34,12 @@ export default function AdminDashboardPage() {
         {/* 1. Dashboard Summary Cards */}
         <SummaryCards />
 
-        {/* 2. Orders Analytics / Orders Overview Graph */}
-        <OrdersOverviewChart />
+        {/* 2. Orders Analytics / Orders Overview Graph 
+        <OrdersOverviewChart /> */}
 
         {/* 3. Recent Orders Section */}
         <RecentOrdersTable />
       </main>
     </>
   );
-}
+}

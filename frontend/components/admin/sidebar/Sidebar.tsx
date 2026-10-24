@@ -45,7 +45,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Categories", icon: ChartBarStacked, href: "/admin/categories" },
   { label: "Orders", icon: ShoppingCart, href: "/admin/orders" },
   { label: "Staff", icon: UserCheck, href: "/admin/staff" },
-  { label: "Reports", icon: BarChart3, href: "/admin/reports" },
+  //{ label: "Reports", icon: BarChart3, href: "/admin/reports" },
   { label: "Settings", icon: Settings, href: "/admin/settings" },
 ];
 
