@@ -4,72 +4,135 @@ import React, { useState, useMemo } from "react";
 import { ReportDataset } from "@/data/mockReports";
 import { SalesTrendPoint } from "@/types/reports.types";
 
+export type SalesTimeframeType = "daily" | "weekly" | "monthly" | "yearly";
+
 export interface SalesReportViewProps {
   data: ReportDataset;
 }
 
+const TIMEFRAME_OPTIONS: { id: SalesTimeframeType; label: string }[] = [
+  { id: "daily", label: "Daily" },
+  { id: "weekly", label: "Weekly" },
+  { id: "monthly", label: "Monthly" },
+  { id: "yearly", label: "Yearly" },
+];
+
+const DEFAULT_SALES_DATASETS: Record<SalesTimeframeType, SalesTrendPoint[]> = {
+  daily: [
+    { label: "Mon", fullDate: "Past Monday", sales: 42100, orders: 17 },
+    { label: "Tue", fullDate: "Past Tuesday", sales: 48900, orders: 19 },
+    { label: "Wed", fullDate: "Past Wednesday", sales: 39500, orders: 15 },
+    { label: "Thu", fullDate: "Past Thursday", sales: 52300, orders: 21 },
+    { label: "Fri", fullDate: "Past Friday", sales: 58400, orders: 23 },
+    { label: "Sat", fullDate: "Past Saturday", sales: 56100, orders: 22 },
+    { label: "Sun", fullDate: "Past Sunday", sales: 45300, orders: 17 },
+  ],
+  weekly: [
+    { label: "W1", fullDate: "Week 1", sales: 85000, orders: 34 },
+    { label: "W2", fullDate: "Week 2", sales: 102000, orders: 41 },
+    { label: "W3", fullDate: "Week 3", sales: 120000, orders: 48 },
+    { label: "W4", fullDate: "Week 4", sales: 115000, orders: 45 },
+    { label: "W5", fullDate: "Week 5", sales: 142000, orders: 56 },
+    { label: "W6", fullDate: "Week 6", sales: 156000, orders: 62 },
+  ],
+  monthly: [
+    { label: "Jan", fullDate: "January", sales: 320000, orders: 128 },
+    { label: "Feb", fullDate: "February", sales: 380000, orders: 152 },
+    { label: "Mar", fullDate: "March", sales: 450000, orders: 180 },
+    { label: "Apr", fullDate: "April", sales: 410000, orders: 164 },
+    { label: "May", fullDate: "May", sales: 520000, orders: 208 },
+    { label: "Jun", fullDate: "June", sales: 490000, orders: 196 },
+    { label: "Jul", fullDate: "July", sales: 560000, orders: 224 },
+    { label: "Aug", fullDate: "August", sales: 610000, orders: 244 },
+    { label: "Sep", fullDate: "September", sales: 580000, orders: 232 },
+    { label: "Oct", fullDate: "October", sales: 640000, orders: 256 },
+    { label: "Nov", fullDate: "November", sales: 710000, orders: 284 },
+    { label: "Dec", fullDate: "December", sales: 820000, orders: 328 },
+  ],
+  yearly: [
+    { label: "2021", fullDate: "Year 2021", sales: 2400000, orders: 960 },
+    { label: "2022", fullDate: "Year 2022", sales: 3850000, orders: 1540 },
+    { label: "2023", fullDate: "Year 2023", sales: 5120000, orders: 2050 },
+    { label: "2024", fullDate: "Year 2024", sales: 6940000, orders: 2780 },
+    { label: "2025", fullDate: "Year 2025", sales: 8450000, orders: 3380 },
+    { label: "2026", fullDate: "Year 2026", sales: 9820000, orders: 3920 },
+  ],
+};
+
+function getNiceSalesMax(maxVal: number): number {
+  if (maxVal <= 30000) return Math.ceil(maxVal / 6000) * 6000;
+  if (maxVal <= 60000) return Math.ceil(maxVal / 15000) * 15000;
+  if (maxVal <= 150000) return Math.ceil(maxVal / 30000) * 30000;
+  if (maxVal <= 300000) return Math.ceil(maxVal / 60000) * 60000;
+  if (maxVal <= 900000) return Math.ceil(maxVal / 150000) * 150000;
+  if (maxVal <= 3000000) return Math.ceil(maxVal / 300000) * 300000;
+  if (maxVal <= 6000000) return Math.ceil(maxVal / 600000) * 600000;
+  return Math.ceil(maxVal / 1500000) * 1500000;
+}
+
 export default function SalesReportView({ data }: SalesReportViewProps) {
-  const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [timeframe, setTimeframe] = useState<SalesTimeframeType>("daily");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const points: SalesTrendPoint[] = useMemo(() => {
-    if (timeframe === "monthly" && data.salesTrends.monthly.length > 0) {
-      return data.salesTrends.monthly;
+    const list = data?.salesTrends?.[timeframe as keyof typeof data.salesTrends];
+    if (list && list.length >= 3) {
+      return list;
     }
-    if (timeframe === "weekly" && data.salesTrends.weekly.length > 0) {
-      return data.salesTrends.weekly;
-    }
-    return data.salesTrends.daily;
+    return DEFAULT_SALES_DATASETS[timeframe] || DEFAULT_SALES_DATASETS.daily;
   }, [data, timeframe]);
 
-  const maxSales = useMemo(() => {
-    const rawMax = Math.max(...points.map((p) => p.sales), 1000);
-    return Math.ceil(rawMax * 1.15);
-  }, [points]);
+  // SVG coordinate dimensions for the bezier curve (identical to OrdersOverviewChart)
+  const viewWidth = 1000;
+  const viewHeight = 300;
+  const paddingTop = 15;
+  const paddingBottom = 15;
+  const chartHeight = viewHeight - paddingTop - paddingBottom;
 
-  const chartWidth = 800;
-  const chartHeight = 220;
-  const paddingX = 35;
-  const paddingY = 25;
+  const rawMax = Math.max(...points.map((p) => p.sales), 1000);
+  const yMax = getNiceSalesMax(rawMax);
 
-  const coords = useMemo(() => {
-    if (points.length <= 1) {
-      return points.map((p, i) => ({
-        ...p,
-        x: chartWidth / 2,
-        y: chartHeight / 2,
-      }));
-    }
-
-    const usableWidth = chartWidth - paddingX * 2;
-    const usableHeight = chartHeight - paddingY * 2;
-
-    return points.map((p, idx) => {
-      const x = paddingX + (idx / (points.length - 1)) * usableWidth;
-      const y = chartHeight - paddingY - (p.sales / maxSales) * usableHeight;
-      return { ...p, x, y };
+  // Compute calculated point positions for SVG curve
+  const chartPoints = useMemo(() => {
+    if (points.length === 0) return [];
+    return points.map((item, index) => {
+      const x = points.length > 1 ? (index / (points.length - 1)) * viewWidth : viewWidth / 2;
+      const y = paddingTop + chartHeight - (item.sales / yMax) * chartHeight;
+      return { x, y, ...item };
     });
-  }, [points, maxSales]);
+  }, [points, yMax, chartHeight, paddingTop, viewWidth]);
 
+  // Generate smooth cubic bezier line path
   const linePath = useMemo(() => {
-    if (coords.length === 0) return "";
-    return coords.reduce((acc, pt, idx) => {
-      return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
-    }, "");
-  }, [coords]);
+    if (chartPoints.length === 0) return "";
+    if (chartPoints.length === 1) return `M ${chartPoints[0].x} ${chartPoints[0].y}`;
 
+    let path = `M ${chartPoints[0].x} ${chartPoints[0].y}`;
+    for (let i = 0; i < chartPoints.length - 1; i++) {
+      const current = chartPoints[i];
+      const next = chartPoints[i + 1];
+      const controlX = (current.x + next.x) / 2;
+      path += ` C ${controlX} ${current.y}, ${controlX} ${next.y}, ${next.x} ${next.y}`;
+    }
+    return path;
+  }, [chartPoints]);
+
+  // Generate flat fill area path beneath the line (no gradient)
   const areaPath = useMemo(() => {
-    if (coords.length === 0) return "";
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    const baseY = chartHeight - paddingY;
-    return `${linePath} L ${last.x} ${baseY} L ${first.x} ${baseY} Z`;
-  }, [linePath, coords]);
+    if (chartPoints.length < 2) return "";
+    const first = chartPoints[0];
+    const last = chartPoints[chartPoints.length - 1];
+    return `${linePath} L ${last.x} ${viewHeight} L ${first.x} ${viewHeight} Z`;
+  }, [linePath, chartPoints, viewHeight]);
 
-  const activeCoord = hoveredIndex !== null ? coords[hoveredIndex] : null;
+  // 4 reference horizontal steps (0%, 33.3%, 66.7%, 100%)
+  const ySteps = useMemo(() => [0, 1, 2, 3], []);
+
+  const activePoint = hoveredIndex !== null && points[hoveredIndex] ? points[hoveredIndex] : null;
 
   return (
     <div className="space-y-6">
+      {/* Metrics Summary Strip */}
       <div className="pt-2 pb-3 border-b border-white/10">
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
           <div className="flex flex-col justify-between py-2 sm:py-0 px-2 sm:px-4">
@@ -104,118 +167,219 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
         </div>
       </div>
 
+      {/* Sales & Revenue Chart Container */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 px-6 py-4 bg-[#121212]">
-          <div>
-            <h3 className="text-sm sm:text-base font-bold tracking-tight text-white">
-              Sales Trends &amp; Revenue Velocity
-            </h3>
-          </div>
+        {/* Card Header Section: Aligned on a single line on mobile and desktop */}
+        <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3.5 sm:px-6 py-3 sm:py-4 bg-[#121212]">
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap shrink-0">
+            Sales &amp; Revenue
+          </h2>
 
-          <div className="inline-flex rounded-lg border border-white/10 bg-[#0a0a0a] p-1 text-xs self-end sm:self-auto">
-            {(["daily", "weekly", "monthly"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => {
-                  setTimeframe(mode);
-                  setHoveredIndex(null);
-                }}
-                className={`px-3 py-1 rounded-md capitalize transition-colors cursor-pointer font-medium ${timeframe === mode
-                    ? "bg-[#640C0C] text-white shadow-sm"
-                    : "text-white/50 hover:text-white"
+          {/* Timeframe Controls: [ Daily ] [ Weekly ] [ Monthly ] [ Yearly ] */}
+          <div className="flex items-center gap-0.5 sm:gap-1 rounded-full border border-white/10 bg-[#0a0a0a] p-0.5 sm:p-1 shrink-0">
+            {TIMEFRAME_OPTIONS.map((option) => {
+              const isActive = timeframe === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    setTimeframe(option.id);
+                    setHoveredIndex(null);
+                  }}
+                  className={`rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-center text-[10px] sm:text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isActive
+                      ? "bg-[#640C0C] text-white shadow-sm shadow-[#640C0C]/30 font-semibold"
+                      : "text-white/50 hover:text-white"
                   }`}
-              >
-                {mode}
-              </button>
-            ))}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="relative p-3 sm:p-5 md:p-6">
-          {activeCoord && (
-            <div
-              className="absolute pointer-events-none rounded-xl border border-white/15 bg-black/95 px-3 py-2 text-xs shadow-xl z-20 transition-all -translate-x-1/2 -translate-y-full"
-              style={{
-                left: `${(activeCoord.x / chartWidth) * 100}%`,
-                top: `${activeCoord.y - 12}px`,
-              }}
-            >
-              <p className="font-semibold text-white">{activeCoord.fullDate}</p>
-              <div className="flex items-center gap-3 mt-1 font-mono text-[11px]">
-                <span className="text-emerald-400 font-semibold">
-                  ₹{activeCoord.sales.toLocaleString("en-IN")}
-                </span>
-                <span className="text-white/60">{activeCoord.orders} orders</span>
-              </div>
-            </div>
-          )}
-
-         <div className="w-full min-w-0">
-            <svg
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              className="block h-auto w-full overflow-visible"
-              style={{ aspectRatio: `${chartWidth} / ${chartHeight}` }}
-            >
-              {[0, 0.33, 0.66, 1].map((pct, idx) => {
-                const y = chartHeight - paddingY - pct * (chartHeight - paddingY * 2);
+        {/* Main Chart Area */}
+        <div className="relative p-4 sm:p-6">
+          <div className="flex w-full">
+            {/* Y-Axis Column: HTML text labels, shrink-0, perfectly crisp and never distorted */}
+            <div className="relative h-48 sm:h-60 w-8 sm:w-12 shrink-0 select-none mr-2 sm:mr-3">
+              {ySteps.map((step) => {
+                const value = Math.round((yMax / 3) * step);
+                const bottomPercent = (step / 3) * 100;
                 return (
-                  <line
-                    key={idx}
-                    x1={paddingX}
-                    y1={y}
-                    x2={chartWidth - paddingX}
-                    y2={y}
-                    stroke="rgba(255,255,255,0.06)"
-                    strokeDasharray="4 4"
-                  />
+                  <div
+                    key={step}
+                    style={{ bottom: `${bottomPercent}%` }}
+                    className="absolute right-0 translate-y-1/2 shrink-0 text-right leading-none"
+                  >
+                    <span className="text-[10px] sm:text-xs text-white/40 font-medium shrink-0 whitespace-nowrap block">
+                      {value >= 10000000
+                        ? `₹${(value / 10000000).toFixed(1)}Cr`
+                        : value >= 100000
+                        ? `₹${(value / 100000).toFixed(0)}L`
+                        : value >= 1000
+                        ? `₹${(value / 1000).toFixed(0)}k`
+                        : value === 0
+                        ? "0"
+                        : `₹${value}`}
+                    </span>
+                  </div>
                 );
               })}
-              {areaPath && (
-                <path d={areaPath} fill="rgba(100, 12, 12, 0.18)" />
-              )}
+            </div>
 
-              {linePath && (
-                <path
-                  d={linePath}
-                  fill="none"
-                  stroke="#640C0C"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-
-              {coords.map((pt, idx) => (
-                <g key={idx}>
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={hoveredIndex === idx ? 6 : 4}
-                    fill={hoveredIndex === idx ? "#ffffff" : "#640C0C"}
-                    stroke="#000000"
-                    strokeWidth="2"
-                    className="cursor-pointer transition-all"
-                    onMouseEnter={() => setHoveredIndex(idx)}
-                    onMouseLeave={() => setHoveredIndex(null)}
+            {/* Plot Surface and X-Axis Area */}
+            <div className="relative flex-1 min-w-0 flex flex-col">
+              {/* Chart Canvas Area */}
+              <div className="relative h-48 sm:h-60 w-full">
+                {/* Horizontal reference gridlines */}
+                {ySteps.map((step) => (
+                  <div
+                    key={step}
+                    style={{ bottom: `${(step / 3) * 100}%` }}
+                    className={`absolute left-0 right-0 border-b border-white/5 pointer-events-none ${
+                      step === 0 ? "border-solid border-white/10" : "border-dashed"
+                    }`}
                   />
-                  <text
-                    x={pt.x}
-                    y={chartHeight - 4}
-                    textAnchor="middle"
-                    fill="rgba(255,255,255,0.4)"
-                    fontSize="10"
-                    className="pointer-events-none select-none font-sans"
+                ))}
+
+                {/* Responsive SVG Bezier Curve */}
+                <svg
+                  viewBox={`0 0 ${viewWidth} ${viewHeight}`}
+                  className="absolute inset-0 w-full h-full overflow-visible"
+                  preserveAspectRatio="none"
+                >
+                  {areaPath && (
+                    <path
+                      d={areaPath}
+                      fill="rgba(100, 12, 12, 0.08)"
+                    />
+                  )}
+                  {linePath && (
+                    <path
+                      d={linePath}
+                      fill="none"
+                      stroke="#640C0C"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </svg>
+
+                {/* Vertical hover line indicator */}
+                {hoveredIndex !== null && (
+                  <div
+                    style={{
+                      left: `${(hoveredIndex / (points.length - 1)) * 100}%`,
+                    }}
+                    className="absolute top-0 bottom-0 w-px border-l border-dashed border-white/20 pointer-events-none z-10"
+                  />
+                )}
+
+                {/* Interactive Data Point Dots: HTML circles (always perfectly round, never oval) */}
+                {points.map((item, i) => {
+                  const isHovered = hoveredIndex === i;
+                  const leftPercent = (i / (points.length - 1)) * 100;
+                  const valueRatio = item.sales / yMax;
+                  const topPercent =
+                    ((paddingTop + chartHeight - valueRatio * chartHeight) / viewHeight) * 100;
+
+                  return (
+                    <div
+                      key={item.label}
+                      style={{
+                        left: `${leftPercent}%`,
+                        top: `${topPercent}%`,
+                      }}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 shrink-0"
+                    >
+                      <div
+                        className={`rounded-full transition-all duration-150 shrink-0 ${
+                          isHovered
+                            ? "w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#640C0C] border-2 border-white shadow-lg shadow-black scale-110"
+                            : "w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#121212] border-[1.5px] sm:border-2 border-[#640C0C]"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* Full-height touch and hover interactive slices */}
+                <div className="absolute inset-0 flex z-20">
+                  {points.map((item, i) => (
+                    <div
+                      key={item.label}
+                      className="flex-1 h-full cursor-pointer"
+                      onMouseEnter={() => setHoveredIndex(i)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                      onClick={() => setHoveredIndex(i)}
+                    />
+                  ))}
+                </div>
+
+                {/* Floating Tooltip */}
+                {hoveredIndex !== null && activePoint && (
+                  <div
+                    style={{
+                      left: `${(hoveredIndex / (points.length - 1)) * 100}%`,
+                      top: `${
+                        ((paddingTop + chartHeight - (activePoint.sales / yMax) * chartHeight) /
+                          viewHeight) *
+                        100
+                      }%`,
+                    }}
+                    className={`absolute -translate-y-12 pointer-events-none z-30 whitespace-nowrap rounded-lg bg-[#0a0a0a] border border-white/10 px-3 py-1.5 text-xs shadow-xl shrink-0 ${
+                      hoveredIndex === 0
+                        ? "translate-x-1"
+                        : hoveredIndex === points.length - 1
+                        ? "-translate-x-full"
+                        : "-translate-x-1/2"
+                    }`}
                   >
-                    {pt.label}
-                  </text>
-                </g>
-              ))}
-            </svg>
+                    <div className="font-semibold text-white">
+                      ₹{activePoint.sales.toLocaleString("en-IN")}
+                    </div>
+                    <div className="text-[10px] text-white/50 flex items-center gap-1.5 mt-0.5">
+                      <span>{activePoint.fullDate}</span>
+                      <span>•</span>
+                      <span className="text-white/70">{activePoint.orders} orders</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* X-Axis Row: HTML text labels, shrink-0, centered directly below each data point */}
+              <div className="relative w-full h-6 mt-3 select-none shrink-0">
+                {points.map((item, i) => {
+                  const isHovered = hoveredIndex === i;
+                  const leftPercent = (i / (points.length - 1)) * 100;
+
+                  return (
+                    <div
+                      key={item.label}
+                      style={{ left: `${leftPercent}%` }}
+                      className="absolute -translate-x-1/2 top-0 shrink-0 text-center"
+                    >
+                      <span
+                        className={`text-[10px] sm:text-xs transition-colors duration-150 shrink-0 font-medium block whitespace-nowrap leading-none ${
+                          isHovered ? "text-white font-semibold" : "text-white/45"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Sales Breakdown by Timeline Table */}
       <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm">
         <div className="border-b border-white/5 px-6 py-4 bg-[#121212]">
           <h3 className="text-sm font-bold tracking-tight text-white">
@@ -261,3 +425,4 @@ export default function SalesReportView({ data }: SalesReportViewProps) {
     </div>
   );
 }
+
