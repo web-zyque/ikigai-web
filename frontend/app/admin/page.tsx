@@ -24,7 +24,7 @@ export default function AdminDashboardPage() {
             <Menu className="h-4 w-4" />
           </button>
 
-          <h1 className="text-xl font-bold tracking-tight text-white">
+          <h1 className="text-xl font-bold tracking-tight text-white lg:hidden">
             Dashboard
           </h1>
         </div>
