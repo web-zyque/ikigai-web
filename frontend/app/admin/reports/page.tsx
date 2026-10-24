@@ -221,7 +221,9 @@ export default function ReportsPage() {
         </div>
       </header>
 
+
       <main className="flex-1 px-6 lg:px-12 py-1 space-y-6 max-w-7xl w-full">
+
         <ReportsHeader
           activeTab={activeTab}
           onTabChange={setActiveTab}
