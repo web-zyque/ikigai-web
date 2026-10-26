@@ -123,7 +123,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const isAdded = useMemo(() => {
     if (!product) return false;
-    return cartItems.some((item) => String(item.id) === String(product.id));
+    return cartItems.some((item) => String(item.productId) === String(product.id));
   }, [cartItems, product]);
 
   const relatedProducts = useMemo(() => {
@@ -169,31 +169,42 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        color: selectedColor,
-      });
-    }
-  };
-
-  const handleBuyNow = () => {
-    const isAlreadyInCart = cartItems.some(
-      (item) => String(item.id) === String(product.id)
-    );
-    if (!isAlreadyInCart) {
+  const handleAddToCart = async () => {
+    try {
       for (let i = 0; i < quantity; i++) {
-        addToCart({
-          id: product.id,
+        await addToCart({
+          productId: product.id as string,
           name: product.name,
           price: product.price,
           image: product.image,
+          variantId: selectedVariantId || undefined,
           color: selectedColor,
         });
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    const isAlreadyInCart = cartItems.some(
+      (item) => String(item.productId) === String(product.id)
+    );
+    if (!isAlreadyInCart) {
+      try {
+        for (let i = 0; i < quantity; i++) {
+          await addToCart({
+            productId: product.id as string,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            variantId: selectedVariantId || undefined,
+            color: selectedColor,
+          });
+        }
+      } catch (error) {
+        console.error("Error adding to cart:", error);
+        return;
       }
     }
     router.push("/checkout");

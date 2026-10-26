@@ -1,3 +1,5 @@
+import { unique } from 'drizzle-orm/pg-core';
+
 import {
   pgTable,
   uuid,
@@ -104,3 +106,22 @@ export const productImages = pgTable('product_images', {
   altText: text('alt_text'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const carts = pgTable('carts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const cartItems = pgTable('cart_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  cartId: uuid('cart_id').references(() => carts.id, { onDelete: 'cascade' }).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  variantId: uuid('variant_id').references(() => productVariants.id, { onDelete: 'set null' }),
+  quantity: integer('quantity').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueProductVariant: unique().on(table.cartId, table.productId, table.variantId),
+}));

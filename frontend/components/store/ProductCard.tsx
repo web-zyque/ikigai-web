@@ -23,14 +23,14 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { cartItems, addToCart } = useCart();
 
-  const isAdded = cartItems.some((item) => String(item.id) === String(product.id));
+  const isAdded = cartItems.some((item) => String(item.productId) === String(product.id));
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (isAdded) return;
     addToCart({
-      id: product.id,
+      productId: String(product.id),
       name: product.name,
       price: product.price,
       image: product.image,

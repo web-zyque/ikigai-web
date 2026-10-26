@@ -43,6 +43,13 @@
       "when": 1792805781483,
       "tag": "0005_gifted_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793036241226,
+      "tag": "0006_perfect_wallflower",
+      "breakpoints": true
     }
   ]
 }

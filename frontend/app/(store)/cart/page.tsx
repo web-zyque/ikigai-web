@@ -8,13 +8,25 @@ import { useCart } from "@/context/CartContext";
 import { useMe } from "@/hooks/auth";
 
 export default function CartPage() {
-  const { cartItems, updateQuantity, removeFromCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, isLoading, isAuthenticated } = useCart();
   const { data: user } = useMe();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discount = subtotal > 0 ? 0 : 0; 
-  const deliveryFee = subtotal > 0 ? 15.00 : 0;
+  const discount = subtotal > 0 ? 0 : 0;
+  const deliveryFee = subtotal > 0 ? 15.0 : 0;
   const total = subtotal - discount + deliveryFee;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="text-center py-12">
+            <p className="text-white/70">Loading cart...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -27,10 +39,11 @@ export default function CartPage() {
             <div>
               <p className="text-white text-sm font-medium mb-1">Guest Cart</p>
               <p className="text-white/60 text-xs leading-relaxed">
-                You&apos;re browsing as a guest. Your cart is saved locally. 
+                You&apos;re browsing as a guest. Your cart is saved locally.
                 <Link href="/login?redirect=/cart" className="text-[#640C0C] hover:underline ml-1">
                   Log in
-                </Link> to proceed with checkout.
+                </Link>{" "}
+                to proceed with checkout.
               </p>
             </div>
           </div>
@@ -53,7 +66,12 @@ export default function CartPage() {
                   <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-b border-white/10 pb-4 last:border-0 last:pb-0">
                     <div className="col-span-1 md:col-span-6 flex gap-4 items-center">
                       <div className="w-20 h-20 bg-[#0a0a0a] rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center p-2">
-                        <Image src={item.image} alt={item.name} fill className="object-contain p-2 mix-blend-screen" />
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-contain p-2 mix-blend-screen"
+                        />
                       </div>
                       <div>
                         <h3 className="text-white text-sm font-medium line-clamp-2">{item.name}</h3>
@@ -64,16 +82,34 @@ export default function CartPage() {
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-center items-center">
                       <span className="md:hidden text-white/50 text-xs">Quantity:</span>
                       <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-2 py-1 text-sm">
-                        <button onClick={() => updateQuantity(item.id, -1)} className="text-white/50 hover:text-white p-1"><Minus className="w-3 h-3" /></button>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          disabled={isLoading}
+                          className="text-white/50 hover:text-white p-1 disabled:opacity-50"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
                         <span className="text-white font-medium w-5 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} className="text-white/50 hover:text-white p-1"><Plus className="w-3 h-3" /></button>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          disabled={isLoading}
+                          className="text-white/50 hover:text-white p-1 disabled:opacity-50"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-end items-center gap-4">
                       <span className="md:hidden text-white/50 text-xs">Price:</span>
-                      <span className="text-[#640C0C] font-bold text-base">${(item.price * item.quantity).toFixed(2)}</span>
-                      <button onClick={() => removeFromCart(item.id)} className="text-white/50 hover:text-[#640C0C] transition-colors">
+                      <span className="text-[#640C0C] font-bold text-base">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        disabled={isLoading}
+                        className="text-white/50 hover:text-[#640C0C] transition-colors disabled:opacity-50"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -86,17 +122,19 @@ export default function CartPage() {
           <div className="w-full lg:w-80 flex flex-col gap-5">
             <div className="bg-[#121212] rounded-[16px] border border-white/5 p-5">
               <h2 className="text-lg font-bold text-white mb-5">Order Summary</h2>
-              
+
               <div className="flex gap-2 mb-6 bg-white/5 border border-white/10 p-1 rounded-full">
                 <div className="flex-1 flex items-center px-3 gap-2">
                   <span className="text-white/50 text-sm">🎫</span>
-                  <input 
-                    type="text" 
-                    placeholder="Coupon Code" 
+                  <input
+                    type="text"
+                    placeholder="Coupon Code"
                     className="bg-transparent text-white w-full focus:outline-none text-xs placeholder:text-white/30"
                   />
                 </div>
-                <Button className="rounded-full bg-[#121212] border border-white/10 text-white hover:bg-white/10 h-8 px-4 text-xs">Apply</Button>
+                <Button className="rounded-full bg-[#121212] border border-white/10 text-white hover:bg-white/10 h-8 px-4 text-xs">
+                  Apply
+                </Button>
               </div>
 
               <div className="space-y-3 mb-5 text-xs">
@@ -121,11 +159,11 @@ export default function CartPage() {
                 <span className="text-xl font-bold text-[#640C0C]">${total.toFixed(2)}</span>
               </div>
 
-              <Button 
-                disabled={cartItems.length === 0}
+              <Button
+                disabled={cartItems.length === 0 || isLoading}
                 className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 onClick={() => {
-                  window.location.href = '/checkout';
+                  window.location.href = "/checkout";
                 }}
               >
                 Go to Checkout

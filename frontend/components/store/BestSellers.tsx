@@ -100,12 +100,12 @@ export default function BestSellers() {
               </div>
             ) : (
               products.map((product) => {
-                const isAdded = cartItems.some(item => item.id === product.id);
+                const isAdded = cartItems.some(item => item.productId === String(product.id));
 
                 const handleAddToCart = () => {
                   if (isAdded) return;
                   addToCart({
-                    id: product.id,
+                    productId: String(product.id),
                     name: product.name,
                     price: product.price,
                     image: product.image,
