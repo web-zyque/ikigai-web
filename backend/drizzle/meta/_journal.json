@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1791308991122,
-      "tag": "0000_pink_slipstream",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1791563614989,
-      "tag": "0001_third_thunderbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1792089415799,
-      "tag": "0002_curved_guardsmen",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1792092624943,
-      "tag": "0003_dapper_kulan_gath",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1792685374445,
-      "tag": "0004_chief_swarm",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1792805781483,
-      "tag": "0005_gifted_venom",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1793036241226,
-      "tag": "0006_perfect_wallflower",
+      "when": 1793036612362,
+      "tag": "0000_wise_korath",
       "breakpoints": true
     }
   ]
