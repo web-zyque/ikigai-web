@@ -8,13 +8,23 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-app.enableCors({
-  origin:
-    process.env.NODE_ENV === 'production'
-      ? /^https:\/\/ikigaiautomotive\.vercel\.app$/
-      : 'http://localhost:3000',
-  credentials: true,
-});
+
+  const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? [
+        process.env.FRONTEND_URL || 'https://ikigaiautomotive.vercel.app',
+      ]
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
 

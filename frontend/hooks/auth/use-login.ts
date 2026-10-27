@@ -27,8 +27,14 @@ export function useLogin() {
           router.push('/');
         }
       } catch (error) {
+
+        console.error('Failed to fetch user after login:', error);
         router.push('/');
       }
+    },
+    onError: (error) => {
+
+      console.error('Login failed:', error.message);
     },
   });
 }
