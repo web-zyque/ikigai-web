@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useCartStore,
   useCartItems,
   useAddToCart,
   useRemoveFromCart,
@@ -10,9 +9,7 @@ import {
   type CartItem,
   type AddToCartProduct,
 } from "@/stores/cart-store";
-import { useToastStore } from "@/stores/toast-store";
 import { useCallback } from "react";
-
 
 export function useCart() {
   const cartItems = useCartItems();
@@ -20,14 +17,12 @@ export function useCart() {
   const removeFromCartAction = useRemoveFromCart();
   const updateQuantityAction = useUpdateQuantity();
   const clearCartAction = useClearCart();
-  const addToast = useToastStore((state) => state.addToast);
 
   const addToCart = useCallback(
     (product: AddToCartProduct) => {
       addToCartAction(product, 1);
-      addToast("Added to the cart successfully");
     },
-    [addToCartAction, addToast]
+    [addToCartAction]
   );
 
   const removeFromCart = useCallback(
@@ -57,5 +52,4 @@ export function useCart() {
   };
 }
 
-// Export types for convenience
 export type { CartItem, AddToCartProduct };
