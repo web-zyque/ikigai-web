@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock } from "lucide-react";
 import { useMe, useLogout } from "@/hooks/auth";
 import { hasAuthSession } from "@/lib/auth-storage";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { getStoredAddresses, saveStoredAddresses } from "@/lib/address-storage";
 import { Address } from "@/types/address.types";

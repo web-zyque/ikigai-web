@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/hooks/use-cart";
+import { useIsInCart } from "@/stores/cart-store";
 
 export interface Product {
   id: number | string;
@@ -21,9 +22,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { cartItems, addToCart } = useCart();
-
-  const isAdded = cartItems.some((item) => String(item.id) === String(product.id));
+  const { addToCart } = useCart();
+  const isAdded = useIsInCart(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
