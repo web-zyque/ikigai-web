@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { AuthButton } from "./AuthButton";
@@ -24,11 +25,16 @@ const socials = [
 
 function CartIcon() {
   const itemCount = useCartTotalItems();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <Link href="/cart" className="relative group flex h-10 w-10 items-center justify-center rounded-full bg-white/5 border border-white/10 transition-colors hover:bg-white/10">
       <img src="/shopping-bag.svg" alt="cart" className="h-4 w-4 brightness-0 invert opacity-90 transition-opacity" />
-      {itemCount > 0 && (
+      {isMounted && itemCount > 0 && (
         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#640C0C] text-[9px] font-bold text-white shadow-sm shadow-black">
           {itemCount}
         </span>
