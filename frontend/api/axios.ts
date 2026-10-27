@@ -24,9 +24,17 @@ api.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ message?: string | string[] }>) => {
     const status = err.response?.status ?? 0;
+    
+
     if (status === 401) {
-      clearAuthSession();
+      const url = err.config?.url ?? '';
+
+      const isPublicAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/signup');
+      if (!isPublicAuthEndpoint) {
+        clearAuthSession();
+      }
     }
+    
     const raw = err.response?.data?.message;
 
     const message = Array.isArray(raw)
