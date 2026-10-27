@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import { AuthButton } from "./AuthButton";
-import { useCart } from "@/context/CartContext";
+import { useCartTotalItems } from "@/stores/cart-store";
 import { useMe } from "@/hooks/auth";
 
 const navLinks = [
@@ -23,8 +23,7 @@ const socials = [
 ];
 
 function CartIcon() {
-  const { cartItems } = useCart();
-  const itemCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const itemCount = useCartTotalItems();
 
   return (
     <Link href="/cart" className="relative group flex h-10 w-10 items-center justify-center rounded-full bg-white/5 border border-white/10 transition-colors hover:bg-white/10">

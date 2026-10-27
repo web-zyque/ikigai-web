@@ -6,14 +6,16 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Inter } from "next/font/google";
 import { Loader2 } from "lucide-react";
-import { useCart } from "@/context/CartContext";
+import { useAddToCart, useIsInCart } from "@/stores/cart-store";
+import { useToastStore } from "@/stores/toast-store";
 import { useStoreProducts } from "@/hooks/use-store-products";
 import { mapProductsToStoreProducts } from "@/lib/product-mapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function BestSellers() {
-  const { cartItems, addToCart } = useCart();
+  const addToCart = useAddToCart();
+  const addToast = useToastStore((state) => state.addToast);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -99,68 +101,7 @@ export default function BestSellers() {
                 <p className="text-sm">No products available at the moment.</p>
               </div>
             ) : (
-              products.map((product) => {
-                const isAdded = cartItems.some(item => item.id === product.id);
-
-                const handleAddToCart = () => {
-                  if (isAdded) return;
-                  addToCart({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                  });
-                };
-
-                return (
-                  <div
-                    key={product.id}
-                    className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
-                  >
-                    <Link href={`/products/${product.id}`} className="block relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                        className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
-                      />
-                    </Link>
-
-                    <div className="flex flex-col p-4 grow-0 sm:grow">
-                      {product.brand && (
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
-                          {product.brand}
-                        </p>
-                      )}
-                      <Link href={`/products/${product.id}`}>
-                        <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#992222] transition-colors">
-                          {product.name}
-                        </h3>
-                      </Link>
-                      <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
-
-                      <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
-                        <Link
-                          href={`/products/${product.id}`}
-                          className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-                        >
-                          Buy Now
-                        </Link>
-                        {!isAdded && (
-                          <button
-                            onClick={handleAddToCart}
-                            aria-label="Add to cart"
-                            className="grid h-10 w-14 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-                          >
-                            <img src="/shopping-bag.svg" alt="cart" className="h-5 w-5 brightness-0 invert opacity-80" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              products.map((product) => <BestSellerCard key={product.id} product={product} addToCart={addToCart} addToast={addToast} />)
             )}
 
             <div className={`${inter.className} snap-start shrink-0 pl-4 pr-12 self-stretch flex items-center justify-center`}>
@@ -176,5 +117,77 @@ export default function BestSellers() {
         </div>
       </div>
     </section>
+  );
+}
+
+// Separate card component to use hook per product
+function BestSellerCard({ 
+  product, 
+  addToCart,
+  addToast 
+}: { 
+  product: any; 
+  addToCart: (p: any, qty?: number) => void;
+  addToast: (msg: string) => void;
+}) {
+  const isAdded = useIsInCart(product.id);
+
+  const handleAddToCart = () => {
+    if (isAdded) return;
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    }, 1);
+    addToast("Added to the cart successfully");
+  };
+
+  return (
+    <div
+      className={`group/card ${inter.className} snap-start shrink-0 w-[47vw] sm:w-[calc((100%-32px)/3.2)] lg:w-[calc((100%-64px)/5.2)] h-auto sm:h-[480px] flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300`}
+    >
+      <Link href={`/products/${product.id}`} className="block relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+          className="object-contain mix-blend-screen p-4 group-hover/card:scale-110 transition-transform duration-500"
+        />
+      </Link>
+
+      <div className="flex flex-col p-4 grow-0 sm:grow">
+        {product.brand && (
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#992222] mb-0.5 truncate">
+            {product.brand}
+          </p>
+        )}
+        <Link href={`/products/${product.id}`}>
+          <h3 className="text-[13px] font-medium text-white line-clamp-2 h-[40px] mb-1 hover:text-[#992222] transition-colors">
+            {product.name}
+          </h3>
+        </Link>
+        <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
+
+        <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
+          <Link
+            href={`/products/${product.id}`}
+            className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Buy Now
+          </Link>
+          {!isAdded && (
+            <button
+              onClick={handleAddToCart}
+              aria-label="Add to cart"
+              className="grid h-10 w-14 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
+              <img src="/shopping-bag.svg" alt="cart" className="h-5 w-5 brightness-0 invert opacity-80" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

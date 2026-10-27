@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Minus } from "lucide-react";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
 
 export default function CartPage() {

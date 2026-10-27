@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2, Loader2 } from "lucide-react";
-import { useCart } from "@/context/CartContext";
+import { useAddToCart, useIsInCart } from "@/stores/cart-store";
+import { useToastStore } from "@/stores/toast-store";
 import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
 import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
@@ -41,7 +42,8 @@ const tabs = [
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { cartItems, addToCart } = useCart();
+  const addToCartAction = useAddToCart();
+  const addToast = useToastStore((state) => state.addToast);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
   const [quantity, setQuantity] = useState(1);
@@ -121,10 +123,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const images = useMemo(() => product?.images || [], [product]);
 
-  const isAdded = useMemo(() => {
-    if (!product) return false;
-    return cartItems.some((item) => String(item.id) === String(product.id));
-  }, [cartItems, product]);
+  // Use Zustand selector with variant support
+  const isAdded = useIsInCart(product?.id || "", selectedVariantId);
 
   const relatedProducts = useMemo(() => {
     if (!product || !allProductsData?.products) return [];
@@ -170,31 +170,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      addToCart({
+    // Add with quantity support and variant ID
+    addToCartAction({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      color: selectedColor,
+      variantId: selectedVariantId || undefined,
+    }, quantity);
+    addToast("Added to the cart successfully");
+  };
+
+  const handleBuyNow = () => {
+    if (!isAdded) {
+      addToCartAction({
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
         color: selectedColor,
-      });
-    }
-  };
-
-  const handleBuyNow = () => {
-    const isAlreadyInCart = cartItems.some(
-      (item) => String(item.id) === String(product.id)
-    );
-    if (!isAlreadyInCart) {
-      for (let i = 0; i < quantity; i++) {
-        addToCart({
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          color: selectedColor,
-        });
-      }
+        variantId: selectedVariantId || undefined,
+      }, quantity);
     }
     router.push("/checkout");
   };

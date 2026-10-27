@@ -13,7 +13,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
 import { Address } from "@/types/address.types";
 import {
