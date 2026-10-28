@@ -19,11 +19,11 @@ export function useServerCart(options?: UseServerCartOptions) {
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
     retry: (failureCount, error) => {
-      /
+      // Don't retry on 401 (unauthorized)
       if (error instanceof ApiError && error.status === 401) {
         return false;
       }
-     
+      // Retry up to 3 times for other errors
       return failureCount < 3;
     },
   });
