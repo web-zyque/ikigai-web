@@ -9,12 +9,13 @@ import { Loader2 } from "lucide-react";
 import { useAddToCart, useIsInCart } from "@/stores/cart-store";
 import { useToastStore } from "@/stores/toast-store";
 import { useStoreProducts } from "@/hooks/use-store-products";
+import { useCart } from "@/hooks/use-cart";
 import { mapProductsToStoreProducts } from "@/lib/product-mapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function BestSellers() {
-  const addToCart = useAddToCart();
+  const { addToCart } = useCart();
   const addToast = useToastStore((state) => state.addToast);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);

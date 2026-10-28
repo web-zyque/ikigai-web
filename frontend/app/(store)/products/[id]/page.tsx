@@ -5,8 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2, Loader2 } from "lucide-react";
-import { useAddToCart, useIsInCart } from "@/stores/cart-store";
+import { useIsInCart } from "@/stores/cart-store";
 import { useToastStore } from "@/stores/toast-store";
+import { useCart } from "@/hooks/use-cart";
 import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
 import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
@@ -42,7 +43,7 @@ const tabs = [
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const addToCartAction = useAddToCart();
+  const { addToCart } = useCart();
   const addToast = useToastStore((state) => state.addToast);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
@@ -171,7 +172,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleAddToCart = () => {
     // Add with quantity support and variant ID
-    addToCartAction({
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
@@ -184,7 +185,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleBuyNow = () => {
     if (!isAdded) {
-      addToCartAction({
+      addToCart({
         id: product.id,
         name: product.name,
         price: product.price,

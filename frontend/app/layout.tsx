@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from '@/providers/query-provider';
 import { ToastContainer } from '@/components/ui/toast-container';
+import { CartInitializer } from '@/components/cart/CartInitializer';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <QueryProvider>
+          <CartInitializer />
           {children}
           <ToastContainer />
         </QueryProvider>

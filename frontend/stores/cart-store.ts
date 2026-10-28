@@ -75,6 +75,13 @@ const validateQuantity = (quantity: number, min = 1, max = 999): number => {
   return Math.max(min, Math.min(max, Math.floor(quantity)));
 };
 
+export interface ServerCartItem {
+  id: string; // This is the backend cart item ID
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
+}
+
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
