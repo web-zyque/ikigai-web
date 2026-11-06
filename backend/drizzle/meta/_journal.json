@@ -64,6 +64,13 @@
       "when": 1793998749309,
       "tag": "0008_user-addresses",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794002223492,
+      "tag": "0009_orders-cod-management",
+      "breakpoints": true
     }
   ]
 }

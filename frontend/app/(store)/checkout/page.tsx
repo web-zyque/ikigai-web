@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle2,
   Trash2,
   Plus,
   Minus,
@@ -40,6 +39,7 @@ import {
   saveStoredAddresses,
 } from "@/lib/address-storage";
 import { useToastStore } from "@/stores/toast-store";
+import { useCreateOrder } from "@/hooks/use-orders";
 
 const SELECTED_ADDRESS_SESSION_KEY = "ikigai-selected-shipping-address";
 
@@ -95,7 +95,7 @@ function createBuyNowCartItem(product: ProductResponse, selection: BuyNowSelecti
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems: normalCartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
+  const { cartItems: normalCartItems, updateQuantity, removeFromCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
   const { data: user } = useMe();
   const userAddressQuery = useUserAddresses(user?.id, Boolean(user));
   const createUserAddress = useCreateUserAddress(user?.id);
@@ -103,6 +103,8 @@ export default function CheckoutPage() {
   const deleteUserAddress = useDeleteUserAddress(user?.id);
   const setDefaultUserAddress = useSetDefaultUserAddress(user?.id);
   const addToast = useToastStore((state) => state.addToast);
+  const createOrder = useCreateOrder();
+  const idempotencyKey = useRef("");
 
   const [mounted, setMounted] = useState(false);
   const [isBuyNowCheckout, setIsBuyNowCheckout] = useState(false);
@@ -127,11 +129,7 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState<{
-    orderId: string;
-    total: number;
-    itemCount: number;
-  } | null>(null);
+  const [orderError, setOrderError] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -355,7 +353,13 @@ export default function CheckoutPage() {
   };
 
   const handlePlaceOrder = async () => {
-    if (checkoutItems.length === 0 || isBuyNowLoading) return;
+    if (checkoutItems.length === 0 || isBuyNowLoading || !user) {
+      if (!user) router.push("/login?redirect=/checkout");
+      return;
+    }
+    if (!selectedAddress) { setOrderError("Please select a saved shipping address."); return; }
+    setOrderError("");
+    if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     if (isBuyNowCheckout && buyNowSelection) {
       const currentSelection = {
         ...buyNowSelection,
@@ -379,20 +383,24 @@ export default function CheckoutPage() {
       }
     }
     setIsSubmitting(true);
-    setTimeout(() => {
-      const generatedId = "IKG-" + Math.floor(100000 + Math.random() * 900000);
-      setOrderSuccess({
-        orderId: generatedId,
-        total,
-        itemCount: checkoutItems.reduce((acc, i) => acc + i.quantity, 0),
+    try {
+      const result = await createOrder.mutateAsync({
+        addressId: selectedAddress.id,
+        paymentMethod: "COD",
+        ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
+        idempotencyKey: idempotencyKey.current,
+        ...(isBuyNowCheckout && buyNowSelection ? { buyNowItem: {
+          productId: buyNowSelection.productId,
+          variantId: buyNowSelection.variantId ?? null,
+          quantity: buyNowItem?.quantity ?? buyNowSelection.quantity,
+        } } : {}),
       });
-      if (isBuyNowCheckout) {
-        clearBuyNowSelection();
-      } else {
-        clearCart();
-      }
+      clearBuyNowSelection();
+      router.push(`/order-confirmation/${result.id}`);
+    } catch (submitError) {
+      setOrderError(submitError instanceof Error ? submitError.message : "Could not place your order. Please try again.");
       setIsSubmitting(false);
-    }, 1200);
+    }
   };
 
   if (!mounted) {
@@ -701,12 +709,14 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
+              {orderError && <p role="alert" className="text-sm text-red-400">{orderError}</p>}
+              {!user && <p className="text-xs text-white/50">Sign in to place an order. Your cart will remain saved.</p>}
               <Button
                 disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
                 onClick={handlePlaceOrder}
                 className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
               >
-                {isSubmitting ? "Processing Order..." : `Place Order • $${total.toFixed(2)}`}
+                {isSubmitting ? "Processing Order..." : `Place COD Order • $${total.toFixed(2)}`}
               </Button>
             </div>
           </div>
@@ -996,59 +1006,6 @@ export default function CheckoutPage() {
         errorMessage={deleteAddressError}
       />
 
-      {orderSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-[#121212] border border-white/15 rounded-3xl max-w-md w-full p-6 sm:p-8 text-center space-y-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
-
-            <div className="space-y-1.5">
-              <h3 className="text-xl font-bold text-white">Order Placed Successfully!</h3>
-              <p className="text-xs text-white/60">
-                Thank you for your order. We are preparing it for delivery.
-              </p>
-            </div>
-
-            <div className="bg-[#0a0a0a] rounded-2xl border border-white/10 p-4 text-xs space-y-2 text-left">
-              <div className="flex justify-between">
-                <span className="text-white/50">Order Number</span>
-                <span className="font-mono font-semibold text-white">
-                  {orderSuccess.orderId}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/50">Total Paid</span>
-                <span className="font-bold text-[#640C0C]">
-                  ${orderSuccess.total.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/50">Delivery To</span>
-                <span className="text-white truncate max-w-[200px]">
-                  {selectedAddress?.city || "Standard Address"}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2.5 pt-2">
-              <Button
-                onClick={() => router.push("/profile?tab=orders")}
-                className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-11 text-xs font-semibold cursor-pointer"
-              >
-                View Order in Profile
-              </Button>
-              <Button
-                onClick={() => router.push("/products")}
-                variant="outline"
-                className="w-full rounded-full border-white/15 hover:bg-white/10 text-white h-11 text-xs cursor-pointer"
-              >
-                Continue Shopping
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
