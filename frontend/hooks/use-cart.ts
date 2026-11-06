@@ -17,9 +17,11 @@ import {
   useUpdateServerCartItem,
   useClearServerCart,
 } from "@/hooks/use-server-cart";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { synchronizeAuthenticatedCart } from "@/services/cart-sync.service";
+import { cartKeys } from "@/hooks/auth/cart.keys";
+import type { CartResponse } from "@/services/cart.service";
 
 
 export function useCart() {
@@ -43,7 +45,9 @@ export function useCart() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [updatingItems, setUpdatingItems] = useState<string[]>([]);
+  const [removingItems, setRemovingItems] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const removingItemsRef = useRef(new Set<string>());
 
   const addToCart = useCallback(
     (product: AddToCartProduct, quantity: number = 1) => {
@@ -80,14 +84,76 @@ export function useCart() {
     (id: string | number, variantId?: string) => {
       if (pendingGuestCart) return;
       if (user) {
-      
-        setIsLoading(true);
+        const itemIndex = cartItems.findIndex(
+          (item) =>
+            String(item.id) === String(id) &&
+            (!variantId || item.variantId === variantId),
+        );
+        const item = cartItems[itemIndex];
+        const itemId = String(id);
+        if (
+          !item ||
+          removingItemsRef.current.has(itemId) ||
+          updatingItems.includes(itemId)
+        ) return;
+
+        const cartQueryKey = cartKeys.user(user.id);
+        const previousCart = queryClient.getQueryData<CartResponse>(cartQueryKey);
+        const serverItem = previousCart?.items.find(
+          (cartItem) => cartItem.id === itemId,
+        );
+
+        setError(null);
+        removingItemsRef.current.add(itemId);
+        setRemovingItems((current) => [...current, itemId]);
+        // Keep Zustand and all its subscribers (badge, cart, checkout) in sync
+        // while the server confirms deletion.
+        useCartStore.setState((state) => ({
+          cartItems: state.cartItems.filter(
+            (cartItem) =>
+              !(
+                String(cartItem.id) === itemId &&
+                (!variantId || cartItem.variantId === variantId)
+              ),
+          ),
+        }));
+        queryClient.setQueryData<CartResponse>(cartQueryKey, (current) =>
+          current
+            ? {
+                ...current,
+                items: current.items.filter((cartItem) => cartItem.id !== itemId),
+              }
+            : current,
+        );
+
         removeFromServerCart.mutate(String(id), {
           onSuccess: () => {
-            setIsLoading(false);
+            removingItemsRef.current.delete(itemId);
+            setRemovingItems((current) => current.filter((currentId) => currentId !== itemId));
           },
           onError: (error) => {
-            setIsLoading(false);
+            useCartStore.setState((state) => {
+              const alreadyRestored = state.cartItems.some(
+                (cartItem) =>
+                  String(cartItem.id) === itemId &&
+                  (!variantId || cartItem.variantId === variantId),
+              );
+              if (alreadyRestored) return state;
+              const restoredItems = [...state.cartItems];
+              restoredItems.splice(Math.min(itemIndex, restoredItems.length), 0, item);
+              return { cartItems: restoredItems };
+            });
+
+            queryClient.setQueryData<CartResponse>(cartQueryKey, (current) => {
+              if (!serverItem) return current ?? previousCart;
+              if (!current) return previousCart;
+              if (current.items.some((cartItem) => cartItem.id === itemId)) return current;
+              return { ...current, items: [...current.items, serverItem] };
+            });
+            void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+            removingItemsRef.current.delete(itemId);
+            setRemovingItems((current) => current.filter((currentId) => currentId !== itemId));
+            setError("Could not remove the item from your cart. Please try again.");
             console.error("Failed to remove from cart:", error);
           },
         });
@@ -97,7 +163,7 @@ export function useCart() {
         removeFromCartAction(id, variantId);
       }
     },
-    [user, removeFromServerCart, removeFromCartAction, markAsGuestCart, pendingGuestCart]
+    [user, cartItems, queryClient, removeFromServerCart, removeFromCartAction, markAsGuestCart, pendingGuestCart, updatingItems]
   );
 
   const updateQuantity = useCallback(
@@ -182,6 +248,7 @@ export function useCart() {
     clearCart,
     isLoading,
     isUpdating: (id: string | number) => updatingItems.includes(String(id)),
+    isRemoving: (id: string | number) => removingItems.includes(String(id)),
     error,
     isAuthenticated: !!user,
     isCartSyncPending: Boolean(pendingGuestCart),

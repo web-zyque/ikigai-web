@@ -42,8 +42,15 @@ async function applyServerCart(
   queryClient: QueryClient,
   mergedGuestCartId?: string,
   expectedSessionVersion = useCartStore.getState().sessionVersion,
+  onlyIfCurrent = false,
 ) {
   const items = await enrichCart(cart);
+  if (
+    onlyIfCurrent &&
+    queryClient.getQueryData(cartKeys.user(userId)) !== cart
+  ) {
+    return cart;
+  }
   useCartStore.getState().setServerCart(
     userId,
     items,
@@ -107,5 +114,5 @@ export async function applyAuthenticatedCart(
   queryClient: QueryClient,
 ) {
   const sessionVersion = useCartStore.getState().sessionVersion;
-  return applyServerCart(userId, cart, queryClient, undefined, sessionVersion);
+  return applyServerCart(userId, cart, queryClient, undefined, sessionVersion, true);
 }
