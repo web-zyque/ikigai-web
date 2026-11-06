@@ -494,13 +494,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <button
                   onClick={handleAddToCart}
                   disabled={isAddingToCart}
-                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors disabled:opacity-60 disabled:cursor-wait"
+                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors disabled:opacity-60 cursor-pointer"
                 >
                   {isAdded ? "Go to Cart" : "Add to Cart"}
                 </button>
                 <button
                   onClick={handleBuyNow}
-                  className="flex-1 rounded-full bg-[#640C0C] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="flex-1 rounded-full bg-[#640C0C] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   Buy Now
                 </button>

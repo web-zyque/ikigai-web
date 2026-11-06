@@ -6,6 +6,7 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Inter } from "next/font/google";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useIsInCart } from "@/stores/cart-store";
 import { useMe } from "@/hooks/auth/use-me";
 import { useServerCart } from "@/hooks/use-server-cart";
@@ -13,6 +14,7 @@ import { useToastStore } from "@/stores/toast-store";
 import { useStoreProducts } from "@/hooks/use-store-products";
 import { useCart } from "@/hooks/use-cart";
 import { mapProductsToStoreProducts } from "@/lib/product-mapper";
+import { saveBuyNowSelection } from "@/lib/buy-now-checkout";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -133,6 +135,7 @@ function BestSellerCard({
   addToCart: (p: any, qty?: number) => void;
   addToast: (msg: string) => void;
 }) {
+  const router = useRouter();
   const { data: user } = useMe();
   const { data: serverCart } = useServerCart({ enabled: !!user });
   const isInGuestCart = useIsInCart(product.id);
@@ -140,6 +143,16 @@ function BestSellerCard({
     (item) => String(item.productId) === String(product.id),
   ) ?? false;
   const isAdded = user ? isInServerCart : isInGuestCart;
+  const [isPreparingCheckout, setIsPreparingCheckout] = useState(false);
+  const buyNowInFlight = useRef(false);
+
+  const handleBuyNow = () => {
+    if (buyNowInFlight.current || product.inStock === false) return;
+    buyNowInFlight.current = true;
+    setIsPreparingCheckout(true);
+    saveBuyNowSelection({ productId: String(product.id), variantId: null, quantity: 1 });
+    router.push("/checkout");
+  };
 
   const handleAddToCart = () => {
     if (isAdded) return;
@@ -180,12 +193,14 @@ function BestSellerCard({
         <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
 
         <div className="mt-0 sm:mt-auto flex w-full gap-2 font-sans transition-all duration-300">
-          <Link
-            href={`/products/${product.id}`}
-            className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            disabled={isPreparingCheckout || product.inStock === false}
+            className="flex-1 text-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Buy Now
-          </Link>
+            {isPreparingCheckout ? <Loader2 className="mx-auto h-4 w-4 animate-spin" aria-label="Preparing checkout" /> : "Buy Now"}
+          </button>
           {!isAdded && (
             <button
               onClick={handleAddToCart}

@@ -15,18 +15,68 @@ import {
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
+import { productsApi } from "@/services/products.service";
+import type { ProductResponse } from "@/types/products.types";
+import type { CartItem } from "@/stores/cart-store";
+import {
+  clearBuyNowSelection,
+  getBuyNowSelection,
+  saveBuyNowSelection,
+  type BuyNowSelection,
+} from "@/lib/buy-now-checkout";
 import { Address } from "@/types/address.types";
 import {
   getStoredAddresses,
   saveStoredAddresses,
 } from "@/lib/address-storage";
 
+function createBuyNowCartItem(product: ProductResponse, selection: BuyNowSelection): CartItem {
+  if (product.publicationStatus !== "active") {
+    throw new Error("This product is no longer available.");
+  }
+
+  const variant = selection.variantId
+    ? product.variants?.find((item) => item.id === selection.variantId)
+    : undefined;
+  if (selection.variantId && !variant) {
+    throw new Error("The selected product option is no longer available.");
+  }
+
+  const availableQuantity = variant?.stockQuantity ?? product.stockQuantity;
+  if (availableQuantity < selection.quantity) {
+    throw new Error("This product does not have enough stock for the selected quantity.");
+  }
+
+  const price = Number(product.sellingPrice);
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("The current product price could not be verified.");
+  }
+
+  const images = variant?.images ?? product.images;
+  const image = images.find((item) => item.isMainImage)?.imageUrl ?? images[0]?.imageUrl ?? "";
+
+  return {
+    id: product.id,
+    name: product.name,
+    price,
+    image,
+    color: variant?.colorName ?? product.color ?? "Default",
+    quantity: selection.quantity,
+    variantId: selection.variantId ?? undefined,
+  };
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
+  const { cartItems: normalCartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
   const { data: user } = useMe();
 
   const [mounted, setMounted] = useState(false);
+  const [isBuyNowCheckout, setIsBuyNowCheckout] = useState(false);
+  const [buyNowSelection, setBuyNowSelection] = useState<BuyNowSelection | null>(null);
+  const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
+  const [buyNowError, setBuyNowError] = useState("");
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -55,6 +105,11 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setMounted(true);
+    const selection = getBuyNowSelection();
+    if (selection) {
+      setIsBuyNowCheckout(true);
+      setBuyNowSelection(selection);
+    }
     const loaded = getStoredAddresses();
     setAddresses(loaded);
     const defaultAddr = loaded.find((a) => a.isDefault) || loaded[0];
@@ -62,6 +117,26 @@ export default function CheckoutPage() {
       setSelectedAddressId(defaultAddr.id);
     }
   }, []);
+
+  useEffect(() => {
+    if (!buyNowSelection) return;
+    let active = true;
+    setIsBuyNowLoading(true);
+    setBuyNowError("");
+    productsApi.getById(buyNowSelection.productId)
+      .then((product) => {
+        if (active) setBuyNowItem(createBuyNowCartItem(product, buyNowSelection));
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setBuyNowItem(null);
+        setBuyNowError(loadError instanceof Error ? loadError.message : "Could not verify this product. Please try again.");
+      })
+      .finally(() => {
+        if (active) setIsBuyNowLoading(false);
+      });
+    return () => { active = false; };
+  }, [buyNowSelection]);
 
   useEffect(() => {
     if (user) {
@@ -78,7 +153,8 @@ export default function CheckoutPage() {
     addresses.find((a) => a.isDefault) ||
     addresses[0];
 
-  const subtotal = cartItems.reduce(
+  const checkoutItems = isBuyNowCheckout ? (buyNowItem ? [buyNowItem] : []) : normalCartItems;
+  const subtotal = checkoutItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
   );
@@ -145,17 +221,64 @@ export default function CheckoutPage() {
     setSelectedAddressId(id);
   };
 
-  const handlePlaceOrder = () => {
-    if (cartItems.length === 0) return;
+  const handleUpdateQuantity = (item: CartItem, delta: number) => {
+    if (isBuyNowCheckout) {
+      if (!buyNowItem || !buyNowSelection) return;
+      const nextQuantity = Math.max(1, buyNowItem.quantity + delta);
+      setBuyNowItem({ ...buyNowItem, quantity: nextQuantity });
+      saveBuyNowSelection({ ...buyNowSelection, quantity: nextQuantity });
+      return;
+    }
+    updateQuantity(item.id, delta, item.variantId);
+  };
+
+  const handleRemoveCheckoutItem = (item: CartItem) => {
+    if (isBuyNowCheckout) {
+      setBuyNowItem(null);
+      setBuyNowError("This Buy Now item was removed from checkout.");
+      clearBuyNowSelection();
+      return;
+    }
+    removeFromCart(item.id, item.variantId);
+  };
+
+  const handlePlaceOrder = async () => {
+    if (checkoutItems.length === 0 || isBuyNowLoading) return;
+    if (isBuyNowCheckout && buyNowSelection) {
+      const currentSelection = {
+        ...buyNowSelection,
+        quantity: buyNowItem?.quantity ?? buyNowSelection.quantity,
+      };
+      setIsSubmitting(true);
+      try {
+        const currentProduct = await productsApi.getById(currentSelection.productId);
+        const refreshedItem = createBuyNowCartItem(currentProduct, currentSelection);
+        if (buyNowItem && refreshedItem.price !== buyNowItem.price) {
+          setBuyNowItem(refreshedItem);
+          setBuyNowError("The price changed. Review the updated total and place your order again to confirm.");
+          setIsSubmitting(false);
+          return;
+        }
+        setBuyNowItem(refreshedItem);
+      } catch (loadError) {
+        setBuyNowError(loadError instanceof Error ? loadError.message : "Could not verify this product. Please try again.");
+        setIsSubmitting(false);
+        return;
+      }
+    }
     setIsSubmitting(true);
     setTimeout(() => {
       const generatedId = "IKG-" + Math.floor(100000 + Math.random() * 900000);
       setOrderSuccess({
         orderId: generatedId,
         total,
-        itemCount: cartItems.reduce((acc, i) => acc + i.quantity, 0),
+        itemCount: checkoutItems.reduce((acc, i) => acc + i.quantity, 0),
       });
-      clearCart();
+      if (isBuyNowCheckout) {
+        clearBuyNowSelection();
+      } else {
+        clearCart();
+      }
       setIsSubmitting(false);
     }, 1200);
   };
@@ -194,7 +317,12 @@ export default function CheckoutPage() {
             )}
           </div>
         )}
-        {!user && cartItems.length > 0 && (
+        {buyNowError && (
+          <div role="alert" className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+            {buyNowError}
+          </div>
+        )}
+        {!user && checkoutItems.length > 0 && (
           <div className="mb-6 bg-[#121212] border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className="text-lg">ℹ️</span>
@@ -217,22 +345,26 @@ export default function CheckoutPage() {
             <div className="bg-[#121212] rounded-2xl border border-white/10 p-5 md:p-6 shadow-xl">
               <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
                 <h2 className="text-base font-bold text-white">
-                  Order Items ({cartItems.length})
+                  Order Items ({checkoutItems.length})
                 </h2>
-                <Link
-                  href="/cart"
-                  className="text-xs text-white/50 hover:text-white underline transition-colors"
-                >
-                  Edit Cart
-                </Link>
+                {!isBuyNowCheckout && (
+                  <Link
+                    href="/cart"
+                    className="text-xs text-white/50 hover:text-white underline transition-colors"
+                  >
+                    Edit Cart
+                  </Link>
+                )}
               </div>
 
-              {cartItems.length === 0 ? (
+              {isBuyNowLoading ? (
+                <div role="status" className="py-12 text-center text-sm text-white/60">Verifying your selected product…</div>
+              ) : checkoutItems.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-white/5 mx-auto flex items-center justify-center text-white/30">
                     <ShoppingBag className="w-6 h-6" />
                   </div>
-                  <p className="text-white/60 text-sm">Your cart is currently empty.</p>
+                  <p className="text-white/60 text-sm">{isBuyNowCheckout ? "No Buy Now item is available for checkout." : "Your cart is currently empty."}</p>
                   <Link href="/products" className="inline-block pt-2">
                     <Button className="rounded-full bg-[#640C0C] text-xs h-9 px-5 cursor-pointer">
                       Explore Products
@@ -242,7 +374,7 @@ export default function CheckoutPage() {
               ) : (
                 <div className="divide-y divide-white/10">
                   {error && <p role="alert" className="py-3 text-sm text-red-400">{error}</p>}
-                  {cartItems.map((item) => (
+                  {checkoutItems.map((item) => (
                     <div
                       key={`${item.id}-${item.variantId ?? "default"}`}
                       className="py-3.5 md:py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-2 sm:gap-4 md:gap-6"
@@ -279,7 +411,7 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1.5">
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.id, -1, item.variantId)}
+                            onClick={() => handleUpdateQuantity(item, -1)}
                             disabled={isCartSyncPending || item.quantity <= 1 || isUpdating(item.id)}
                             className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Decrease quantity"
@@ -291,7 +423,7 @@ export default function CheckoutPage() {
                           </span>
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.id, 1, item.variantId)}
+                            onClick={() => handleUpdateQuantity(item, 1)}
                             disabled={isCartSyncPending || isUpdating(item.id)}
                             className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Increase quantity"
@@ -310,7 +442,7 @@ export default function CheckoutPage() {
 
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.id, item.variantId)}
+                          onClick={() => handleRemoveCheckoutItem(item)}
                           disabled={isCartSyncPending}
                           className="text-white/40 hover:text-[#640C0C] transition-colors p-1 md:p-1.5 cursor-pointer shrink-0"
                           aria-label="Remove item"
@@ -451,7 +583,7 @@ export default function CheckoutPage() {
               </div>
 
               <Button
-                disabled={Boolean(cartItems.length === 0 || !selectedAddress || isSubmitting || isCartSyncPending)}
+                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
                 onClick={handlePlaceOrder}
                 className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
               >
