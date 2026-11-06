@@ -2,8 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useIsInCart } from "@/stores/cart-store";
+import { useMe } from "@/hooks/auth/use-me";
+import { useServerCart } from "@/hooks/use-server-cart";
+import { useToastStore } from "@/stores/toast-store";
 
 export interface Product {
   id: number | string;
@@ -19,21 +24,54 @@ export interface Product {
 
 interface ProductCardProps {
   product: Product;
+  showServerCartState?: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart } = useCart();
-  const isAdded = useIsInCart(product.id);
+export default function ProductCard({ product, showServerCartState = false }: ProductCardProps) {
+  const { addToCart, addToCartAndWait, isCartSyncPending } = useCart();
+  const { data: user } = useMe();
+  const { data: serverCart } = useServerCart({ enabled: showServerCartState && !!user });
+  const addToast = useToastStore((state) => state.addToast);
+  const isInGuestCart = useIsInCart(product.id);
+  const [isAdding, setIsAdding] = useState(false);
+  const addInFlight = useRef(false);
+  const isInServerCart = serverCart?.items.some(
+    (item) =>
+      String(item.productId) === String(product.id) &&
+      (item.variantId ?? "") === "",
+  );
+  const isAdded = showServerCartState && user
+    ? (isInServerCart ?? isInGuestCart)
+    : isInGuestCart;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isAdded) return;
-    addToCart({
+    if (isAdded || addInFlight.current || (showServerCartState && isCartSyncPending)) return;
+    if (!showServerCartState) {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+      });
+      return;
+    }
+    addInFlight.current = true;
+    setIsAdding(true);
+    void addToCartAndWait({
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
+    }).then((added) => {
+      addToast(
+        added ? "Added to the cart successfully" : "Could not add the item to your cart. Please try again.",
+        added ? "success" : "error",
+      );
+    }).finally(() => {
+      addInFlight.current = false;
+      setIsAdding(false);
     });
   };
 
@@ -71,11 +109,18 @@ export default function ProductCard({ product }: ProductCardProps) {
           </Link>
           {!isAdded && (
             <button
+              type="button"
               onClick={handleAddToCart}
+              disabled={isAdding || (showServerCartState && isCartSyncPending)}
               aria-label="Add to cart"
-              className="grid w-[30%] place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#640C0C]"
+              aria-busy={isAdding}
+              className="grid w-[30%] place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-[#640C0C] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <img src="/shopping-bag.svg" alt="cart" className="h-5 w-5 brightness-0 invert opacity-80" />
+              {isAdding ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <img src="/shopping-bag.svg" alt="cart" className="h-5 w-5 brightness-0 invert opacity-80" />
+              )}
             </button>
           )}
         </div>
