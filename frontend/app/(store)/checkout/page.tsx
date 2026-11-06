@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
 import {
@@ -38,6 +39,7 @@ import {
   getStoredAddresses,
   saveStoredAddresses,
 } from "@/lib/address-storage";
+import { useToastStore } from "@/stores/toast-store";
 
 const SELECTED_ADDRESS_SESSION_KEY = "ikigai-selected-shipping-address";
 
@@ -100,6 +102,7 @@ export default function CheckoutPage() {
   const updateUserAddress = useUpdateUserAddress(user?.id);
   const deleteUserAddress = useDeleteUserAddress(user?.id);
   const setDefaultUserAddress = useSetDefaultUserAddress(user?.id);
+  const addToast = useToastStore((state) => state.addToast);
 
   const [mounted, setMounted] = useState(false);
   const [isBuyNowCheckout, setIsBuyNowCheckout] = useState(false);
@@ -114,6 +117,8 @@ export default function CheckoutPage() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [addressError, setAddressError] = useState("");
   const [isAddressSaving, setIsAddressSaving] = useState(false);
+  const [pendingDeleteAddress, setPendingDeleteAddress] = useState<Address | null>(null);
+  const [deleteAddressError, setDeleteAddressError] = useState("");
 
   const [newAddr, setNewAddr] = useState<AddressInput>(emptyAddressForm);
 
@@ -302,9 +307,15 @@ export default function CheckoutPage() {
     setIsAddingNewAddress(true);
   };
 
-  const handleDeleteAddress = async (address: Address) => {
-    if (!user || !window.confirm(`Delete the ${address.type.toLowerCase()} address for ${address.name}?`)) return;
-    setAddressError("");
+  const requestDeleteAddress = (address: Address) => {
+    setDeleteAddressError("");
+    setPendingDeleteAddress(address);
+  };
+
+  const handleConfirmDeleteAddress = async () => {
+    if (!user || !pendingDeleteAddress || deleteUserAddress.isPending) return;
+    const address = pendingDeleteAddress;
+    setDeleteAddressError("");
     try {
       const remaining = await deleteUserAddress.mutateAsync(address.id);
       if (selectedAddressId === address.id) {
@@ -315,8 +326,10 @@ export default function CheckoutPage() {
           window.sessionStorage.removeItem(SELECTED_ADDRESS_SESSION_KEY);
         }
       }
+      setPendingDeleteAddress(null);
+      addToast("Address deleted successfully", "success");
     } catch (deleteError) {
-      setAddressError(deleteError instanceof Error ? deleteError.message : "Could not delete this address. Please try again.");
+      setDeleteAddressError(deleteError instanceof Error ? deleteError.message : "Could not delete this address. Please try again.");
     }
   };
 
@@ -778,7 +791,7 @@ export default function CheckoutPage() {
                               <button type="button" onClick={(e) => { e.stopPropagation(); handleEditAddress(addr); }} aria-label={`Edit ${addr.type} address`} className="text-white/45 hover:text-white transition-colors">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" onClick={(e) => { e.stopPropagation(); void handleDeleteAddress(addr); }} aria-label={`Delete ${addr.type} address`} disabled={deleteUserAddress.isPending} className="text-white/45 hover:text-red-400 transition-colors disabled:opacity-40">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); requestDeleteAddress(addr); }} aria-label={`Delete ${addr.type} address`} disabled={deleteUserAddress.isPending} className="text-white/45 hover:text-red-400 transition-colors disabled:opacity-40">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             </div>
@@ -963,6 +976,25 @@ export default function CheckoutPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteAddress)}
+        onClose={() => {
+          if (deleteUserAddress.isPending) return;
+          setPendingDeleteAddress(null);
+          setDeleteAddressError("");
+        }}
+        onConfirm={() => void handleConfirmDeleteAddress()}
+        title="Delete Address?"
+        description={pendingDeleteAddress
+          ? `Are you sure you want to delete this ${pendingDeleteAddress.type} address for ${pendingDeleteAddress.name}?`
+          : "Are you sure you want to delete this address?"}
+        confirmText="Delete Address"
+        cancelText="Cancel"
+        loadingText="Deleting…"
+        isLoading={deleteUserAddress.isPending}
+        errorMessage={deleteAddressError}
+      />
 
       {orderSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
