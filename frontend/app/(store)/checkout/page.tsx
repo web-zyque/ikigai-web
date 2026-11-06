@@ -23,7 +23,7 @@ import {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
   const { data: user } = useMe();
 
   const [mounted, setMounted] = useState(false);
@@ -179,6 +179,21 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+        {isCartSyncPending && (
+          <div role="status" className="mb-6 rounded-2xl border border-white/10 bg-[#121212] p-4 text-sm text-white/70">
+            <p>{cartSyncError ?? "Syncing your saved cart with your account…"}</p>
+            {cartSyncError && (
+              <div className="mt-2 flex flex-wrap gap-4">
+                <button type="button" onClick={() => void retryCartSync().catch(() => undefined)} className="text-[#b44] hover:underline">
+                  Retry cart sync
+                </button>
+                <button type="button" onClick={() => void discardGuestCartAndUseAccountCart().catch(() => undefined)} className="text-white/50 hover:text-white hover:underline">
+                  Discard guest cart and use account cart
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {!user && cartItems.length > 0 && (
           <div className="mb-6 bg-[#121212] border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -265,7 +280,7 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, -1, item.variantId)}
-                            disabled={item.quantity <= 1 || isUpdating(item.id)}
+                            disabled={isCartSyncPending || item.quantity <= 1 || isUpdating(item.id)}
                             className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Decrease quantity"
                           >
@@ -277,7 +292,7 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1, item.variantId)}
-                            disabled={isUpdating(item.id)}
+                            disabled={isCartSyncPending || isUpdating(item.id)}
                             className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Increase quantity"
                           >
@@ -296,6 +311,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={() => removeFromCart(item.id, item.variantId)}
+                          disabled={isCartSyncPending}
                           className="text-white/40 hover:text-[#640C0C] transition-colors p-1 md:p-1.5 cursor-pointer shrink-0"
                           aria-label="Remove item"
                         >
@@ -435,7 +451,7 @@ export default function CheckoutPage() {
               </div>
 
               <Button
-                disabled={Boolean(cartItems.length === 0 || !selectedAddress || isSubmitting)}
+                disabled={Boolean(cartItems.length === 0 || !selectedAddress || isSubmitting || isCartSyncPending)}
                 onClick={handlePlaceOrder}
                 className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
               >

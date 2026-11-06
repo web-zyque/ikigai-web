@@ -27,6 +27,15 @@ export interface UpdateCartItemPayload {
   quantity: number;
 }
 
+export interface MergeGuestCartPayload {
+  guestCartId: string;
+  items: {
+    productId: string;
+    variantId: string | null;
+    quantity: number;
+  }[];
+}
+
 export const cartService = {
 
   getCart: () =>
@@ -35,6 +44,9 @@ export const cartService = {
 
   addToCart: (payload: AddToCartPayload) =>
     api.post<CartResponse>("/cart/items", payload).then((r) => r.data),
+
+  mergeGuestCart: (payload: MergeGuestCartPayload) =>
+    api.post<CartResponse>("/cart/merge", payload).then((r) => r.data),
 
  
   updateCartItem: (cartItemId: string, payload: UpdateCartItemPayload) =>

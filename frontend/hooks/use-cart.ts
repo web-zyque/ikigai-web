@@ -6,6 +6,7 @@ import {
   useRemoveFromCart,
   useUpdateQuantity,
   useClearCart,
+  useCartStore,
   type CartItem,
   type AddToCartProduct,
 } from "@/stores/cart-store";
@@ -17,6 +18,8 @@ import {
   useClearServerCart,
 } from "@/hooks/use-server-cart";
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { synchronizeAuthenticatedCart } from "@/services/cart-sync.service";
 
 
 export function useCart() {
@@ -26,6 +29,11 @@ export function useCart() {
   const removeFromCartAction = useRemoveFromCart();
   const updateQuantityAction = useUpdateQuantity();
   const clearCartAction = useClearCart();
+  const queryClient = useQueryClient();
+  const markAsGuestCart = useCartStore((state) => state.markAsGuestCart);
+  const discardPendingGuestCart = useCartStore((state) => state.discardPendingGuestCart);
+  const pendingGuestCart = useCartStore((state) => state.pendingGuestCart);
+  const syncError = useCartStore((state) => state.syncError);
 
   // Server cart mutations
   const addToServerCart = useAddToServerCart();
@@ -39,6 +47,7 @@ export function useCart() {
 
   const addToCart = useCallback(
     (product: AddToCartProduct, quantity: number = 1) => {
+      if (pendingGuestCart) return;
       if (user) {
         // Authenticated: use server cart
         setIsLoading(true);
@@ -60,14 +69,16 @@ export function useCart() {
         );
       } else {
         // Guest: use local cart
+        markAsGuestCart();
         addToCartAction(product, quantity);
       }
     },
-    [user, addToServerCart, addToCartAction]
+    [user, addToServerCart, addToCartAction, markAsGuestCart, pendingGuestCart]
   );
 
   const removeFromCart = useCallback(
     (id: string | number, variantId?: string) => {
+      if (pendingGuestCart) return;
       if (user) {
       
         setIsLoading(true);
@@ -82,14 +93,16 @@ export function useCart() {
         });
       } else {
         // Guest: use local cart
+        markAsGuestCart();
         removeFromCartAction(id, variantId);
       }
     },
-    [user, removeFromServerCart, removeFromCartAction]
+    [user, removeFromServerCart, removeFromCartAction, markAsGuestCart, pendingGuestCart]
   );
 
   const updateQuantity = useCallback(
     (id: string | number, delta: number, variantId?: string) => {
+      if (pendingGuestCart) return;
       if (user) {
         const item = cartItems.find(
           (i) => String(i.id) === String(id) && (!variantId || i.variantId === variantId)
@@ -122,13 +135,15 @@ export function useCart() {
         );
       } else {
         // Guest: use local cart
+        markAsGuestCart();
         updateQuantityAction(id, delta, variantId);
       }
     },
-    [user, cartItems, updateServerCartItem, updateQuantityAction, updatingItems]
+    [user, cartItems, updateServerCartItem, updateQuantityAction, updatingItems, markAsGuestCart, pendingGuestCart]
   );
 
   const clearCart = useCallback(() => {
+    if (pendingGuestCart) return;
     if (user) {
       // Authenticated: use server cart
       setIsLoading(true);
@@ -143,9 +158,21 @@ export function useCart() {
       });
     } else {
       // Guest: use local cart
+      markAsGuestCart();
       clearCartAction();
     }
-  }, [user, clearServerCart, clearCartAction]);
+  }, [user, clearServerCart, clearCartAction, markAsGuestCart, pendingGuestCart]);
+
+  const retryCartSync = useCallback(async () => {
+    if (!user) return;
+    await synchronizeAuthenticatedCart(user.id, queryClient);
+  }, [user, queryClient]);
+
+  const discardGuestCartAndUseAccountCart = useCallback(async () => {
+    if (!user || !pendingGuestCart) return;
+    discardPendingGuestCart();
+    await synchronizeAuthenticatedCart(user.id, queryClient);
+  }, [user, pendingGuestCart, discardPendingGuestCart, queryClient]);
 
   return {
     cartItems,
@@ -157,6 +184,10 @@ export function useCart() {
     isUpdating: (id: string | number) => updatingItems.includes(String(id)),
     error,
     isAuthenticated: !!user,
+    isCartSyncPending: Boolean(pendingGuestCart),
+    cartSyncError: syncError,
+    retryCartSync,
+    discardGuestCartAndUseAccountCart,
   };
 }
 

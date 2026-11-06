@@ -8,6 +8,7 @@ import {
   decimal,
   pgEnum,
   json,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 export const publicationStatusEnum = pgEnum('publication_status', [
@@ -154,4 +155,23 @@ export const cartItems = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
+);
+
+export const cartMergeRequests = pgTable(
+  'cart_merge_requests',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    guestCartId: uuid('guest_cart_id').notNull(),
+    payloadHash: text('payload_hash').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('cart_merge_requests_user_guest_unique').on(
+      table.userId,
+      table.guestCartId,
+    ),
+  ],
 );
