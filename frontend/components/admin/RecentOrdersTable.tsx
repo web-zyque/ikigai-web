@@ -153,7 +153,7 @@ export default function RecentOrdersTable({
                   <td className="px-6 py-4 text-[13px] font-medium text-white/90 min-w-[220px]">
                     {order.product}
                   </td>
-                  <td className="px-6 py-4 font-bold text-[#640C0C] whitespace-nowrap text-sm">
+                  <td className="px-6 py-4 font-bold text-[#992222] whitespace-nowrap text-sm">
                     {order.total}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

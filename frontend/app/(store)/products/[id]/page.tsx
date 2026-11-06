@@ -1,13 +1,19 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2 } from "lucide-react";
-import { useCart } from "@/context/CartContext";
-import { getStoreProductById, STORE_PRODUCTS } from "@/data/storeCatalog";
+import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2, Loader2 } from "lucide-react";
+import { useIsInCart } from "@/stores/cart-store";
+import { useMe } from "@/hooks/auth/use-me";
+import { useServerCart } from "@/hooks/use-server-cart";
+import { useToastStore } from "@/stores/toast-store";
+import { useCart } from "@/hooks/use-cart";
+import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
+import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
+import { parseColorString, getColorInfo } from "@/lib/color-utils";
 
 export interface ProductDetailItem {
   id: string | number;
@@ -18,23 +24,16 @@ export interface ProductDetailItem {
   images: string[];
   category: string;
   categoryLabel?: string;
-  brand: string;
-  description: string;
-  features: string[];
-  compatibility: string[];
+  brand?: string;
+  description?: string;
+  features?: string[];
+  compatibility?: string[];
   material?: string;
   warranty?: string;
-  inStock: boolean;
-  stockQuantity: number;
+  inStock?: boolean;
+  stockQuantity?: number;
   partType?: string;
 }
-
-const colorVariants = [
-  { name: "Matte Black", hex: "#171717", isLight: false },
-  { name: "Gunmetal", hex: "#3f3f46", isLight: false },
-  { name: "Crimson Red", hex: "#640C0C", isLight: false },
-  { name: "Silver", hex: "#d4d4d8", isLight: true },
-];
 
 const tabs = [
   { id: "description", label: "Description" },
@@ -43,78 +42,128 @@ const tabs = [
   { id: "shipping", label: "Shipping & Return" },
 ] as const;
 
-const sizeVariants = ["15 inch", "16 inch", "17 inch", "18 inch", "19 inch"];
-
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { cartItems, addToCart } = useCart();
+  const { addToCart, isLoading: isAddingToCart } = useCart();
+  const { data: user } = useMe();
+  const { data: serverCart } = useServerCart({ enabled: !!user });
+  const addToast = useToastStore((state) => state.addToast);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedColor, setSelectedColor] = useState("Matte Black");
-  const [selectedSize, setSelectedSize] = useState("18 inch");
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
   const [quantity, setQuantity] = useState(1);
   const [copied, setCopied] = useState(false);
 
   const productId = resolvedParams.id;
 
-  // Retrieve the exact product details for the clicked product
+  const { data: apiProduct, isLoading, error } = useStoreProduct(productId);
+  
+  const { data: allProductsData } = useStoreProducts({ limit: 100 });
+
+  const productColors = useMemo(() => {
+    if (!apiProduct?.variants || apiProduct.variants.length === 0) {
+
+      if (!apiProduct?.color) return [];
+      const colorNames = parseColorString(apiProduct.color);
+      return colorNames.map(name => getColorInfo(name));
+    }
+    
+    return apiProduct.variants.map(variant => getColorInfo(variant.colorName));
+  }, [apiProduct]);
+
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  
+  useEffect(() => {
+    if (productColors.length > 0 && !selectedColor) {
+      setSelectedColor(productColors[0].name);
+      if (apiProduct?.variants && apiProduct.variants.length > 0) {
+        setSelectedVariantId(apiProduct.variants[0].id);
+      }
+    }
+  }, [productColors, apiProduct]);
+
+  const variantImages = useMemo(() => {
+    if (!apiProduct) return [];
+    
+    if (apiProduct.variants && apiProduct.variants.length > 0 && selectedVariantId) {
+      const variant = apiProduct.variants.find(v => v.id === selectedVariantId);
+      if (variant && variant.images.length > 0) {
+        return variant.images;
+      }
+    }
+    
+    // Fallback to all product images
+    return apiProduct.images || [];
+  }, [apiProduct, selectedVariantId]);
+
   const product: ProductDetailItem | null = useMemo(() => {
-    const found = getStoreProductById(productId);
-    if (!found) return null;
+    if (!apiProduct) return null;
 
-    const rawImages = found.images?.length ? found.images : [found.image];
+    const storeProduct = mapProductToStoreProduct(apiProduct);
+    const imageUrls = variantImages.length > 0 
+      ? variantImages.map(img => img.imageUrl) 
+      : (apiProduct.images?.length ? apiProduct.images.map(img => img.imageUrl) : []);
+    
     return {
-      id: found.id,
-      name: found.name,
-      price: found.price,
-      mrpPrice: found.mrpPrice,
-      image: found.image,
-      images: rawImages,
-      category: found.category,
-      categoryLabel: found.categoryLabel,
-      brand: found.brand,
-      description: found.description || "Premium automotive upgrade engineered for precision fitment and performance.",
-      features: found.features || [
-        "Direct OEM replacement fitment",
-        "Engineered for high stress and endurance",
-        "Backed by Ikigai quality assurance guarantee",
-      ],
-      compatibility: found.vehicleCompatibility?.length ? found.vehicleCompatibility : ["Universal fitment"],
-      material: found.material || "High-grade automotive alloy",
-      warranty: found.warranty || "1 Year Limited Warranty",
-      inStock: found.inStock ?? true,
-      stockQuantity: found.stockQuantity ?? 10,
-      partType: found.partType,
+      id: storeProduct.id,
+      name: storeProduct.name,
+      price: storeProduct.price,
+      mrpPrice: storeProduct.mrpPrice,
+      image: imageUrls[0] || storeProduct.image,
+      images: imageUrls,
+      category: storeProduct.category,
+      categoryLabel: storeProduct.categoryLabel,
+      brand: storeProduct.brand,
+      description: storeProduct.description,
+      features: storeProduct.features,
+      compatibility: storeProduct.vehicleCompatibility,
+      material: storeProduct.material,
+      warranty: storeProduct.warranty,
+      inStock: storeProduct.inStock,
+      stockQuantity: storeProduct.stockQuantity,
+      partType: storeProduct.partType,
     };
-  }, [productId]);
+  }, [apiProduct, variantImages]);
 
-  const images = useMemo(() => {
-    if (product?.images && product.images.length > 0) return product.images;
-    if (product?.image) return [product.image];
-    return ["/images/category_brakes.jpg"];
-  }, [product]);
+  const images = useMemo(() => product?.images || [], [product]);
 
-  const isAdded = useMemo(() => {
-    if (!product) return false;
-    return cartItems.some((item) => String(item.id) === String(product.id));
-  }, [cartItems, product]);
+  const isInLocalCart = useIsInCart(product?.id || "", selectedVariantId);
+  const isInServerCart = serverCart?.items.some(
+    (item) =>
+      String(item.productId) === String(product?.id) &&
+      (item.variantId ?? "") === (selectedVariantId || ""),
+  );
+  const isAdded = user
+    ? (isInServerCart ?? isInLocalCart)
+    : isInLocalCart;
 
   const relatedProducts = useMemo(() => {
-    if (!product) return [];
+    if (!product || !allProductsData?.products) return [];
 
-    const sameCategory = STORE_PRODUCTS.filter(
+    const allStoreProducts = mapProductsToStoreProducts(allProductsData.products);
+    
+    const sameCategory = allStoreProducts.filter(
       (p) => String(p.id) !== String(product.id) && p.category === product.category
     );
     if (sameCategory.length >= 6) return sameCategory.slice(0, 6);
 
-    const otherProducts = STORE_PRODUCTS.filter(
+    const otherProducts = allStoreProducts.filter(
       (p) => String(p.id) !== String(product.id) && p.category !== product.category
     );
     return [...sameCategory, ...otherProducts].slice(0, 6);
-  }, [product]);
+  }, [product, allProductsData]);
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+        <Loader2 className="h-12 w-12 text-[#640C0C] animate-spin mb-4" />
+        <p className="text-neutral-400">Loading product details...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
@@ -133,20 +182,35 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
+    if (isAdded) {
+      router.push("/cart");
+      return;
+    }
+
+    // Add with quantity support and variant ID
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      color: selectedColor,
+      variantId: selectedVariantId || undefined,
+    }, quantity);
+    addToast("Added to the cart successfully");
+  };
+
+  const handleBuyNow = () => {
+    if (!isAdded) {
       addToCart({
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
         color: selectedColor,
-      });
+        variantId: selectedVariantId || undefined,
+      }, quantity);
     }
-  };
-
-  const handleBuyNow = () => {
-    handleAddToCart();
-    router.push("/cart");
+    router.push("/checkout");
   };
 
   const handleShare = () => {
@@ -176,10 +240,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="lg:col-span-7 flex flex-col gap-4">
             <div className="relative aspect-4/3 w-full rounded-[24px] bg-[#0a0a0a] border border-white/5 overflow-hidden flex items-center justify-center p-8 group">
               <Image
-                src={images[selectedImageIndex] || product.image}
+                src={images[selectedImageIndex]}
                 alt={product.name}
                 fill
-                priority
+                priority={selectedImageIndex === 0}
                 sizes="(max-width: 1024px) 100vw, 55vw"
                 className="object-contain mix-blend-screen p-8 transition-transform duration-500 group-hover:scale-105"
               />
@@ -208,6 +272,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                       src={img}
                       alt={`${product.name} view ${idx + 1}`}
                       fill
+                      priority={idx < 4}
                       sizes="80px"
                       className="object-contain mix-blend-screen p-2"
                     />
@@ -334,54 +399,41 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               {product.description}
             </p>
 
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Colors
-              </span>
-              <div className="flex items-center gap-2.5">
-                {colorVariants.map((col) => (
-                  <button
-                    key={col.name}
-                    type="button"
-                    onClick={() => setSelectedColor(col.name)}
-                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
-                      selectedColor === col.name
-                        ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
-                        : "border-white/20 hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: col.hex }}
-                    aria-label={col.name}
-                  >
-                    {selectedColor === col.name && (
-                      <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
-                    )}
-                  </button>
-                ))}
+            {productColors.length > 0 && (
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Colors
+                </span>
+                <div className="flex items-center gap-2.5">
+                  {productColors.map((col, idx) => (
+                    <button
+                      key={col.name}
+                      type="button"
+                      onClick={() => {
+                        setSelectedColor(col.name);
+                        setSelectedImageIndex(0); // Reset to first image when switching colors
+                        if (apiProduct?.variants && apiProduct.variants[idx]) {
+                          setSelectedVariantId(apiProduct.variants[idx].id);
+                        }
+                      }}
+                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
+                        selectedColor === col.name
+                          ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
+                          : "border-white/20 hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: col.hex }}
+                      aria-label={col.name}
+                      title={col.name}
+                    >
+                      {selectedColor === col.name && (
+                        <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
               </div>
-              <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
-            </div>
-
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Size
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {sizeVariants.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                      selectedSize === size
-                        ? "bg-[#640C0C] border-[#640C0C] text-white shadow-sm"
-                        : "bg-[#121212] border-white/10 text-neutral-300 hover:border-white/30 hover:text-white"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             <div className="rounded-2xl bg-[#121212] border border-white/5 p-5 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-white">Specifications</h2>
@@ -441,13 +493,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+                  disabled={isAddingToCart}
+                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors disabled:opacity-60 cursor-pointer"
                 >
-                  {isAdded ? "Add Another to Cart" : "Add to Cart"}
+                  {isAdded ? "Go to Cart" : "Add to Cart"}
                 </button>
                 <button
                   onClick={handleBuyNow}
-                  className="flex-1 rounded-full bg-[#640C0C] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="flex-1 rounded-full bg-[#640C0C] py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity cursor-pointer"
                 >
                   Buy Now
                 </button>

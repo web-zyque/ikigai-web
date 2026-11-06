@@ -29,6 +29,34 @@
       "when": 1792092624943,
       "tag": "0003_dapper_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792685374445,
+      "tag": "0004_chief_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792805781483,
+      "tag": "0005_gifted_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793143764031,
+      "tag": "0006_giant_roxanne_simpson",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793988580058,
+      "tag": "0007_cart-merge-requests",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { randomInt } from 'crypto';
 import { and, desc, eq } from 'drizzle-orm';
-import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import { admins, otps, users } from '../db/schema';
@@ -27,7 +27,7 @@ const E164 = /^\+[1-9]\d{9,14}$/;
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject(DB) private db: NeonHttpDatabase<typeof schema>,
+    @Inject(DB) private db: NeonDatabase<typeof schema>,
     private jwt: JwtService,
   ) {}
 

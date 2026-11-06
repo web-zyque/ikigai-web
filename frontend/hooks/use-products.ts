@@ -96,7 +96,7 @@ export const useCreateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
+    mutationFn: (data: { name: string; description?: string; imageUrl?: string }) =>
       categoriesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
@@ -104,6 +104,22 @@ export const useCreateCategory = () => {
     },
     onError: (error: any) => {
       console.error('Failed to create category:', error);
+    },
+  });
+};
+
+export const useUpdateCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; description?: string; imageUrl?: string } }) =>
+      categoriesApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      console.log('Category updated successfully');
+    },
+    onError: (error: any) => {
+      console.error('Failed to update category:', error);
     },
   });
 };

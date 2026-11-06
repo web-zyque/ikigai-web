@@ -32,7 +32,7 @@ export default function PaymentMethodsSection({
 
       <div className="space-y-2.5 text-xs">
         {/* UPI / QR Code Option */}
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-colors">
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
               <QrCode className="h-4 w-4" />
@@ -75,7 +75,7 @@ export default function PaymentMethodsSection({
         </div>
 
         {/* Cash on Delivery (COD) Option */}
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#0a0a0a] border border-white/5 hover:border-white/10 transition-colors">
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
               <Banknote className="h-4 w-4" />

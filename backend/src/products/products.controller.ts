@@ -14,6 +14,7 @@ import { AdminGuard, JwtAuthGuard, StaffGuard } from '../auth/jwt/jwt-auth.guard
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type {
   CreateCategoryDto,
+  UpdateCategoryDto,
   CreateProductDto,
   GetProductsQueryDto,
   UpdateProductDto,
@@ -21,6 +22,7 @@ import type {
 } from './dto/product.dto';
 import {
   CreateCategorySchema,
+  UpdateCategorySchema,
   CreateProductSchema,
   GetProductsQuerySchema,
   UpdateProductSchema,
@@ -81,13 +83,23 @@ export class CategoriesController {
 
   @Post()
   @UseGuards(StaffGuard)
-  @UsePipes(new ZodValidationPipe(CreateCategorySchema))
-  async createCategory(@Body() dto: CreateCategoryDto) {
+  async createCategory(
+    @Body(new ZodValidationPipe(CreateCategorySchema)) dto: CreateCategoryDto,
+  ) {
     return this.productsService.createCategory(dto);
   }
 
   @Get()
   async getCategories() {
     return this.productsService.getCategories();
+  }
+
+  @Patch(':id')
+  @UseGuards(StaffGuard)
+  async updateCategory(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(UpdateCategorySchema)) dto: UpdateCategoryDto,
+  ) {
+    return this.productsService.updateCategory(id, dto);
   }
 }

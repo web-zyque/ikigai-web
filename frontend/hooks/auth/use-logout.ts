@@ -3,6 +3,8 @@ import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { clearAuthSession } from '@/lib/auth-storage';
 import { authKeys } from './auth.keys';
+import { cartKeys } from './cart.keys';
+import { useCartStore } from '@/stores/cart-store';
 
 export function useLogout() {
   const qc = useQueryClient();
@@ -15,7 +17,9 @@ export function useLogout() {
       // Instantly clear the user from cache so AuthButton re-renders to Login immediately
       qc.setQueryData(authKeys.me(), null);
       qc.removeQueries({ queryKey: authKeys.me() });
+      qc.removeQueries({ queryKey: cartKeys.all });
+      useCartStore.getState().resetAfterLogout();
       router.push('/');
     },
   });
-}
+}
