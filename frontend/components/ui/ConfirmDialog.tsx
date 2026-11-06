@@ -13,6 +13,8 @@ export interface ConfirmDialogProps {
   cancelText?: string;
   variant?: "danger" | "warning" | "info";
   isLoading?: boolean;
+  loadingText?: string;
+  errorMessage?: string;
 }
 
 export default function ConfirmDialog({
@@ -25,6 +27,8 @@ export default function ConfirmDialog({
   cancelText = "Cancel",
   variant = "danger",
   isLoading = false,
+  loadingText = "Processing...",
+  errorMessage,
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +93,12 @@ export default function ConfirmDialog({
           </div>
         </div>
 
+        {errorMessage && (
+          <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {errorMessage}
+          </p>
+        )}
+
         <div className="flex items-center justify-end gap-2.5 pt-2">
           <button
             type="button"
@@ -106,7 +116,7 @@ export default function ConfirmDialog({
             }}
             className={`rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${styles.button}`}
           >
-            {isLoading ? "Processing..." : confirmText}
+            {isLoading ? loadingText : confirmText}
           </button>
         </div>
       </div>
