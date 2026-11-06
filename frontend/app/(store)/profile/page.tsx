@@ -10,6 +10,7 @@ import { useCart } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { getStoredAddresses, saveStoredAddresses } from "@/lib/address-storage";
 import { Address } from "@/types/address.types";
+import { useMyOrders } from "@/hooks/use-orders";
 import {
   TabKey,
   ProfileOrder,
@@ -45,7 +46,15 @@ function ProfileContent() {
   const logoutMutation = useLogout();
   const { cartItems } = useCart();
 
-  const [orders] = useState<ProfileOrder[]>([]);
+  const myOrdersQuery = useMyOrders();
+  const orders: ProfileOrder[] = (myOrdersQuery.data ?? []).map((order) => ({
+    id: order.id,
+    productName: order.items.map((item) => item.productName).join(", "),
+    date: new Date(order.createdAt).toLocaleDateString(),
+    amount: Number(order.totalAmount),
+    status: order.orderStatus,
+    image: order.items[0]?.imageUrl || "/images/category_brakes.jpg",
+  }));
   const [refunds] = useState<ProfileRefund[]>([]);
 
   const [isEditingInfo, setIsEditingInfo] = useState(false);

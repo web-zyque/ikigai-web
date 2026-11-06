@@ -24,6 +24,16 @@ export const inventoryStatusEnum = pgEnum('inventory_status', [
   'out_of_stock',
 ]);
 export const adminRoleEnum = pgEnum('admin_role', ['ADMIN', 'STAFF']);
+export const orderStatusEnum = pgEnum('order_status', [
+  'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED',
+]);
+export const paymentMethodEnum = pgEnum('payment_method', ['COD', 'ONLINE']);
+export const paymentStatusEnum = pgEnum('payment_status', [
+  'PENDING', 'PAID', 'FAILED', 'REFUNDED',
+]);
+export const cancellationStatusEnum = pgEnum('cancellation_status', [
+  'PENDING', 'APPROVED', 'REJECTED',
+]);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -206,4 +216,117 @@ export const cartMergeRequests = pgTable(
       table.guestCartId,
     ),
   ],
+);
+
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderNumber: varchar('order_number', { length: 32 }).notNull().unique(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'restrict' })
+      .notNull(),
+    idempotencyKey: varchar('idempotency_key', { length: 100 }).notNull(),
+    subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+    discountAmount: decimal('discount_amount', { precision: 12, scale: 2 }).notNull().default('0'),
+    deliveryFee: decimal('delivery_fee', { precision: 12, scale: 2 }).notNull().default('0'),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+    couponCode: varchar('coupon_code', { length: 40 }),
+    shippingAddress: json('shipping_address').$type<{
+      fullName: string;
+      phone: string;
+      addressLine1: string;
+      addressLine2: string | null;
+      landmark: string | null;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+      addressType: string;
+    }>().notNull(),
+    paymentMethod: paymentMethodEnum('payment_method').default('COD').notNull(),
+    paymentStatus: paymentStatusEnum('payment_status').default('PENDING').notNull(),
+    orderStatus: orderStatusEnum('order_status').default('PENDING').notNull(),
+    stockDeducted: boolean('stock_deducted').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('orders_user_created_idx').on(table.userId, table.createdAt),
+    index('orders_status_created_idx').on(table.orderStatus, table.createdAt),
+    uniqueIndex('orders_user_idempotency_unique').on(table.userId, table.idempotencyKey),
+  ],
+);
+
+export const orderItems = pgTable(
+  'order_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
+    productId: uuid('product_id')
+      .references(() => products.id, { onDelete: 'restrict' })
+      .notNull(),
+    variantId: uuid('variant_id').references(() => productVariants.id, { onDelete: 'restrict' }),
+    productName: varchar('product_name', { length: 255 }).notNull(),
+    sku: varchar('sku', { length: 100 }).notNull(),
+    imageUrl: text('image_url'),
+    selectedVariant: json('selected_variant').$type<{
+      id: string;
+      colorName: string;
+      sku: string | null;
+    } | null>(),
+    quantity: integer('quantity').notNull(),
+    unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+    totalPrice: decimal('total_price', { precision: 12, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('order_items_order_id_idx').on(table.orderId),
+    index('order_items_product_id_idx').on(table.productId),
+  ],
+);
+
+export const orderCancellationRequests = pgTable(
+  'order_cancellation_requests',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'restrict' })
+      .notNull(),
+    reason: text('reason').notNull(),
+    status: cancellationStatusEnum('status').default('PENDING').notNull(),
+    adminNote: text('admin_note'),
+    reviewedBy: uuid('reviewed_by').references(() => admins.id, { onDelete: 'set null' }),
+    reviewedAt: timestamp('reviewed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('order_cancellation_requests_user_idx').on(table.userId, table.createdAt),
+    uniqueIndex('order_cancellation_requests_active_order_unique')
+      .on(table.orderId)
+      .where(sql`${table.status} = 'PENDING'`),
+  ],
+);
+
+export const orderStatusHistory = pgTable(
+  'order_status_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
+    previousStatus: orderStatusEnum('previous_status'),
+    newStatus: orderStatusEnum('new_status').notNull(),
+    changedBy: uuid('changed_by').notNull(),
+    changedByRole: varchar('changed_by_role', { length: 20 }).notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('order_status_history_order_created_idx').on(table.orderId, table.createdAt)],
 );

@@ -358,6 +358,34 @@ export const useCartStore = create<CartStore>()(
         pendingGuestCart: state.pendingGuestCart,
       }),
       version: 1,
+      migrate: (persistedState, version) => {
+        const persisted = (persistedState ?? {}) as Partial<CartState>;
+        const cartItems = Array.isArray(persisted.cartItems)
+          ? persisted.cartItems.filter((item): item is CartItem =>
+              Boolean(
+                item &&
+                  (typeof item.id === "string" || typeof item.id === "number") &&
+                  typeof item.name === "string" &&
+                  Number.isFinite(item.price) &&
+                  typeof item.image === "string" &&
+                  Number.isInteger(item.quantity) &&
+                  item.quantity >= 1,
+              ),
+            )
+          : [];
+
+        return {
+          cartItems,
+          // Legacy persisted carts are treated as unowned until auth/cart sync
+          // establishes whether they belong to the current user.
+          cartSource:
+            version < 1 && cartItems.length > 0
+              ? "unknown"
+              : persisted.cartSource ?? (cartItems.length > 0 ? "unknown" : "guest"),
+          ownerUserId: version < 1 ? null : persisted.ownerUserId ?? null,
+          pendingGuestCart: version < 1 ? null : persisted.pendingGuestCart ?? null,
+        };
+      },
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<CartState> | undefined;
         return {
