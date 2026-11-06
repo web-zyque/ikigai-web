@@ -57,6 +57,13 @@
       "when": 1793988580058,
       "tag": "0007_cart-merge-requests",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793998749309,
+      "tag": "0008_user-addresses",
+      "breakpoints": true
     }
   ]
 }
