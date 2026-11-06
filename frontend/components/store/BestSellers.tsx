@@ -6,7 +6,9 @@ import { useRef, useState, useEffect, useMemo } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Inter } from "next/font/google";
 import { Loader2 } from "lucide-react";
-import { useAddToCart, useIsInCart } from "@/stores/cart-store";
+import { useIsInCart } from "@/stores/cart-store";
+import { useMe } from "@/hooks/auth/use-me";
+import { useServerCart } from "@/hooks/use-server-cart";
 import { useToastStore } from "@/stores/toast-store";
 import { useStoreProducts } from "@/hooks/use-store-products";
 import { useCart } from "@/hooks/use-cart";
@@ -131,7 +133,13 @@ function BestSellerCard({
   addToCart: (p: any, qty?: number) => void;
   addToast: (msg: string) => void;
 }) {
-  const isAdded = useIsInCart(product.id);
+  const { data: user } = useMe();
+  const { data: serverCart } = useServerCart({ enabled: !!user });
+  const isInGuestCart = useIsInCart(product.id);
+  const isInServerCart = serverCart?.items.some(
+    (item) => String(item.productId) === String(product.id),
+  ) ?? false;
+  const isAdded = user ? isInServerCart : isInGuestCart;
 
   const handleAddToCart = () => {
     if (isAdded) return;
