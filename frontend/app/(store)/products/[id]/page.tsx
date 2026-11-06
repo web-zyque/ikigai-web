@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Truck, RotateCcw, ChevronRight, Plus, Minus, Share2, Loader2 } from "lucide-react";
 import { useIsInCart } from "@/stores/cart-store";
+import { useMe } from "@/hooks/auth/use-me";
+import { useServerCart } from "@/hooks/use-server-cart";
 import { useToastStore } from "@/stores/toast-store";
 import { useCart } from "@/hooks/use-cart";
 import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
@@ -43,7 +45,9 @@ const tabs = [
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
-  const { addToCart } = useCart();
+  const { addToCart, isLoading: isAddingToCart } = useCart();
+  const { data: user } = useMe();
+  const { data: serverCart } = useServerCart({ enabled: !!user });
   const addToast = useToastStore((state) => state.addToast);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<"description" | "features" | "compatibility" | "shipping">("description");
@@ -124,8 +128,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const images = useMemo(() => product?.images || [], [product]);
 
-  // Use Zustand selector with variant support
-  const isAdded = useIsInCart(product?.id || "", selectedVariantId);
+  const isInLocalCart = useIsInCart(product?.id || "", selectedVariantId);
+  const isInServerCart = serverCart?.items.some(
+    (item) =>
+      String(item.productId) === String(product?.id) &&
+      (item.variantId ?? "") === (selectedVariantId || ""),
+  );
+  const isAdded = user
+    ? (isInServerCart ?? isInLocalCart)
+    : isInLocalCart;
 
   const relatedProducts = useMemo(() => {
     if (!product || !allProductsData?.products) return [];
@@ -171,6 +182,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const handleAddToCart = () => {
+    if (isAdded) {
+      router.push("/cart");
+      return;
+    }
+
     // Add with quantity support and variant ID
     addToCart({
       id: product.id,
@@ -477,9 +493,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+                  disabled={isAddingToCart}
+                  className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors disabled:opacity-60 disabled:cursor-wait"
                 >
-                  {isAdded ? "Add Another to Cart" : "Add to Cart"}
+                  {isAdded ? "Go to Cart" : "Add to Cart"}
                 </button>
                 <button
                   onClick={handleBuyNow}
