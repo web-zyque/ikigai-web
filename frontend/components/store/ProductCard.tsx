@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
@@ -9,6 +10,7 @@ import { useIsInCart } from "@/stores/cart-store";
 import { useMe } from "@/hooks/auth/use-me";
 import { useServerCart } from "@/hooks/use-server-cart";
 import { useToastStore } from "@/stores/toast-store";
+import { saveBuyNowSelection } from "@/lib/buy-now-checkout";
 
 export interface Product {
   id: number | string;
@@ -20,6 +22,7 @@ export interface Product {
   brand?: string;
   partType?: string;
   description?: string;
+  inStock?: boolean;
 }
 
 interface ProductCardProps {
@@ -28,13 +31,16 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, showServerCartState = false }: ProductCardProps) {
+  const router = useRouter();
   const { addToCart, addToCartAndWait, isCartSyncPending } = useCart();
   const { data: user } = useMe();
   const { data: serverCart } = useServerCart({ enabled: showServerCartState && !!user });
   const addToast = useToastStore((state) => state.addToast);
   const isInGuestCart = useIsInCart(product.id);
   const [isAdding, setIsAdding] = useState(false);
+  const [isPreparingCheckout, setIsPreparingCheckout] = useState(false);
   const addInFlight = useRef(false);
+  const buyNowInFlight = useRef(false);
   const isInServerCart = serverCart?.items.some(
     (item) =>
       String(item.productId) === String(product.id) &&
@@ -77,6 +83,14 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
 
   const productUrl = `/products/${product.id}`;
 
+  const handleBuyNow = () => {
+    if (buyNowInFlight.current || product.inStock === false) return;
+    buyNowInFlight.current = true;
+    setIsPreparingCheckout(true);
+    saveBuyNowSelection({ productId: String(product.id), variantId: null, quantity: 1 });
+    router.push("/checkout");
+  };
+
   return (
     <div className="group/card flex flex-col rounded-[20px] bg-[#121212] border border-white/5 overflow-hidden hover:-translate-y-1 transition-transform duration-300">
       <Link href={productUrl} className="block relative w-full aspect-[3/4] bg-[#0a0a0a] shrink-0 p-4">
@@ -101,12 +115,23 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
         </Link>
         <p className="text-lg font-bold text-[#992222] mb-2">{product.price}</p>
         <div className="mt-auto flex w-full gap-2 transition-all duration-300">
-          <Link
-            href={productUrl}
-            className={`${isAdded ? "w-full" : "w-[70%]"} flex items-center justify-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}
-          >
-            Buy Now
-          </Link>
+          {showServerCartState ? (
+            <button
+              type="button"
+              onClick={handleBuyNow}
+              disabled={isPreparingCheckout || product.inStock === false}
+              className={`${isAdded ? "w-full" : "w-[70%]"} flex items-center justify-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              {isPreparingCheckout ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Preparing checkout" /> : "Buy Now"}
+            </button>
+          ) : (
+            <Link
+              href={productUrl}
+              className={`${isAdded ? "w-full" : "w-[70%]"} flex items-center justify-center rounded-full bg-[#640C0C] py-2.5 text-[13px] font-medium text-white transition-all duration-300 hover:opacity-90`}
+            >
+              Buy Now
+            </Link>
+          )}
           {!isAdded && (
             <button
               type="button"
