@@ -11,10 +11,19 @@ import {
   Minus,
   X,
   ShoppingBag,
+  Pencil,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
+import {
+  useCreateUserAddress,
+  useDeleteUserAddress,
+  useSetDefaultUserAddress,
+  useUpdateUserAddress,
+  useUserAddresses,
+} from "@/hooks/use-addresses";
 import { productsApi } from "@/services/products.service";
 import type { ProductResponse } from "@/types/products.types";
 import type { CartItem } from "@/stores/cart-store";
@@ -24,11 +33,27 @@ import {
   saveBuyNowSelection,
   type BuyNowSelection,
 } from "@/lib/buy-now-checkout";
-import { Address } from "@/types/address.types";
+import { Address, AddressInput } from "@/types/address.types";
 import {
   getStoredAddresses,
   saveStoredAddresses,
 } from "@/lib/address-storage";
+
+const SELECTED_ADDRESS_SESSION_KEY = "ikigai-selected-shipping-address";
+
+const emptyAddressForm = (): AddressInput => ({
+  name: "",
+  phone: "",
+  type: "Home",
+  addressLine: "",
+  addressLine2: "",
+  landmark: "",
+  city: "",
+  state: "",
+  pincode: "",
+  country: "India",
+  isDefault: false,
+});
 
 function createBuyNowCartItem(product: ProductResponse, selection: BuyNowSelection): CartItem {
   if (product.publicationStatus !== "active") {
@@ -70,6 +95,11 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { cartItems: normalCartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
   const { data: user } = useMe();
+  const userAddressQuery = useUserAddresses(user?.id, Boolean(user));
+  const createUserAddress = useCreateUserAddress(user?.id);
+  const updateUserAddress = useUpdateUserAddress(user?.id);
+  const deleteUserAddress = useDeleteUserAddress(user?.id);
+  const setDefaultUserAddress = useSetDefaultUserAddress(user?.id);
 
   const [mounted, setMounted] = useState(false);
   const [isBuyNowCheckout, setIsBuyNowCheckout] = useState(false);
@@ -77,20 +107,15 @@ export default function CheckoutPage() {
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
   const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
   const [buyNowError, setBuyNowError] = useState("");
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [guestAddresses, setGuestAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressError, setAddressError] = useState("");
+  const [isAddressSaving, setIsAddressSaving] = useState(false);
 
-  const [newAddr, setNewAddr] = useState<Omit<Address, "id" | "isDefault">>({
-    name: "",
-    phone: "",
-    type: "Home",
-    addressLine: "",
-    city: "",
-    state: "",
-    pincode: "",
-  });
+  const [newAddr, setNewAddr] = useState<AddressInput>(emptyAddressForm);
 
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -111,12 +136,23 @@ export default function CheckoutPage() {
       setBuyNowSelection(selection);
     }
     const loaded = getStoredAddresses();
-    setAddresses(loaded);
+    setGuestAddresses(loaded);
     const defaultAddr = loaded.find((a) => a.isDefault) || loaded[0];
     if (defaultAddr) {
       setSelectedAddressId(defaultAddr.id);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user || !userAddressQuery.data) return;
+    const storedId = window.sessionStorage.getItem(SELECTED_ADDRESS_SESSION_KEY);
+    const selected = userAddressQuery.data.find((address) => address.id === storedId)
+      ?? userAddressQuery.data.find((address) => address.isDefault)
+      ?? userAddressQuery.data[0];
+    setSelectedAddressId(selected?.id ?? "");
+    if (selected) window.sessionStorage.setItem(SELECTED_ADDRESS_SESSION_KEY, selected.id);
+    else window.sessionStorage.removeItem(SELECTED_ADDRESS_SESSION_KEY);
+  }, [user?.id, userAddressQuery.data]);
 
   useEffect(() => {
     if (!buyNowSelection) return;
@@ -148,10 +184,14 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  const selectedAddress =
-    addresses.find((a) => a.id === selectedAddressId) ||
-    addresses.find((a) => a.isDefault) ||
-    addresses[0];
+  const addresses = user ? (userAddressQuery.data ?? []) : guestAddresses;
+  const selectedAddress = addresses.find((a) => a.id === selectedAddressId)
+    || (user ? undefined : addresses.find((a) => a.isDefault) || addresses[0]);
+
+  const selectAddress = (id: string) => {
+    setSelectedAddressId(id);
+    if (user) window.sessionStorage.setItem(SELECTED_ADDRESS_SESSION_KEY, id);
+  };
 
   const checkoutItems = isBuyNowCheckout ? (buyNowItem ? [buyNowItem] : []) : normalCartItems;
   const subtotal = checkoutItems.reduce(
@@ -176,7 +216,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const handleSaveNewAddress = (e: React.FormEvent) => {
+  const handleSaveNewAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
       !newAddr.name.trim() ||
@@ -189,36 +229,95 @@ export default function CheckoutPage() {
       return;
     }
 
-    const created: Address = {
-      ...newAddr,
-      id: "addr-" + Date.now(),
-      isDefault: addresses.length === 0,
-    };
-
-    const updated = [...addresses, created];
-    setAddresses(updated);
-    saveStoredAddresses(updated);
-    setSelectedAddressId(created.id);
-    setIsAddingNewAddress(false);
-    setNewAddr({
-      name: user?.fullName || "",
-      phone: user?.phone || "",
-      type: "Home",
-      addressLine: "",
-      city: "",
-      state: "",
-      pincode: "",
-    });
+    setAddressError("");
+    setIsAddressSaving(true);
+    try {
+      if (user) {
+        const saved = editingAddressId
+          ? await updateUserAddress.mutateAsync({ id: editingAddressId, input: newAddr })
+          : await createUserAddress.mutateAsync(newAddr);
+        selectAddress(saved.id);
+      } else {
+        const created: Address = {
+          id: "addr-" + Date.now(),
+          name: newAddr.name,
+          phone: newAddr.phone,
+          type: newAddr.type,
+          addressLine: newAddr.addressLine,
+          city: newAddr.city,
+          state: newAddr.state,
+          pincode: newAddr.pincode,
+          isDefault: guestAddresses.length === 0,
+        };
+        const updated = [...guestAddresses, created];
+        setGuestAddresses(updated);
+        saveStoredAddresses(updated);
+        setSelectedAddressId(created.id);
+      }
+      setIsAddingNewAddress(false);
+      setEditingAddressId(null);
+      setNewAddr({ ...emptyAddressForm(), name: user?.fullName || "", phone: user?.phone || "" });
+    } catch (saveError) {
+      setAddressError(saveError instanceof Error ? saveError.message : "Could not save this address. Please try again.");
+    } finally {
+      setIsAddressSaving(false);
+    }
   };
 
-  const handleSetDefaultAddress = (id: string) => {
+  const handleSetDefaultAddress = async (id: string) => {
+    setAddressError("");
+    if (user) {
+      try {
+        await setDefaultUserAddress.mutateAsync(id);
+      } catch (defaultError) {
+        setAddressError(defaultError instanceof Error ? defaultError.message : "Could not update the default address.");
+      }
+      return;
+    }
     const updated = addresses.map((a) => ({
       ...a,
       isDefault: a.id === id,
     }));
-    setAddresses(updated);
+    setGuestAddresses(updated);
     saveStoredAddresses(updated);
     setSelectedAddressId(id);
+  };
+
+  const handleEditAddress = (address: Address) => {
+    setEditingAddressId(address.id);
+    setAddressError("");
+    setNewAddr({
+      name: address.name,
+      phone: address.phone,
+      type: address.type,
+      addressLine: address.addressLine,
+      addressLine2: address.addressLine2 ?? "",
+      landmark: address.landmark ?? "",
+      city: address.city,
+      state: address.state,
+      pincode: address.pincode,
+      country: address.country ?? "India",
+      isDefault: address.isDefault,
+    });
+    setIsAddingNewAddress(true);
+  };
+
+  const handleDeleteAddress = async (address: Address) => {
+    if (!user || !window.confirm(`Delete the ${address.type.toLowerCase()} address for ${address.name}?`)) return;
+    setAddressError("");
+    try {
+      const remaining = await deleteUserAddress.mutateAsync(address.id);
+      if (selectedAddressId === address.id) {
+        const next = remaining.find((entry) => entry.isDefault) ?? remaining[0];
+        if (next) selectAddress(next.id);
+        else {
+          setSelectedAddressId("");
+          window.sessionStorage.removeItem(SELECTED_ADDRESS_SESSION_KEY);
+        }
+      }
+    } catch (deleteError) {
+      setAddressError(deleteError instanceof Error ? deleteError.message : "Could not delete this address. Please try again.");
+    }
   };
 
   const handleUpdateQuantity = (item: CartItem, delta: number) => {
@@ -459,7 +558,9 @@ export default function CheckoutPage() {
 
           <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
             <div className="bg-[#121212] rounded-2xl border border-white/10 p-5 md:p-6 shadow-xl">
-              {selectedAddress ? (
+              {user && userAddressQuery.isLoading ? (
+                <div role="status" className="flex items-center gap-2 text-xs text-white/50"><Loader2 className="h-4 w-4 animate-spin" /> Loading your saved addresses…</div>
+              ) : selectedAddress ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -488,8 +589,11 @@ export default function CheckoutPage() {
                       {selectedAddress.name}
                     </p>
                     <p className="text-xs text-white/70 mt-1 leading-relaxed">
-                      {selectedAddress.addressLine}, {selectedAddress.city},{" "}
-                      {selectedAddress.state} - {selectedAddress.pincode}
+                      {selectedAddress.addressLine}
+                      {selectedAddress.addressLine2 && `, ${selectedAddress.addressLine2}`}
+                      {selectedAddress.landmark && `, ${selectedAddress.landmark}`}
+                      {`, ${selectedAddress.city}, ${selectedAddress.state} - ${selectedAddress.pincode}`}
+                      {selectedAddress.country && `, ${selectedAddress.country}`}
                     </p>
                     <p className="text-xs text-white/40 font-mono mt-1">
                       {selectedAddress.phone}
@@ -511,6 +615,8 @@ export default function CheckoutPage() {
                   </Button>
                 </div>
               )}
+              {userAddressQuery.isError && user && <p role="alert" className="mt-3 text-xs text-red-400">Could not load your saved addresses. Please try again.</p>}
+              {addressError && <p role="alert" className="mt-3 text-xs text-red-400">{addressError}</p>}
             </div>
 
             <div className="bg-[#121212] rounded-2xl border border-white/10 p-5 md:p-6 shadow-xl space-y-5">
@@ -604,6 +710,8 @@ export default function CheckoutPage() {
                 onClick={() => {
                   setIsAddressModalOpen(false);
                   setIsAddingNewAddress(false);
+                  setEditingAddressId(null);
+                  setAddressError("");
                 }}
                 className="text-white/40 hover:text-white p-1 cursor-pointer"
               >
@@ -613,7 +721,9 @@ export default function CheckoutPage() {
 
             {!isAddingNewAddress ? (
               <div className="space-y-4">
-                {addresses.length === 0 ? (
+                {user && userAddressQuery.isLoading ? (
+                  <div role="status" className="flex items-center justify-center gap-2 py-8 text-xs text-white/50"><Loader2 className="h-4 w-4 animate-spin" /> Loading saved addresses…</div>
+                ) : addresses.length === 0 ? (
                   <div className="p-6 text-center space-y-2 border border-dashed border-white/10 rounded-xl">
                     <p className="text-xs text-white/50">No saved addresses found.</p>
                   </div>
@@ -624,7 +734,7 @@ export default function CheckoutPage() {
                       return (
                         <div
                           key={addr.id}
-                          onClick={() => setSelectedAddressId(addr.id)}
+                          onClick={() => selectAddress(addr.id)}
                           className={`rounded-xl border p-4 cursor-pointer transition-all ${
                             isSelected
                               ? "border-[#640C0C] bg-[#640C0C]/10"
@@ -637,7 +747,7 @@ export default function CheckoutPage() {
                                 type="radio"
                                 name="shippingAddress"
                                 checked={isSelected}
-                                onChange={() => setSelectedAddressId(addr.id)}
+                                onChange={() => selectAddress(addr.id)}
                                 className="accent-[#640C0C]"
                               />
                               <span className="text-xs font-semibold text-white">
@@ -663,9 +773,19 @@ export default function CheckoutPage() {
                               Make Default
                             </button>
                           )}
+                          {user && (
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); handleEditAddress(addr); }} aria-label={`Edit ${addr.type} address`} className="text-white/45 hover:text-white transition-colors">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); void handleDeleteAddress(addr); }} aria-label={`Delete ${addr.type} address`} disabled={deleteUserAddress.isPending} className="text-white/45 hover:text-red-400 transition-colors disabled:opacity-40">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <p className="text-xs text-white/70 pl-6 leading-relaxed">
-                          {addr.addressLine}, {addr.city}, {addr.state} - {addr.pincode}
+                          {addr.addressLine}{addr.addressLine2 && `, ${addr.addressLine2}`}{addr.landmark && `, ${addr.landmark}`}, {addr.city}, {addr.state} - {addr.pincode}{addr.country && `, ${addr.country}`}
                         </p>
                         <p className="text-xs text-white/40 font-mono pl-6 mt-1">
                           {addr.phone}
@@ -679,7 +799,12 @@ export default function CheckoutPage() {
                 <div className="flex flex-col sm:flex-row gap-2.5 pt-3 border-t border-white/10">
                   <Button
                     type="button"
-                    onClick={() => setIsAddingNewAddress(true)}
+                    onClick={() => {
+                      setEditingAddressId(null);
+                      setAddressError("");
+                      setNewAddr({ ...emptyAddressForm(), name: user?.fullName || "", phone: user?.phone || "" });
+                      setIsAddingNewAddress(true);
+                    }}
                     variant="outline"
                     className="flex-1 rounded-full text-xs h-10 border-white/20 hover:bg-white/10 cursor-pointer"
                   >
@@ -699,6 +824,7 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <form onSubmit={handleSaveNewAddress} className="space-y-3.5">
+                {addressError && <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-xs text-red-300">{addressError}</p>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <input
                     type="text"
@@ -726,6 +852,24 @@ export default function CheckoutPage() {
                     }
                     className="h-10 px-3.5 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#640C0C] sm:col-span-2"
                   />
+                  {user && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Apartment, suite, unit (optional)"
+                        value={newAddr.addressLine2 ?? ""}
+                        onChange={(e) => setNewAddr({ ...newAddr, addressLine2: e.target.value })}
+                        className="h-10 px-3.5 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#640C0C] sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Landmark (optional)"
+                        value={newAddr.landmark ?? ""}
+                        onChange={(e) => setNewAddr({ ...newAddr, landmark: e.target.value })}
+                        className="h-10 px-3.5 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#640C0C] sm:col-span-2"
+                      />
+                    </>
+                  )}
                   <input
                     type="text"
                     required
@@ -750,6 +894,27 @@ export default function CheckoutPage() {
                     onChange={(e) => setNewAddr({ ...newAddr, pincode: e.target.value })}
                     className="h-10 px-3.5 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#640C0C]"
                   />
+                  {user && (
+                    <>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Country"
+                        value={newAddr.country}
+                        onChange={(e) => setNewAddr({ ...newAddr, country: e.target.value })}
+                        className="h-10 px-3.5 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#640C0C]"
+                      />
+                      <label className="inline-flex items-center gap-2 text-xs text-white/70 sm:col-span-2">
+                        <input
+                          type="checkbox"
+                          checked={newAddr.isDefault}
+                          onChange={(e) => setNewAddr({ ...newAddr, isDefault: e.target.checked })}
+                          className="accent-[#640C0C]"
+                        />
+                        Set as default address
+                      </label>
+                    </>
+                  )}
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-white/60">Type:</span>
                     <label className="inline-flex items-center gap-1.5 text-xs text-white cursor-pointer">
@@ -778,7 +943,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
                   <Button
                     type="button"
-                    onClick={() => setIsAddingNewAddress(false)}
+                    onClick={() => { setIsAddingNewAddress(false); setEditingAddressId(null); setAddressError(""); }}
                     variant="outline"
                     className="h-9 px-4 text-xs rounded-full border-white/20 cursor-pointer"
                   >
@@ -786,9 +951,11 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     type="submit"
+                    disabled={isAddressSaving}
                     className="h-9 px-5 text-xs rounded-full bg-[#640C0C] text-white cursor-pointer"
                   >
-                    Save & Use Address
+                    {isAddressSaving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                    {editingAddressId ? "Save Changes" : "Save & Use Address"}
                   </Button>
                 </div>
               </form>

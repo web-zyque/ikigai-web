@@ -9,7 +9,10 @@ import {
   pgEnum,
   json,
   uniqueIndex,
+  index,
+  varchar,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const publicationStatusEnum = pgEnum('publication_status', [
   'active',
@@ -29,6 +32,35 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const userAddresses = pgTable(
+  'user_addresses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    fullName: varchar('full_name', { length: 120 }).notNull(),
+    phone: varchar('phone', { length: 20 }).notNull(),
+    addressLine1: varchar('address_line_1', { length: 255 }).notNull(),
+    addressLine2: varchar('address_line_2', { length: 255 }),
+    landmark: varchar('landmark', { length: 255 }),
+    city: varchar('city', { length: 100 }).notNull(),
+    state: varchar('state', { length: 100 }).notNull(),
+    postalCode: varchar('postal_code', { length: 20 }).notNull(),
+    country: varchar('country', { length: 100 }).default('India').notNull(),
+    addressType: varchar('address_type', { length: 20 }).default('Home').notNull(),
+    isDefault: boolean('is_default').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('user_addresses_user_id_idx').on(table.userId),
+    uniqueIndex('user_addresses_one_default_per_user_idx')
+      .on(table.userId)
+      .where(sql`${table.isDefault} = true`),
+  ],
+);
 
 export const otps = pgTable('otps', {
   id: uuid('id').defaultRandom().primaryKey(),
