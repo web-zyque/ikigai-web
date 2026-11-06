@@ -16,7 +16,7 @@ import {
   useUpdateServerCartItem,
   useClearServerCart,
 } from "@/hooks/use-server-cart";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 
 export function useCart() {
@@ -34,6 +34,8 @@ export function useCart() {
   const clearServerCart = useClearServerCart();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [updatingItems, setUpdatingItems] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const addToCart = useCallback(
     (product: AddToCartProduct, quantity: number = 1) => {
@@ -89,19 +91,18 @@ export function useCart() {
   const updateQuantity = useCallback(
     (id: string | number, delta: number, variantId?: string) => {
       if (user) {
-       
         const item = cartItems.find(
-          (i) => String(i.id) === String(id)
+          (i) => String(i.id) === String(id) && (!variantId || i.variantId === variantId)
         );
         if (!item) return;
 
-        const newQuantity = item.quantity + delta;
-        if (newQuantity < 1) {
-          removeFromCart(id, variantId);
-          return;
-        }
+        const newQuantity = Math.max(1, Math.min(1000, item.quantity + delta));
+        if (newQuantity === item.quantity || updatingItems.includes(String(id))) return;
 
-        setIsLoading(true);
+        setError(null);
+        setUpdatingItems((current) => [...current, String(id)]);
+        // Reflect the change immediately; restore the previous value if the API fails.
+        updateQuantityAction(id, newQuantity - item.quantity, variantId);
         updateServerCartItem.mutate(
           {
             cartItemId: String(id),
@@ -109,10 +110,12 @@ export function useCart() {
           },
           {
             onSuccess: () => {
-              setIsLoading(false);
+              setUpdatingItems((current) => current.filter((itemId) => itemId !== String(id)));
             },
             onError: (error) => {
-              setIsLoading(false);
+              updateQuantityAction(id, item.quantity - newQuantity, variantId);
+              setUpdatingItems((current) => current.filter((itemId) => itemId !== String(id)));
+              setError("Could not update the cart. Please try again.");
               console.error("Failed to update cart item:", error);
             },
           }
@@ -122,7 +125,7 @@ export function useCart() {
         updateQuantityAction(id, delta, variantId);
       }
     },
-    [user, cartItems, updateServerCartItem, updateQuantityAction, removeFromCart]
+    [user, cartItems, updateServerCartItem, updateQuantityAction, updatingItems]
   );
 
   const clearCart = useCallback(() => {
@@ -151,6 +154,8 @@ export function useCart() {
     updateQuantity,
     clearCart,
     isLoading,
+    isUpdating: (id: string | number) => updatingItems.includes(String(id)),
+    error,
     isAuthenticated: !!user,
   };
 }

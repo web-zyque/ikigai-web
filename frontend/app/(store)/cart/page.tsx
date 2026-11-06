@@ -8,12 +8,12 @@ import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
 
 export default function CartPage() {
-  const { cartItems, updateQuantity, removeFromCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, isUpdating, error } = useCart();
   const { data: user } = useMe();
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const discount = subtotal > 0 ? 0 : 0; 
-  const deliveryFee = subtotal > 0 ? 15.00 : 0;
+  const deliveryFee = subtotal > 0 ? (subtotal > 2000 ? 0 : 15.00) : 0;
   const total = subtotal - discount + deliveryFee;
 
   return (
@@ -49,8 +49,9 @@ export default function CartPage() {
               </div>
             ) : (
               <div className="space-y-4">
+                {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
                 {cartItems.map((item) => (
-                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                  <div key={`${item.id}-${item.variantId ?? "default"}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-b border-white/10 pb-4 last:border-0 last:pb-0">
                     <div className="col-span-1 md:col-span-6 flex gap-4 items-center">
                       <div className="w-20 h-20 bg-[#0a0a0a] rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center p-2">
                         <Image src={item.image} alt={item.name} fill className="object-contain p-2 mix-blend-screen" />
@@ -64,16 +65,16 @@ export default function CartPage() {
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-center items-center">
                       <span className="md:hidden text-white/50 text-xs">Quantity:</span>
                       <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-2 py-1 text-sm">
-                        <button onClick={() => updateQuantity(item.id, -1)} className="text-white/50 hover:text-white p-1"><Minus className="w-3 h-3" /></button>
+                        <button type="button" onClick={() => updateQuantity(item.id, -1, item.variantId)} disabled={item.quantity <= 1 || isUpdating(item.id)} aria-label="Decrease quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Minus className="w-3 h-3" /></button>
                         <span className="text-white font-medium w-5 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} className="text-white/50 hover:text-white p-1"><Plus className="w-3 h-3" /></button>
+                        <button type="button" onClick={() => updateQuantity(item.id, 1, item.variantId)} disabled={isUpdating(item.id)} aria-label="Increase quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Plus className="w-3 h-3" /></button>
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-end items-center gap-4">
                       <span className="md:hidden text-white/50 text-xs">Price:</span>
                       <span className="text-[#640C0C] font-bold text-base">${(item.price * item.quantity).toFixed(2)}</span>
-                      <button onClick={() => removeFromCart(item.id)} className="text-white/50 hover:text-[#640C0C] transition-colors">
+                      <button onClick={() => removeFromCart(item.id, item.variantId)} className="text-white/50 hover:text-[#640C0C] transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

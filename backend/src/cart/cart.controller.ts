@@ -9,7 +9,6 @@ import {
   Request,
   UnauthorizedException,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
@@ -35,10 +34,9 @@ export class CartController {
   }
 
   @Post('items')
-  @UsePipes(new ZodValidationPipe(AddToCartSchema))
   async addToCart(
     @Request() req: AuthenticatedRequest,
-    @Body() dto: AddToCartDto,
+    @Body(new ZodValidationPipe(AddToCartSchema)) dto: AddToCartDto,
   ) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
@@ -46,11 +44,10 @@ export class CartController {
   }
 
   @Patch('items/:id')
-  @UsePipes(new ZodValidationPipe(UpdateCartItemSchema))
   async updateCartItem(
     @Request() req: AuthenticatedRequest,
     @Param('id') cartItemId: string,
-    @Body() dto: UpdateCartItemDto,
+    @Body(new ZodValidationPipe(UpdateCartItemSchema)) dto: UpdateCartItemDto,
   ) {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();

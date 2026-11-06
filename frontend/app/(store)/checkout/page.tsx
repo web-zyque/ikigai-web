@@ -23,7 +23,7 @@ import {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, clearCart, isUpdating, error } = useCart();
   const { data: user } = useMe();
 
   const [mounted, setMounted] = useState(false);
@@ -226,9 +226,10 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-white/10">
+                  {error && <p role="alert" className="py-3 text-sm text-red-400">{error}</p>}
                   {cartItems.map((item) => (
                     <div
-                      key={item.id}
+                      key={`${item.id}-${item.variantId ?? "default"}`}
                       className="py-3.5 md:py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-2 sm:gap-4 md:gap-6"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 md:flex-none md:w-[46%]">
@@ -263,8 +264,9 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1.5">
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.id, -1)}
-                            className="text-white/50 hover:text-white p-0.5 md:p-1 cursor-pointer"
+                            onClick={() => updateQuantity(item.id, -1, item.variantId)}
+                            disabled={item.quantity <= 1 || isUpdating(item.id)}
+                            className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Decrease quantity"
                           >
                             <Minus className="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -274,8 +276,9 @@ export default function CheckoutPage() {
                           </span>
                           <button
                             type="button"
-                            onClick={() => updateQuantity(item.id, 1)}
-                            className="text-white/50 hover:text-white p-0.5 md:p-1 cursor-pointer"
+                            onClick={() => updateQuantity(item.id, 1, item.variantId)}
+                            disabled={isUpdating(item.id)}
+                            className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5 md:p-1 cursor-pointer"
                             aria-label="Increase quantity"
                           >
                             <Plus className="w-3 h-3 md:w-3.5 md:h-3.5" />
@@ -292,7 +295,7 @@ export default function CheckoutPage() {
 
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.id, item.variantId)}
                           className="text-white/40 hover:text-[#640C0C] transition-colors p-1 md:p-1.5 cursor-pointer shrink-0"
                           aria-label="Remove item"
                         >
