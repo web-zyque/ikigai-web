@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, asc, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm';
-import { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import { categories, productImages, products, productVariants } from '../db/schema';
@@ -23,7 +23,7 @@ import type {
 @Injectable()
 export class ProductsService {
   constructor(
-    @Inject(DB) private db: NeonHttpDatabase<typeof schema>,
+    @Inject(DB) private db: NeonDatabase<typeof schema>,
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<ProductResponse> {

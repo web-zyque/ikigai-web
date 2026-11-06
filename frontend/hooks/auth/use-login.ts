@@ -5,6 +5,8 @@ import type { ApiError } from '@/api/axios';
 import type { LoginPayload, OkResponse } from '@/types/auth.types';
 import { authKeys } from './auth.keys';
 import { setAuthSession } from '@/lib/auth-storage';
+import { useCartStore } from '@/stores/cart-store';
+import { synchronizeAuthenticatedCart } from '@/services/cart-sync.service';
 
 export function useLogin() {
   const qc = useQueryClient();
@@ -13,24 +15,30 @@ export function useLogin() {
   return useMutation<OkResponse, ApiError, LoginPayload>({
     mutationFn: authService.login,
     onSuccess: async () => {
+      // Persist an immutable guest snapshot before the authenticated cart can load.
+      useCartStore.getState().prepareGuestCartSync();
       setAuthSession();
+      let user;
       try {
-        const user = await authService.me();
-        // Immediately seed the cache so all components see the user at once
-        qc.setQueryData(authKeys.me(), user);
-
-        if (user.role === 'ADMIN') {
-          router.push('/admin');
-        } else if (user.role === 'STAFF') {
-          router.push('/admin');
-        } else {
-          router.push('/');
-        }
+        user = await authService.me();
+        useCartStore.getState().beginAuthenticatedCartSession();
+        await synchronizeAuthenticatedCart(user.id, qc);
       } catch (error) {
-
-        console.error('Failed to fetch user after login:', error);
-        router.push('/');
+        console.error('Failed to finish login cart synchronization:', error);
+        try {
+          user ??= await authService.me();
+          useCartStore.getState().beginAuthenticatedCartSession();
+        } catch {
+          router.push('/');
+          return;
+        }
       }
+
+      // Populate the user cache after the merge so CartInitializer cannot replace
+      // the guest snapshot with the pre-merge server cart.
+      qc.setQueryData(authKeys.me(), user);
+      if (user.role === 'ADMIN' || user.role === 'STAFF') router.push('/admin');
+      else router.push('/');
     },
     onError: (error) => {
 

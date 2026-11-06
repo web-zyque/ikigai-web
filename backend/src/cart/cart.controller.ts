@@ -13,8 +13,16 @@ import {
 import type { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import type { AddToCartDto, UpdateCartItemDto } from './dto/cart.dto';
-import { AddToCartSchema, UpdateCartItemSchema } from './dto/cart.dto';
+import type {
+  AddToCartDto,
+  MergeGuestCartDto,
+  UpdateCartItemDto,
+} from './dto/cart.dto';
+import {
+  AddToCartSchema,
+  MergeGuestCartSchema,
+  UpdateCartItemSchema,
+} from './dto/cart.dto';
 import { CartService } from './cart.service';
 
 interface AuthenticatedRequest extends ExpressRequest {
@@ -31,6 +39,16 @@ export class CartController {
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
     return this.cartService.getCart(userId);
+  }
+
+  @Post('merge')
+  async mergeGuestCart(
+    @Request() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(MergeGuestCartSchema)) dto: MergeGuestCartDto,
+  ) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    return this.cartService.mergeGuestCart(userId, dto);
   }
 
   @Post('items')
