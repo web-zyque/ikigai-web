@@ -49,35 +49,39 @@ export function useCart() {
   const [error, setError] = useState<string | null>(null);
   const removingItemsRef = useRef(new Set<string>());
 
-  const addToCart = useCallback(
-    (product: AddToCartProduct, quantity: number = 1) => {
-      if (pendingGuestCart) return;
+  const addToCartAndWait = useCallback(
+    async (product: AddToCartProduct, quantity: number = 1): Promise<boolean> => {
+      if (pendingGuestCart) return false;
       if (user) {
-        // Authenticated: use server cart
         setIsLoading(true);
-        addToServerCart.mutate(
-          {
+        try {
+          await addToServerCart.mutateAsync({
             productId: String(product.id),
             variantId: product.variantId,
             quantity,
-          },
-          {
-            onSuccess: () => {
-              setIsLoading(false);
-            },
-            onError: (error) => {
-              setIsLoading(false);
-              console.error("Failed to add to cart:", error);
-            },
-          }
-        );
+          });
+          return true;
+        } catch (error) {
+          console.error("Failed to add to cart:", error);
+          setError("Could not add the item to your cart. Please try again.");
+          return false;
+        } finally {
+          setIsLoading(false);
+        }
       } else {
-        // Guest: use local cart
         markAsGuestCart();
         addToCartAction(product, quantity);
+        return true;
       }
     },
     [user, addToServerCart, addToCartAction, markAsGuestCart, pendingGuestCart]
+  );
+
+  const addToCart = useCallback(
+    (product: AddToCartProduct, quantity: number = 1) => {
+      void addToCartAndWait(product, quantity);
+    },
+    [addToCartAndWait],
   );
 
   const removeFromCart = useCallback(
@@ -243,6 +247,7 @@ export function useCart() {
   return {
     cartItems,
     addToCart,
+    addToCartAndWait,
     removeFromCart,
     updateQuantity,
     clearCart,
