@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import type { ApiError } from '@/api/axios';
@@ -15,33 +15,37 @@ export function useLogin() {
   return useMutation<OkResponse, ApiError, LoginPayload>({
     mutationFn: authService.login,
     onSuccess: async () => {
-      // Persist an immutable guest snapshot before the authenticated cart can load.
-      useCartStore.getState().prepareGuestCartSync();
       setAuthSession();
+
       let user;
       try {
         user = await authService.me();
-        useCartStore.getState().beginAuthenticatedCartSession();
+      } catch {
+        router.push('/');
+        return;
+      }
+
+      qc.setQueryData(authKeys.me(), user);
+
+      // Admins and staff have no cart — skip cart sync entirely
+      if (user.role === 'ADMIN' || user.role === 'STAFF') {
+        router.push('/admin');
+        return;
+      }
+
+      // Customer flow: sync guest cart then navigate
+      useCartStore.getState().prepareGuestCartSync();
+      useCartStore.getState().beginAuthenticatedCartSession();
+
+      try {
         await synchronizeAuthenticatedCart(user.id, qc);
       } catch (error) {
         console.error('Failed to finish login cart synchronization:', error);
-        try {
-          user ??= await authService.me();
-          useCartStore.getState().beginAuthenticatedCartSession();
-        } catch {
-          router.push('/');
-          return;
-        }
       }
 
-      // Populate the user cache after the merge so CartInitializer cannot replace
-      // the guest snapshot with the pre-merge server cart.
-      qc.setQueryData(authKeys.me(), user);
-      if (user.role === 'ADMIN' || user.role === 'STAFF') router.push('/admin');
-      else router.push('/');
+      router.push('/');
     },
     onError: (error) => {
-
       console.error('Login failed:', error.message);
     },
   });

@@ -1,8 +1,9 @@
-import {
+﻿import {
   Body,
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Req,
   Res,
@@ -11,8 +12,8 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto } from './dto/auth.dto';
-import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema } from './dto/auth.dto';
+import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto, UpdateAdminProfileDto, ChangePasswordDto } from './dto/auth.dto';
+import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema, UpdateAdminProfileSchema, ChangePasswordSchema } from './dto/auth.dto';
 import { JwtAuthGuard } from './jwt/jwt-auth.guard';
 
 const COOKIE_NAME = 'token';
@@ -88,5 +89,27 @@ export class AuthController {
   async createAdmin(@Body() body: unknown) {
     const dto = CreateAdminSchema.parse(body);
     return this.auth.createAdmin(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  @HttpCode(200)
+  updateProfile(
+    @Req() req: Request & { user: { id: string; role: string } },
+    @Body() body: unknown,
+  ) {
+    const dto = UpdateAdminProfileSchema.parse(body);
+    return this.auth.updateAdminProfile(req.user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/password')
+  @HttpCode(200)
+  changePassword(
+    @Req() req: Request & { user: { id: string; role: string } },
+    @Body() body: unknown,
+  ) {
+    const dto = ChangePasswordSchema.parse(body);
+    return this.auth.changeAdminPassword(req.user.id, dto);
   }
 }

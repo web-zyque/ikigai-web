@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const normalizePhone = (value: string) => {
   const cleaned = value.replace(/[\s()-]/g, '');
@@ -50,3 +50,16 @@ export type SendOtpDto = z.infer<typeof SendOtpSchema>;
 export type SignupDto = z.infer<typeof SignupSchema>;
 export type LoginDto = z.infer<typeof LoginSchema>;
 export type CreateAdminDto = z.infer<typeof CreateAdminSchema>;
+
+export const UpdateAdminProfileSchema = z.object({
+  fullName: z.string().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+});
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(72),
+});
+
+export type UpdateAdminProfileDto = z.infer<typeof UpdateAdminProfileSchema>;
+export type ChangePasswordDto = z.infer<typeof ChangePasswordSchema>;

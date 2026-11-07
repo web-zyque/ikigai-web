@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
   Inject,
@@ -13,7 +13,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import { admins, otps, users } from '../db/schema';
-import type { CreateAdminDto, SignupDto } from './dto/auth.dto';
+import type { CreateAdminDto, SignupDto, UpdateAdminProfileDto, ChangePasswordDto } from './dto/auth.dto';
 
 const normalizePhone = (value: string) => {
   const cleaned = value.replace(/[\s()-]/g, '');
@@ -247,6 +247,53 @@ export class AuthService {
     }
   }
 
+
+  async updateAdminProfile(userId: string, dto: UpdateAdminProfileDto) {
+    const updates: Partial<typeof admins.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    if (dto.fullName !== undefined) updates.fullName = dto.fullName.trim();
+    if (dto.email !== undefined) updates.email = dto.email.toLowerCase();
+
+    const [updated] = await this.db
+      .update(admins)
+      .set(updates)
+      .where(eq(admins.id, userId))
+      .returning({
+        id: admins.id,
+        adminId: admins.adminId,
+        fullName: admins.fullName,
+        email: admins.email,
+        role: admins.role,
+        isActive: admins.isActive,
+        createdAt: admins.createdAt,
+      });
+
+    if (!updated) throw new UnauthorizedException();
+    return { ...updated, role: updated.role };
+  }
+
+  async changeAdminPassword(userId: string, dto: ChangePasswordDto) {
+    const [admin] = await this.db
+      .select({ passwordHash: admins.passwordHash })
+      .from(admins)
+      .where(eq(admins.id, userId));
+
+    if (!admin) throw new UnauthorizedException();
+
+    const valid = await argon2.verify(admin.passwordHash, dto.currentPassword);
+    if (!valid) throw new BadRequestException('Current password is incorrect');
+
+    await this.db
+      .update(admins)
+      .set({
+        passwordHash: await argon2.hash(dto.newPassword),
+        updatedAt: new Date(),
+      })
+      .where(eq(admins.id, userId));
+
+    return { ok: true };
+  }
   private signToken(userId: string, role: 'CUSTOMER' | 'ADMIN' | 'STAFF' = 'CUSTOMER') {
     return this.jwt.sign({ sub: userId, role });
   }
