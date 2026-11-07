@@ -1,4 +1,4 @@
-
+﻿
 import api from "@/api/axios";
 import type {
   LoginPayload,
@@ -9,6 +9,16 @@ import type {
   VerifyOtpPayload,
   CreateAdminPayload,
 } from "@/types/auth.types";
+
+export interface UpdateAdminProfilePayload {
+  fullName?: string;
+  email?: string;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
 
 export const sendOtp = (payload: SendOtpPayload) =>
   api.post<OkResponse>("/auth/otp/send", payload).then((r) => r.data);
@@ -31,6 +41,12 @@ export const me = () =>
 export const createAdmin = (payload: CreateAdminPayload) =>
   api.post<User>("/auth/admin", payload).then((r) => r.data);
 
+export const updateAdminProfile = (payload: UpdateAdminProfilePayload) =>
+  api.patch<User>("/auth/me", payload).then((r) => r.data);
+
+export const changeAdminPassword = (payload: ChangePasswordPayload) =>
+  api.patch<{ ok: true }>("/auth/me/password", payload).then((r) => r.data);
+
 export const authService = {
   sendOtp,
   verifyOtp,
@@ -39,4 +55,6 @@ export const authService = {
   logout,
   me,
   createAdmin,
+  updateAdminProfile,
+  changeAdminPassword,
 };

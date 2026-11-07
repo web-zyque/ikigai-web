@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cartService, type CartResponse, type AddToCartPayload, type UpdateCartItemPayload } from "@/services/cart.service";
@@ -12,7 +12,9 @@ export interface UseServerCartOptions {
 
 export function useServerCart(options?: UseServerCartOptions) {
   const { data: user } = useMe();
-  const enabled = options?.enabled ?? (typeof window !== "undefined");
+  // Admins and staff have no cart — never fetch for them
+  const isAdminRole = user?.role === "ADMIN" || user?.role === "STAFF";
+  const enabled = !isAdminRole && (options?.enabled ?? (typeof window !== "undefined"));
 
   return useQuery({
     queryKey: cartKeys.user(user?.id ?? "anonymous"),
