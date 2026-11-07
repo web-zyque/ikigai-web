@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -51,7 +51,7 @@ const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 const DEFAULT_PROFILE: AdminProfile = {
   name: "Admin User",
-  role: "Parts & Fitment Mgr",
+  role: "Administrator",
   initials: "AU",
 };
 
@@ -221,9 +221,14 @@ export default function AdminSidebar({
           </div>
 
           {/* Admin Profile */}
-          <div className="border-t border-white/5 p-3.5 flex items-center">
+          <Link
+            href="/admin/profile"
+            onClick={onCloseMobile}
+            aria-label="Go to profile page"
+            className="border-t border-white/5 p-3.5 flex items-center transition-colors hover:bg-white/[0.04] group"
+          >
             <div className="w-11 h-11 shrink-0 flex items-center justify-center">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-xs font-bold text-white shadow-md">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#640C0C] border border-white/20 text-xs font-bold text-white shadow-md group-hover:border-white/40 transition-colors">
                 {profile.initials}
               </div>
             </div>
@@ -238,7 +243,7 @@ export default function AdminSidebar({
                 {profile.role}
               </span>
             </div>
-          </div>
+          </Link>
         </div>
       </aside>
     </>

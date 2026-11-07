@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, createContext, useContext, useEffect } from "react";
+import { useMe } from "@/hooks/auth";
 import AdminSidebar from "@/components/admin/sidebar/Sidebar";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
 
@@ -36,6 +37,20 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: user } = useMe();
+
+  const profile = user
+    ? {
+        name: user.fullName,
+        role: user.role === "STAFF" ? "Staff" : "Administrator",
+        initials: user.fullName
+          .split(" ")
+          .slice(0, 2)
+          .map((w: string) => w[0])
+          .join("")
+          .toUpperCase(),
+      }
+    : undefined;
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -70,6 +85,7 @@ export default function AdminLayout({
             onCloseMobile={() => setMobileOpen(false)}
             isCollapsed={isCollapsed}
             onToggleCollapse={toggleCollapse}
+            profile={profile}
           />
           <div className="flex flex-1 flex-col w-full min-w-0 overflow-x-hidden transition-all duration-300">
             {children}

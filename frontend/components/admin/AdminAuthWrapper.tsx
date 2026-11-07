@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useMe } from "@/hooks/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { hasAuthSession } from "@/lib/auth-storage";
 
 interface AdminAuthWrapperProps {
   children: React.ReactNode;
@@ -11,9 +12,9 @@ interface AdminAuthWrapperProps {
 export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   const { data: user, isLoading, error } = useMe();
   const router = useRouter();
+  const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
 
-  // Prevent hydration mismatch by only rendering after client-side mount
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -21,26 +22,30 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
   useEffect(() => {
     if (!isLoading && isMounted) {
       if (error || !user) {
-        // Not authenticated, redirect to login
-        router.push('/login');
+        // Preserve the intended destination so login can bounce back
+        const loginUrl = `/login?redirect=${encodeURIComponent(pathname ?? "/admin")}`;
+        router.push(loginUrl);
         return;
       }
-      
-      if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
-        // Not an admin or staff, redirect to customer area
-        router.push('/');
+      if (user.role !== "ADMIN" && user.role !== "STAFF") {
+        router.push("/");
         return;
       }
     }
-  }, [user, isLoading, error, router, isMounted]);
+  }, [user, isLoading, error, router, isMounted, pathname]);
 
-  // Show nothing during SSR to prevent hydration mismatch
+  // SSR: return null to avoid hydration mismatch
   if (!isMounted) {
     return null;
   }
 
-  // Show loading while checking authentication
+  // Still fetching — but if there is a local session marker, optimistically
+  // render children to avoid the full-screen spinner on every navigation
   if (isLoading) {
+    const hasLocalSession = hasAuthSession();
+    if (hasLocalSession) {
+      return <>{children}</>;
+    }
     return (
       <div className="flex items-center justify-center min-h-screen bg-black text-white">
         <div className="flex flex-col items-center gap-4">
@@ -51,8 +56,8 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
     );
   }
 
-  // Show loading while redirecting for unauthorized users
-  if (error || !user || (user.role !== 'ADMIN' && user.role !== 'STAFF')) {
+  // Not authenticated or wrong role — show spinner while redirect fires
+  if (error || !user || (user.role !== "ADMIN" && user.role !== "STAFF")) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black text-white">
         <div className="flex flex-col items-center gap-4">
@@ -63,6 +68,5 @@ export default function AdminAuthWrapper({ children }: AdminAuthWrapperProps) {
     );
   }
 
-  // User is authenticated and is an admin or staff
   return <>{children}</>;
 }
