@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Menu, Loader2 } from "lucide-react";
 import { useMobileMenu } from "@/contexts/admin-layout-context";
 import {
@@ -10,6 +10,9 @@ import {
   useAdminOrders,
 } from "@/hooks/use-orders";
 import type { OrderStatusValue } from "@/services/orders.service";
+import type { OrderRecord } from "@/services/orders.service";
+import RejectOrderModal from "@/components/admin/orders/RejectOrderModal";
+import { useToastStore } from "@/stores/toast-store";
 
 const nextStatus: Partial<Record<OrderStatusValue, OrderStatusValue>> = {
   CONFIRMED: "PROCESSING",
@@ -22,6 +25,9 @@ export default function OrderDashboardPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
+  const [orderToReject, setOrderToReject] = useState<OrderRecord | null>(null);
+  const [rejectError, setRejectError] = useState("");
+  const addToast = useToastStore(state => state.addToast);
 
   const query = useAdminOrders({
     search: search || undefined,
@@ -47,6 +53,31 @@ export default function OrderDashboardPage() {
   };
 
   const orders = query.data?.orders ?? [];
+  const closeRejectModal = useCallback(() => {
+    if (action.isPending) return;
+    setOrderToReject(null);
+    setRejectError("");
+  }, [action.isPending]);
+
+  const handleRejectOrder = async (reason: string) => {
+    if (!orderToReject || action.isPending) return;
+    setRejectError("");
+    try {
+      await action.mutateAsync({
+        type: "reject",
+        id: orderToReject.id,
+        reason: reason.trim(),
+      });
+      setOrderToReject(null);
+      addToast(`Order ${orderToReject.orderNumber} rejected.`, "success");
+    } catch (rejectRequestError) {
+      setRejectError(
+        rejectRequestError instanceof Error
+          ? rejectRequestError.message
+          : "Could not reject this order. Please try again."
+      );
+    }
+  };
 
   return (
     <main className="flex-1 space-y-5 px-4 py-6 lg:px-8">
@@ -166,17 +197,8 @@ export default function OrderDashboardPage() {
                       <button
                         disabled={action.isPending}
                         onClick={() => {
-                          const reason = window.prompt(
-                            "Reason for rejecting this order:"
-                          );
-                          if (reason?.trim())
-                            void run(() =>
-                              action.mutateAsync({
-                                type: "reject",
-                                id: order.id,
-                                reason: reason.trim(),
-                              })
-                            );
+                          setRejectError("");
+                          setOrderToReject(order);
                         }}
                         className="rounded-full bg-red-900 px-3 py-2 text-xs"
                       >
@@ -296,6 +318,23 @@ export default function OrderDashboardPage() {
           </div>
         )}
       </section>
+
+      {orderToReject && (
+        <RejectOrderModal
+          key={orderToReject.id}
+          order={{
+            id: orderToReject.id,
+            orderNumber: orderToReject.orderNumber,
+            customerName:
+              orderToReject.customer?.name ??
+              orderToReject.shippingAddress.fullName,
+          }}
+          isSubmitting={action.isPending}
+          errorMessage={rejectError}
+          onClose={closeRejectModal}
+          onSubmit={reason => void handleRejectOrder(reason)}
+        />
+      )}
     </main>
   );
 }
