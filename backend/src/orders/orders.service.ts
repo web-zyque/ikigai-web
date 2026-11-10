@@ -64,6 +64,7 @@ export class OrdersService {
   constructor(@Inject(DB) private readonly db: NeonDatabase<typeof schema>) {}
 
   async create(userId: string, dto: CreateOrderDto) {
+    const isOnline = dto.paymentMethod === 'ONLINE';
     return this.db.transaction(async (tx) => {
       const [prior] = await tx
         .select({ id: orders.id })
@@ -73,7 +74,7 @@ export class OrdersService {
       if (prior) return this.loadOrder(tx, prior.id);
 
       let cart: typeof carts.$inferSelect | undefined;
-      let lines: Array<{ productId: string; variantId: string | null; quantity: number }>;
+      let lines: Array<{ id?: string; productId: string; variantId: string | null; quantity: number }>;
       if (dto.buyNowItem) {
         cart = undefined;
         lines = [{
@@ -109,6 +110,7 @@ export class OrdersService {
       let subtotalCents = 0n;
       const itemSnapshots: Array<{
         productId: string;
+        cartItemId: string | null;
         variantId: string | null;
         productName: string;
         sku: string;
@@ -131,8 +133,8 @@ export class OrdersService {
         if (!product || product.publicationStatus !== 'active') {
           throw new BadRequestException('A product in your cart is no longer available');
         }
-        if (!product.acceptCod) {
-          throw new BadRequestException(`Cash on Delivery is not available for ${product.name}`);
+        if (isOnline ? !product.acceptUpi : !product.acceptCod) {
+          throw new BadRequestException(`${isOnline ? 'UPI' : 'Cash on Delivery'} is not available for ${product.name}`);
         }
 
         let selectedVariant: { id: string; colorName: string; sku: string | null } | null = null;
@@ -164,6 +166,7 @@ export class OrdersService {
         subtotalCents += lineCents;
         itemSnapshots.push({
           productId: product.id,
+          cartItemId: line.id ?? null,
           variantId: line.variantId,
           productName: product.name,
           sku: selectedVariant?.sku ?? product.sku,
@@ -197,9 +200,10 @@ export class OrdersService {
           totalAmount: money(totalCents),
           couponCode,
           shippingAddress: getAddressSnapshot(address),
-          paymentMethod: 'COD',
+          paymentMethod: isOnline ? 'ONLINE' : 'COD',
           paymentStatus: 'PENDING',
-          orderStatus: 'PENDING',
+          orderStatus: isOnline ? 'AWAITING_PAYMENT' : 'PENDING',
+          isBuyNow: Boolean(dto.buyNowItem),
         })
         .returning();
 
@@ -207,12 +211,12 @@ export class OrdersService {
       await tx.insert(orderStatusHistory).values({
         orderId: order.id,
         previousStatus: null,
-        newStatus: 'PENDING',
+        newStatus: isOnline ? 'AWAITING_PAYMENT' : 'PENDING',
         changedBy: userId,
         changedByRole: 'CUSTOMER',
-        note: 'COD order placed',
+        note: isOnline ? 'UPI order awaiting payment' : 'COD order placed',
       });
-      if (cart) {
+      if (cart && !isOnline) {
         await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id));
         await tx.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cart.id));
       }
@@ -248,7 +252,7 @@ export class OrdersService {
         .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
         .for('update');
       if (!order) throw new NotFoundException('Order not found');
-      if (!['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus)) {
+      if (!['AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus)) {
         throw new BadRequestException('Cancellation is not available for this order status');
       }
       const [active] = await tx
@@ -330,6 +334,9 @@ export class OrdersService {
     return this.db.transaction(async (tx) => {
       const order = await this.lockOrder(tx, orderId);
       if (order.orderStatus !== 'PENDING') throw new ConflictException('Only pending orders can be confirmed');
+      if (order.paymentMethod === 'ONLINE' && order.paymentStatus !== 'PAID') {
+        throw new ConflictException('Online orders must be paid before confirmation');
+      }
       if (order.stockDeducted) throw new ConflictException('Inventory has already been deducted for this order');
       const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
       for (const item of items) {
@@ -411,7 +418,7 @@ export class OrdersService {
       if (request.status !== 'PENDING') throw new ConflictException('Cancellation request has already been reviewed');
       const order = await this.lockOrder(tx, request.orderId);
       if (dto.decision === 'APPROVED') {
-        if (!['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus)) {
+        if (!['AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.orderStatus)) {
           throw new ConflictException('This order can no longer be cancelled');
         }
         if (order.stockDeducted) {

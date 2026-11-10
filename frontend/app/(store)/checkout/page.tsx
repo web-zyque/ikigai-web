@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import Script from "next/script";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ import {
 } from "@/lib/address-storage";
 import { useToastStore } from "@/stores/toast-store";
 import { useCreateOrder } from "@/hooks/use-orders";
+import { getCashfreeCheckout, paymentsService } from "@/services/payments.service";
 
 const SELECTED_ADDRESS_SESSION_KEY = "ikigai-selected-shipping-address";
 
@@ -105,6 +107,7 @@ export default function CheckoutPage() {
   const addToast = useToastStore((state) => state.addToast);
   const createOrder = useCreateOrder();
   const idempotencyKey = useRef("");
+  const idempotencyScope = useRef("");
 
   const [mounted, setMounted] = useState(false);
   const [isBuyNowCheckout, setIsBuyNowCheckout] = useState(false);
@@ -115,7 +118,7 @@ export default function CheckoutPage() {
   const [paymentFlags, setPaymentFlags] = useState<Record<string, { acceptCod: boolean; acceptUpi: boolean }>>({});
   const [isPaymentFlagsLoading, setIsPaymentFlagsLoading] = useState(false);
   const [paymentFlagsError, setPaymentFlagsError] = useState("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"COD" | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"COD" | "UPI" | null>(null);
   const [guestAddresses, setGuestAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -233,7 +236,7 @@ export default function CheckoutPage() {
   const commonUpi = paymentFlagsReady && checkoutProductIds.every((id) => paymentFlags[id]?.acceptUpi);
   const hasCommonPaymentMethod = commonCod || commonUpi;
   useEffect(() => {
-    setSelectedPaymentMethod(commonCod ? "COD" : null);
+    setSelectedPaymentMethod(commonCod ? "COD" : commonUpi ? "UPI" : null);
   }, [commonCod, checkoutProductKey]);
   const subtotal = checkoutItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -395,15 +398,12 @@ export default function CheckoutPage() {
       if (!user) router.push("/login?redirect=/checkout");
       return;
     }
-    if (!paymentFlagsReady || !hasCommonPaymentMethod || !commonCod || selectedPaymentMethod !== "COD") {
-      setOrderError(commonUpi && !commonCod
-        ? "UPI is marked Coming Soon and cannot be used yet. Please contact us for help placing this order."
-        : "These items do not share an available payment method.");
+    if (!paymentFlagsReady || !hasCommonPaymentMethod || (selectedPaymentMethod === "COD" && !commonCod) || (selectedPaymentMethod === "UPI" && !commonUpi) || !selectedPaymentMethod) {
+      setOrderError("These items do not share the selected payment method.");
       return;
     }
     if (!selectedAddress) { setOrderError("Please select a saved shipping address."); return; }
     setOrderError("");
-    if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
     if (isBuyNowCheckout && buyNowSelection) {
       const currentSelection = {
         ...buyNowSelection,
@@ -428,9 +428,19 @@ export default function CheckoutPage() {
     }
     setIsSubmitting(true);
     try {
+      const currentScope = JSON.stringify({
+        paymentMethod: selectedPaymentMethod,
+        addressId: selectedAddress.id,
+        couponCode: appliedCoupon,
+        items: checkoutItems.map((item) => [item.id, item.variantId ?? null, isBuyNowCheckout ? buyNowItem?.quantity ?? item.quantity : item.quantity]),
+      });
+      if (idempotencyScope.current !== currentScope) {
+        idempotencyScope.current = currentScope;
+        idempotencyKey.current = crypto.randomUUID();
+      }
       const result = await createOrder.mutateAsync({
         addressId: selectedAddress.id,
-        paymentMethod: "COD",
+        paymentMethod: selectedPaymentMethod === "UPI" ? "ONLINE" : "COD",
         ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         idempotencyKey: idempotencyKey.current,
         ...(isBuyNowCheckout && buyNowSelection ? { buyNowItem: {
@@ -439,6 +449,14 @@ export default function CheckoutPage() {
           quantity: buyNowItem?.quantity ?? buyNowSelection.quantity,
         } } : {}),
       });
+      if (selectedPaymentMethod === "UPI") {
+        const session = await paymentsService.create(result.id, crypto.randomUUID());
+        const Cashfree = await getCashfreeCheckout();
+        const cashfree = Cashfree({ mode: session.environment });
+        await cashfree.checkout({ paymentSessionId: session.paymentSessionId, redirectTarget: "_self" });
+        router.replace(`/checkout/payment-return?ikigai_order_id=${encodeURIComponent(result.id)}`);
+        return;
+      }
       clearBuyNowSelection();
       router.push(`/order-confirmation/${result.id}`);
     } catch (submitError) {
@@ -565,7 +583,7 @@ export default function CheckoutPage() {
                             {item.name}
                           </h3>
                           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-white/50 truncate mt-0.5">
-                            <span>${item.price.toFixed(2)}</span>
+                            <span>₹{item.price.toFixed(2)}</span>
                             {item.color && <span>• {item.color}</span>}
                           </div>
                         </div>
@@ -600,7 +618,7 @@ export default function CheckoutPage() {
                       <div className="shrink-0 flex items-center gap-2.5 sm:gap-3.5 md:gap-5 justify-end">
                         <div className="text-right min-w-[55px] sm:min-w-[70px] md:min-w-[90px]">
                           <span className="text-[#640C0C] font-bold text-xs sm:text-sm md:text-lg lg:text-xl block">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            ₹{(item.price * item.quantity).toFixed(2)}
                           </span>
                         </div>
 
@@ -697,8 +715,7 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     {commonCod && <button type="button" onClick={() => setSelectedPaymentMethod("COD")} aria-pressed={selectedPaymentMethod === "COD"} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaymentMethod === "COD" ? "border-[#992222] bg-[#640C0C]/15" : "border-white/10 bg-white/[0.03]"}`}><span className="block text-sm font-medium text-white">Cash on Delivery</span><span className="mt-1 block text-xs text-white/45">Pay when your order is delivered.</span></button>}
-                    {commonUpi && <div aria-disabled="true" className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3 opacity-60"><div><span className="block text-sm font-medium text-white">UPI</span><span className="mt-1 block text-xs text-white/45">Online UPI payments are not available yet.</span></div><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/55">Coming Soon</span></div>}
-                    {commonUpi && !commonCod && <p role="alert" className="text-xs text-amber-200">UPI is not available for payment yet. Choose products that accept Cash on Delivery or contact us for assistance.</p>}
+                    {commonUpi && <button type="button" onClick={() => setSelectedPaymentMethod("UPI")} aria-pressed={selectedPaymentMethod === "UPI"} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaymentMethod === "UPI" ? "border-[#992222] bg-[#640C0C]/15" : "border-white/10 bg-white/[0.03]"}`}><span className="block text-sm font-medium text-white">UPI Payment</span><span className="mt-1 block text-xs text-white/45">Pay securely with UPI through Cashfree.</span></button>}
                   </>
                 )}
               </div>
@@ -742,12 +759,12 @@ export default function CheckoutPage() {
               <div className="space-y-3 pt-2 text-xs">
                 <div className="flex justify-between text-white/70">
                   <span>Subtotal</span>
-                  <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
+                  <span className="text-white font-medium">₹{subtotal.toFixed(2)}</span>
                 </div>
                 {totalSavings > 0 && (
                   <div className="flex justify-between text-emerald-400">
                     <span className="font-medium">Saved Amount</span>
-                    <span className="font-semibold">-${totalSavings.toFixed(2)}</span>
+                    <span className="font-semibold">−₹{totalSavings.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-white/70">
@@ -756,7 +773,7 @@ export default function CheckoutPage() {
                     {deliveryFee === 0 ? (
                       <span className="text-emerald-400">FREE</span>
                     ) : (
-                      `$${deliveryFee.toFixed(2)}`
+                      `₹${deliveryFee.toFixed(2)}`
                     )}
                   </span>
                 </div>
@@ -765,18 +782,18 @@ export default function CheckoutPage() {
               <div className="flex justify-between items-center pt-4 border-t border-white/10">
                 <span className="text-base font-bold text-white">Total Amount</span>
                 <span className="text-2xl font-bold text-[#640C0C]">
-                  ${total.toFixed(2)}
+                  ₹{total.toFixed(2)}
                 </span>
               </div>
 
               {orderError && <p role="alert" className="text-sm text-red-400">{orderError}</p>}
               {!user && <p className="text-xs text-white/50">Sign in to place an order. Your cart will remain saved.</p>}
               <Button
-                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || isPaymentFlagsLoading || paymentFlagsError || !hasCommonPaymentMethod || !commonCod || selectedPaymentMethod !== "COD" || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
+                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || isPaymentFlagsLoading || paymentFlagsError || !hasCommonPaymentMethod || !selectedPaymentMethod || (selectedPaymentMethod === "COD" && !commonCod) || (selectedPaymentMethod === "UPI" && !commonUpi) || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
                 onClick={handlePlaceOrder}
                 className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
               >
-                {isSubmitting ? "Processing Order..." : `Place COD Order • $${total.toFixed(2)}`}
+                {isSubmitting ? "Processing Order..." : `Place ${selectedPaymentMethod === "UPI" ? "UPI" : "COD"} Order • ₹${total.toFixed(2)}`}
               </Button>
             </div>
           </div>
@@ -1047,6 +1064,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="afterInteractive" />
       <ConfirmDialog
         isOpen={Boolean(pendingDeleteAddress)}
         onClose={() => {

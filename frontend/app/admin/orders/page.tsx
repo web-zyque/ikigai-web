@@ -13,6 +13,7 @@ import type { OrderStatusValue } from "@/services/orders.service";
 import type { OrderRecord } from "@/services/orders.service";
 import RejectOrderModal from "@/components/admin/orders/RejectOrderModal";
 import { useToastStore } from "@/stores/toast-store";
+import { paymentsService } from "@/services/payments.service";
 
 const nextStatus: Partial<Record<OrderStatusValue, OrderStatusValue>> = {
   CONFIRMED: "PROCESSING",
@@ -27,6 +28,9 @@ export default function OrderDashboardPage() {
   const [error, setError] = useState("");
   const [orderToReject, setOrderToReject] = useState<OrderRecord | null>(null);
   const [rejectError, setRejectError] = useState("");
+  const [expandedPaymentOrder, setExpandedPaymentOrder] = useState<string | null>(null);
+  const [paymentDetails, setPaymentDetails] = useState<Record<string, { attempts: Array<{ id: string; providerOrderId: string; providerPaymentId: string | null; amount: string; status: string; createdAt: string }>; transactions: Array<{ providerPaymentId: string; amount: string; status: string; paymentGroup: string | null; paidAt: string | null }>; refunds: Array<{ id: string; refundAmount: string; status: string; providerRefundId: string | null; createdAt: string }> }>>({});
+  const [paymentDetailsError, setPaymentDetailsError] = useState("");
   const addToast = useToastStore(state => state.addToast);
 
   const query = useAdminOrders({
@@ -167,9 +171,28 @@ export default function OrderDashboardPage() {
                       .join(", ")}
                   </p>
                   <p className="mt-1 text-sm text-white/50">
-                    COD · ₹{Number(order.totalAmount).toFixed(2)} ·{" "}
-                    {order.paymentStatus}
+                    {order.paymentMethod === "ONLINE" ? "UPI · Cashfree" : "COD"} · ₹{Number(order.totalAmount).toFixed(2)} · {order.paymentStatus}
                   </p>
+                  {order.paymentMethod === "ONLINE" && <button type="button" className="mt-2 text-xs text-red-300 underline" onClick={async () => {
+                    if (expandedPaymentOrder === order.id) { setExpandedPaymentOrder(null); return; }
+                    setExpandedPaymentOrder(order.id);
+                    setPaymentDetailsError("");
+                    if (!paymentDetails[order.id]) {
+                      try {
+                        const result = await paymentsService.adminHistory(order.id) as typeof paymentDetails[string];
+                        setPaymentDetails((current) => ({ ...current, [order.id]: result }));
+                      } catch (loadError) {
+                        setPaymentDetailsError(loadError instanceof Error ? loadError.message : "Could not load payment attempts.");
+                      }
+                    }
+                  }}>{expandedPaymentOrder === order.id ? "Hide payment history" : "Payment history"}</button>}
+                  {expandedPaymentOrder === order.id && <div className="mt-2 space-y-1 text-xs text-white/60">
+                    {paymentDetailsError && <p role="alert" className="text-red-300">{paymentDetailsError}</p>}
+                    {paymentDetails[order.id]?.attempts.map((attempt) => <p key={attempt.id}>Cashfree order {attempt.providerOrderId} · {attempt.status} · ₹{Number(attempt.amount).toFixed(2)} · {new Date(attempt.createdAt).toLocaleString()}{attempt.providerPaymentId ? ` · payment ${attempt.providerPaymentId}` : ""}</p>)}
+                    {paymentDetails[order.id]?.transactions.map((transaction) => <p key={transaction.providerPaymentId}>Transaction {transaction.providerPaymentId} · {transaction.paymentGroup ?? "Cashfree"} · {transaction.status} · ₹{Number(transaction.amount).toFixed(2)}{transaction.paidAt ? ` · ${new Date(transaction.paidAt).toLocaleString()}` : ""}</p>)}
+                    {paymentDetails[order.id]?.refunds.map((refund) => <div key={refund.id} className="flex flex-wrap items-center gap-2"><p>Refund · {refund.status} · ₹{Number(refund.refundAmount).toFixed(2)}{refund.providerRefundId ? ` · ${refund.providerRefundId}` : ""}</p>{refund.status === "FAILED" && <button type="button" className="underline text-red-300" onClick={() => void run(async () => { await paymentsService.retryRefund(refund.id); const latest = await paymentsService.adminHistory(order.id) as typeof paymentDetails[string]; setPaymentDetails((current) => ({ ...current, [order.id]: latest })); })}>Retry refund</button>}</div>)}
+                    {paymentDetails[order.id] && paymentDetails[order.id].attempts.length === 0 && <p>No Cashfree payment attempts.</p>}
+                  </div>}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

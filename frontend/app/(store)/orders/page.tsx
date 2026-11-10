@@ -55,7 +55,7 @@ export default function OrdersPage() {
 
                 <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
                   <span className="text-sm text-white/60">
-                    Cash on Delivery · {order.paymentStatus}
+                    {order.paymentMethod === "ONLINE" ? "UPI · Cashfree" : "Cash on Delivery"} · {order.paymentStatus}
                   </span>
                   <strong>
                     ₹{Number(order.totalAmount).toFixed(2)}

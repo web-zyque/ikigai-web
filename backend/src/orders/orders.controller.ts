@@ -29,6 +29,7 @@ import {
   type ReviewCancellationDto,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
+import { PaymentsService } from '../payments/payments.service';
 
 interface AuthenticatedRequest extends ExpressRequest {
   user?: { id: string; role?: string };
@@ -76,7 +77,7 @@ export class OrdersController {
 @Controller('admin/orders')
 @UseGuards(AdminGuard)
 export class AdminOrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService, private readonly paymentsService: PaymentsService) {}
 
   @Get('stats')
   stats() {
@@ -89,12 +90,16 @@ export class AdminOrdersController {
   }
 
   @Patch('cancellation-requests/:id')
-  reviewCancellation(
+  async reviewCancellation(
     @Request() req: AuthenticatedRequest,
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body(new ZodValidationPipe(ReviewCancellationSchema)) dto: ReviewCancellationDto,
   ) {
-    return this.ordersService.reviewCancellation(this.adminId(req), id, dto);
+    const result = await this.ordersService.reviewCancellation(this.adminId(req), id, dto);
+    const refund = dto.decision === 'APPROVED'
+      ? await this.paymentsService.processApprovedCancellation(id)
+      : null;
+    return { ...result, refund };
   }
 
   @Get()
@@ -113,12 +118,14 @@ export class AdminOrdersController {
   }
 
   @Patch(':id/reject')
-  reject(
+  async reject(
     @Request() req: AuthenticatedRequest,
     @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
     @Body(new ZodValidationPipe(AdminOrderRejectSchema)) dto: AdminOrderRejectDto,
   ) {
-    return this.ordersService.reject(id, this.adminId(req), dto);
+    const result = await this.ordersService.reject(id, this.adminId(req), dto);
+    const refund = await this.paymentsService.processAdminRejectedOrder(id, dto.reason);
+    return { ...result, refund };
   }
 
   @Patch(':id/status')
