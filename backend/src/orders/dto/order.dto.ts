@@ -31,10 +31,6 @@ export const AdminOrderStatusSchema = z.object({
   note: z.string().trim().max(1000).optional(),
 });
 
-export const AdminOrderRejectSchema = z.object({
-  reason: z.string().trim().min(1).max(1000),
-});
-
 export const ReviewCancellationSchema = z.object({
   decision: z.enum(['APPROVED', 'REJECTED']),
   adminNote: z.string().trim().max(1000).optional(),
@@ -44,5 +40,4 @@ export type CreateOrderDto = z.infer<typeof CreateOrderSchema>;
 export type CreateCancellationRequestDto = z.infer<typeof CreateCancellationRequestSchema>;
 export type AdminOrderListDto = z.infer<typeof AdminOrderListSchema>;
 export type AdminOrderStatusDto = z.infer<typeof AdminOrderStatusSchema>;
-export type AdminOrderRejectDto = z.infer<typeof AdminOrderRejectSchema>;
 export type ReviewCancellationDto = z.infer<typeof ReviewCancellationSchema>;

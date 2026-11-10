@@ -22,6 +22,7 @@ import {
   cartItems,
 } from '../db/schema';
 import { CashfreeService, type CashfreeOrder } from './cashfree.service';
+import { deductOrderInventory } from '../orders/order-inventory';
 
 type PaymentRow = {
   cf_payment_id: string | number;
@@ -275,24 +276,34 @@ export class PaymentsService {
   async processApprovedCancellation(requestId: string) {
     const [request] = await this.db.select().from(schema.orderCancellationRequests).where(eq(schema.orderCancellationRequests.id, requestId)).limit(1);
     if (!request || request.status !== 'APPROVED') return null;
-    const [order] = await this.db.select().from(orders).where(eq(orders.id, request.orderId)).limit(1);
-    if (!order || order.paymentMethod !== 'ONLINE' || order.paymentStatus !== 'PAID') return null;
-    const [attempt] = await this.db.select().from(paymentAttempts).where(and(eq(paymentAttempts.orderId, order.id), eq(paymentAttempts.status, 'SUCCESS'))).orderBy(asc(paymentAttempts.createdAt)).limit(1);
-    if (!attempt?.providerPaymentId) throw new ConflictException('The successful Cashfree transaction could not be found');
-    const [existing] = await this.db.select().from(paymentRefunds).where(and(eq(paymentRefunds.orderId, order.id), eq(paymentRefunds.paymentAttemptId, attempt.id))).limit(1);
-    if (existing && ['PENDING', 'PROCESSING', 'SUCCESS'].includes(existing.status)) return existing;
-    const refundId = `REF${randomUUID().replaceAll('-', '').slice(0, 28)}`;
-    const [refund] = await this.db.insert(paymentRefunds).values({
-      orderId: order.id,
-      paymentAttemptId: attempt.id,
-      merchantRefundId: refundId,
-      providerPaymentId: attempt.providerPaymentId,
-      refundAmount: order.totalAmount,
-      currency: 'INR',
-      status: 'PENDING',
-      idempotencyKey: randomUUID(),
-      reason: request.reason,
-    }).returning();
+    const prepared = await this.db.transaction(async (tx) => {
+      const [order] = await tx.select().from(orders).where(eq(orders.id, request.orderId)).for('update');
+      if (!order || order.paymentMethod !== 'ONLINE' || order.paymentStatus !== 'PAID') return null;
+      const [attempt] = await tx.select().from(paymentAttempts).where(and(eq(paymentAttempts.orderId, order.id), eq(paymentAttempts.status, 'SUCCESS'))).orderBy(asc(paymentAttempts.createdAt)).limit(1);
+      if (!attempt?.providerPaymentId) throw new ConflictException('The successful Cashfree transaction could not be found');
+      const [existing] = await tx.select().from(paymentRefunds).where(and(eq(paymentRefunds.orderId, order.id), eq(paymentRefunds.paymentAttemptId, attempt.id))).limit(1);
+      if (existing) return { order, attempt, refund: existing, shouldSubmit: existing.status === 'FAILED' };
+      const refundId = `REF${randomUUID().replaceAll('-', '').slice(0, 28)}`;
+      const [refund] = await tx.insert(paymentRefunds).values({
+        orderId: order.id,
+        paymentAttemptId: attempt.id,
+        merchantRefundId: refundId,
+        providerPaymentId: attempt.providerPaymentId,
+        refundAmount: order.totalAmount,
+        currency: 'INR',
+        status: 'PENDING',
+        idempotencyKey: randomUUID(),
+        reason: request.reason,
+      }).returning();
+      return { order, attempt, refund, shouldSubmit: true };
+    });
+    if (!prepared) return null;
+    const { order, attempt, refund, shouldSubmit } = prepared;
+    if (!shouldSubmit) return refund;
+    if (refund.status === 'FAILED') {
+      await this.db.update(paymentRefunds).set({ status: 'PROCESSING', failureReason: null, updatedAt: new Date() }).where(eq(paymentRefunds.id, refund.id));
+    }
+    const refundId = refund.merchantRefundId;
     try {
       const response = await this.cashfree.request<any>(`/orders/${encodeURIComponent(attempt.providerOrderId)}/refunds`, {
         method: 'POST',
@@ -312,58 +323,6 @@ export class PaymentsService {
       }).where(eq(paymentRefunds.id, refund.id));
       if (success) await this.markOrderRefunded(order.id);
       return { ...refund, status: success ? 'SUCCESS' : 'PROCESSING' };
-    } catch (error) {
-      await this.db.update(paymentRefunds).set({
-        status: 'FAILED',
-        failureReason: error instanceof Error ? error.message.slice(0, 1000) : 'Cashfree refund failed',
-        updatedAt: new Date()
-      }).where(eq(paymentRefunds.id, refund.id));
-      return { ...refund, status: 'FAILED' };
-    }
-  }
-
-  async processAdminRejectedOrder(orderId: string, reason: string) {
-    const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-    if (!order || order.orderStatus !== 'CANCELLED' || order.paymentMethod !== 'ONLINE' || order.paymentStatus !== 'PAID') return null;
-    const [attempt] = await this.db.select().from(paymentAttempts)
-      .where(and(eq(paymentAttempts.orderId, orderId), eq(paymentAttempts.status, 'SUCCESS')))
-      .orderBy(asc(paymentAttempts.createdAt)).limit(1);
-    if (!attempt?.providerPaymentId) throw new ConflictException('The successful Cashfree transaction could not be found');
-    const [existing] = await this.db.select().from(paymentRefunds)
-      .where(and(eq(paymentRefunds.orderId, orderId), eq(paymentRefunds.paymentAttemptId, attempt.id))).limit(1);
-    if (existing && ['PENDING', 'PROCESSING', 'SUCCESS'].includes(existing.status)) return existing;
-    const merchantRefundId = `REF${randomUUID().replaceAll('-', '').slice(0, 28)}`;
-    const idempotencyKey = randomUUID();
-    const [refund] = await this.db.insert(paymentRefunds).values({
-      orderId,
-      paymentAttemptId: attempt.id,
-      merchantRefundId,
-      providerPaymentId: attempt.providerPaymentId,
-      refundAmount: order.totalAmount,
-      currency: 'INR',
-      status: 'PENDING',
-      idempotencyKey,
-      reason,
-    }).returning();
-    try {
-      const response = await this.cashfree.request<any>(`/orders/${encodeURIComponent(attempt.providerOrderId)}/refunds`, {
-        method: 'POST', idempotencyKey,
-        body: {
-          refund_amount: Number(order.totalAmount),
-          refund_id: merchantRefundId,
-          refund_note: `Ikigai rejected ${order.orderNumber}`,
-          refund_speed: 'STANDARD'
-        },
-      });
-      const status = response.refund_status === 'SUCCESS' ? 'SUCCESS' : response.refund_status === 'PENDING' ? 'PROCESSING' : 'FAILED';
-      await this.db.update(paymentRefunds).set({
-        providerRefundId: response.cf_refund_id ? String(response.cf_refund_id) : merchantRefundId,
-        status,
-        failureReason: status === 'FAILED' ? 'Cashfree did not accept the refund request' : null,
-        updatedAt: new Date(),
-      }).where(eq(paymentRefunds.id, refund.id));
-      if (status === 'SUCCESS') await this.markOrderRefunded(order.id);
-      return { ...refund, status };
     } catch (error) {
       await this.db.update(paymentRefunds).set({
         status: 'FAILED',
@@ -453,13 +412,18 @@ export class PaymentsService {
       throw new ConflictException('Cashfree payment amount or currency does not match the Ikigai order');
     }
 
-    let lateOrDuplicate = false;
+    let refundReason: string | null = null;
     await this.db.transaction(async (tx) => {
       const [lockedOrder] = await tx.select().from(orders).where(eq(orders.id, attempt.orderId)).for('update');
       if (!lockedOrder) throw new NotFoundException('Order not found');
       const [lockedAttempt] = await tx.select().from(paymentAttempts).where(eq(paymentAttempts.id, attempt.id)).for('update');
       const [knownTransaction] = await tx.select({ id: paymentTransactions.id }).from(paymentTransactions).where(eq(paymentTransactions.providerPaymentId, String(payment.cf_payment_id))).limit(1);
-      if (knownTransaction) return;
+      if (knownTransaction) {
+        if (lockedOrder.orderStatus === 'CANCELLED' && lockedOrder.paymentStatus === 'PAID') {
+          refundReason = 'Payment for a cancelled order requires refund reconciliation';
+        }
+        return;
+      }
       await tx.insert(paymentTransactions).values({
         paymentAttemptId: attempt.id,
         providerPaymentId: String(payment.cf_payment_id),
@@ -475,26 +439,50 @@ export class PaymentsService {
         failureReason: null,
         updatedAt: new Date()
       }).where(eq(paymentAttempts.id, attempt.id));
-      if (lockedOrder.paymentStatus === 'PAID' || lockedOrder.orderStatus === 'CANCELLED') {
+      const isLegacyPaidOrder = lockedOrder.orderStatus === 'PENDING' && lockedOrder.paymentStatus === 'PAID' && !lockedOrder.stockDeducted;
+      if ((lockedOrder.paymentStatus === 'PAID' && !isLegacyPaidOrder) || lockedOrder.orderStatus === 'CANCELLED') {
         if (lockedOrder.orderStatus === 'CANCELLED' && lockedOrder.paymentStatus !== 'PAID') {
           await tx.update(orders).set({ paymentStatus: 'PAID', updatedAt: new Date() }).where(eq(orders.id, lockedOrder.id));
         }
-        lateOrDuplicate = true;
+        refundReason = lockedOrder.orderStatus === 'CANCELLED'
+          ? 'Payment succeeded after the order was cancelled; automatic refund reconciliation'
+          : 'Duplicate successful Cashfree payment; automatic refund reconciliation';
         return;
       }
-      if (lockedOrder.orderStatus !== 'AWAITING_PAYMENT') throw new ConflictException('Order is not awaiting payment');
-      await tx.update(orders).set({ paymentStatus: 'PAID', orderStatus: 'PENDING', updatedAt: new Date() }).where(eq(orders.id, lockedOrder.id));
+      const isAwaitingPayment = lockedOrder.orderStatus === 'AWAITING_PAYMENT';
+      if (!isAwaitingPayment && !isLegacyPaidOrder) throw new ConflictException('Order is not awaiting payment');
+      const lines = await tx.select({
+        productId: orderItems.productId,
+        variantId: orderItems.variantId,
+        quantity: orderItems.quantity,
+        productName: orderItems.productName,
+      }).from(orderItems).where(eq(orderItems.orderId, lockedOrder.id));
+      const inventory = await deductOrderInventory(tx, lines);
+      if (inventory.unavailableProduct) {
+        await tx.update(orders).set({ paymentStatus: 'PAID', orderStatus: 'CANCELLED', stockDeducted: false, updatedAt: new Date() }).where(eq(orders.id, lockedOrder.id));
+        await tx.insert(schema.orderStatusHistory).values({
+          orderId: lockedOrder.id,
+          previousStatus: lockedOrder.orderStatus,
+          newStatus: 'CANCELLED',
+          changedBy: lockedOrder.userId,
+          changedByRole: 'SYSTEM',
+          note: `Payment verified, but inventory was unavailable for ${inventory.unavailableProduct}; refund initiated`,
+        });
+        refundReason = `Inventory unavailable for ${inventory.unavailableProduct}; refund the verified payment`;
+        return;
+      }
+      await tx.update(orders).set({ paymentStatus: 'PAID', orderStatus: 'CONFIRMED', stockDeducted: true, updatedAt: new Date() }).where(eq(orders.id, lockedOrder.id));
       await tx.insert(schema.orderStatusHistory).values({
         orderId: lockedOrder.id,
-        previousStatus: 'AWAITING_PAYMENT',
-        newStatus: 'PENDING',
+        previousStatus: lockedOrder.orderStatus,
+        newStatus: 'CONFIRMED',
         changedBy: lockedOrder.userId,
         changedByRole: 'SYSTEM',
-        note: 'Cashfree UPI payment verified',
+        note: 'Cashfree UPI payment verified; inventory deducted and order confirmed',
       });
       if (!lockedOrder.isBuyNow) await this.clearOrderedCartLines(tx, lockedOrder.userId, lockedOrder.id);
     });
-    if (lateOrDuplicate) await this.refundLateOrDuplicatePayment(attempt, payment);
+    if (refundReason) await this.refundLateOrDuplicatePayment(attempt, payment, refundReason);
   }
 
   private async clearOrderedCartLines(tx: any, userId: string, orderId: string) {
@@ -514,29 +502,38 @@ export class PaymentsService {
     await tx.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cart.id));
   }
 
-  private async refundLateOrDuplicatePayment(attempt: typeof paymentAttempts.$inferSelect, payment: PaymentRow) {
-    const [order] = await this.db.select().from(orders).where(eq(orders.id, attempt.orderId)).limit(1);
-    if (!order) return;
-    const existing = await this.db.select().from(paymentRefunds).where(eq(paymentRefunds.providerPaymentId, String(payment.cf_payment_id))).limit(1);
-    if (existing[0]) return;
-    const providerRefundId = `REF${randomUUID().replaceAll('-', '').slice(0, 28)}`;
-    const [refund] = await this.db.insert(paymentRefunds).values({
-      orderId: order.id,
-      paymentAttemptId: attempt.id,
-      merchantRefundId: providerRefundId,
-      providerPaymentId: String(payment.cf_payment_id),
-      refundAmount: order.totalAmount,
-      status: 'PENDING',
-      idempotencyKey: randomUUID(),
-      reason: 'Late or duplicate successful payment; automatic reconciliation refund',
-    }).returning();
+  private async refundLateOrDuplicatePayment(attempt: typeof paymentAttempts.$inferSelect, payment: PaymentRow, reason: string) {
+    const prepared = await this.db.transaction(async (tx) => {
+      const [order] = await tx.select().from(orders).where(eq(orders.id, attempt.orderId)).for('update');
+      if (!order) return null;
+      const [existing] = await tx.select().from(paymentRefunds).where(eq(paymentRefunds.providerPaymentId, String(payment.cf_payment_id))).limit(1);
+      if (existing) return { order, refund: existing, shouldSubmit: existing.status === 'FAILED' };
+      const providerRefundId = `REF${randomUUID().replaceAll('-', '').slice(0, 28)}`;
+      const [refund] = await tx.insert(paymentRefunds).values({
+        orderId: order.id,
+        paymentAttemptId: attempt.id,
+        merchantRefundId: providerRefundId,
+        providerPaymentId: String(payment.cf_payment_id),
+        refundAmount: order.totalAmount,
+        status: 'PENDING',
+        idempotencyKey: randomUUID(),
+        reason,
+      }).returning();
+      return { order, refund, shouldSubmit: true };
+    });
+    if (!prepared || !prepared.shouldSubmit) return;
+    const { order, refund } = prepared;
+    if (refund.status === 'FAILED') {
+      await this.db.update(paymentRefunds).set({ status: 'PROCESSING', failureReason: null, updatedAt: new Date() }).where(eq(paymentRefunds.id, refund.id));
+    }
+    const providerRefundId = refund.merchantRefundId;
     try {
       const response = await this.cashfree.request<any>(`/orders/${encodeURIComponent(attempt.providerOrderId)}/refunds`, {
         method: 'POST', idempotencyKey: refund.idempotencyKey,
         body: {
           refund_amount: Number(order.totalAmount),
           refund_id: providerRefundId,
-          refund_note: 'Ikigai duplicate or late payment',
+          refund_note: reason.slice(0, 250),
           refund_speed: 'STANDARD'
         },
       });

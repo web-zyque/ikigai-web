@@ -84,6 +84,11 @@ export default function OrderDetailsPage() {
           </span>
         </div>
 
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/60">
+          <span>Payment: {order.paymentMethod === "ONLINE" ? "UPI · Cashfree" : "Cash on Delivery"}</span>
+          <span>Payment status: <strong className="text-white">{order.paymentStatus}</strong></span>
+        </div>
+
         {/* Status Timeline */}
         <div className="mt-8 mb-8 px-2">
           <div className="relative flex items-start">

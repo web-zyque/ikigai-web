@@ -16,13 +16,11 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { z } from 'zod';
 import {
   AdminOrderListSchema,
-  AdminOrderRejectSchema,
   AdminOrderStatusSchema,
   CreateCancellationRequestSchema,
   CreateOrderSchema,
   ReviewCancellationSchema,
   type AdminOrderListDto,
-  type AdminOrderRejectDto,
   type AdminOrderStatusDto,
   type CreateCancellationRequestDto,
   type CreateOrderDto,
@@ -110,22 +108,6 @@ export class AdminOrdersController {
   @Get(':id')
   get(@Param('id', new ZodValidationPipe(uuidSchema)) id: string) {
     return this.ordersService.getAdminOrder(id);
-  }
-
-  @Patch(':id/confirm')
-  confirm(@Request() req: AuthenticatedRequest, @Param('id', new ZodValidationPipe(uuidSchema)) id: string) {
-    return this.ordersService.confirm(id, this.adminId(req));
-  }
-
-  @Patch(':id/reject')
-  async reject(
-    @Request() req: AuthenticatedRequest,
-    @Param('id', new ZodValidationPipe(uuidSchema)) id: string,
-    @Body(new ZodValidationPipe(AdminOrderRejectSchema)) dto: AdminOrderRejectDto,
-  ) {
-    const result = await this.ordersService.reject(id, this.adminId(req), dto);
-    const refund = await this.paymentsService.processAdminRejectedOrder(id, dto.reason);
-    return { ...result, refund };
   }
 
   @Patch(':id/status')

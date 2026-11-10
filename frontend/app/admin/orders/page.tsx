@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Menu, Loader2 } from "lucide-react";
 import { useMobileMenu } from "@/contexts/admin-layout-context";
 import {
@@ -10,8 +10,6 @@ import {
   useAdminOrders,
 } from "@/hooks/use-orders";
 import type { OrderStatusValue } from "@/services/orders.service";
-import type { OrderRecord } from "@/services/orders.service";
-import RejectOrderModal from "@/components/admin/orders/RejectOrderModal";
 import { useToastStore } from "@/stores/toast-store";
 import { paymentsService } from "@/services/payments.service";
 
@@ -21,13 +19,23 @@ const nextStatus: Partial<Record<OrderStatusValue, OrderStatusValue>> = {
   SHIPPED: "DELIVERED",
 };
 
+const statusLabels: Record<OrderStatusValue, string> = {
+  AWAITING_PAYMENT: "Awaiting payment",
+  PENDING: "Pending",
+  CONFIRMED: "Confirmed",
+  PROCESSING: "Processing",
+  SHIPPED: "Shipped",
+  DELIVERED: "Delivered",
+  CANCELLED: "Cancelled",
+};
+const allStatuses = Object.keys(statusLabels) as OrderStatusValue[];
+
 export default function OrderDashboardPage() {
   const { setMobileOpen } = useMobileMenu();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
-  const [orderToReject, setOrderToReject] = useState<OrderRecord | null>(null);
-  const [rejectError, setRejectError] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [expandedPaymentOrder, setExpandedPaymentOrder] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<Record<string, { attempts: Array<{ id: string; providerOrderId: string; providerPaymentId: string | null; amount: string; status: string; createdAt: string }>; transactions: Array<{ providerPaymentId: string; amount: string; status: string; paymentGroup: string | null; paidAt: string | null }>; refunds: Array<{ id: string; refundAmount: string; status: string; providerRefundId: string | null; createdAt: string }> }>>({});
   const [paymentDetailsError, setPaymentDetailsError] = useState("");
@@ -57,29 +65,22 @@ export default function OrderDashboardPage() {
   };
 
   const orders = query.data?.orders ?? [];
-  const closeRejectModal = useCallback(() => {
-    if (action.isPending) return;
-    setOrderToReject(null);
-    setRejectError("");
-  }, [action.isPending]);
-
-  const handleRejectOrder = async (reason: string) => {
-    if (!orderToReject || action.isPending) return;
-    setRejectError("");
+  const handleStatusChange = async (orderId: string, current: OrderStatusValue, selected: string) => {
+    const allowed = nextStatus[current];
+    if (!allowed || selected !== allowed || updatingOrderId) return;
+    setUpdatingOrderId(orderId);
+    setError("");
     try {
       await action.mutateAsync({
-        type: "reject",
-        id: orderToReject.id,
-        reason: reason.trim(),
+        type: "status",
+        id: orderId,
+        status: allowed,
       });
-      setOrderToReject(null);
-      addToast(`Order ${orderToReject.orderNumber} rejected.`, "success");
-    } catch (rejectRequestError) {
-      setRejectError(
-        rejectRequestError instanceof Error
-          ? rejectRequestError.message
-          : "Could not reject this order. Please try again."
-      );
+      addToast(`Order status updated to ${statusLabels[allowed]}.`, "success");
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : "Could not update this order. Please try again.");
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -105,12 +106,16 @@ export default function OrderDashboardPage() {
         </p>
       )}
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         {[
           ["Total", stats.data?.total],
+          ["Awaiting payment", stats.data?.awaitingPayment],
           ["Pending", stats.data?.pending],
+          ["Confirmed", stats.data?.confirmed],
           ["Processing", stats.data?.processing],
+          ["Shipped", stats.data?.shipped],
           ["Delivered", stats.data?.delivered],
+          ["Cancelled", stats.data?.cancelled],
         ].map(([label, value]) => (
           <div
             key={String(label)}
@@ -195,58 +200,22 @@ export default function OrderDashboardPage() {
                   </div>}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs">
-                    {order.orderStatus}
-                  </span>
-
-                  {order.orderStatus === "PENDING" && (
-                    <>
-                      <button
-                        disabled={action.isPending}
-                        onClick={() =>
-                          void run(() =>
-                            action.mutateAsync({
-                              type: "confirm",
-                              id: order.id,
-                            })
-                          )
-                        }
-                        className="rounded-full bg-emerald-800 px-3 py-2 text-xs"
-                      >
-                        Confirm / Deduct stock
-                      </button>
-
-                      <button
-                        disabled={action.isPending}
-                        onClick={() => {
-                          setRejectError("");
-                          setOrderToReject(order);
-                        }}
-                        className="rounded-full bg-red-900 px-3 py-2 text-xs"
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-
-                  {nextStatus[order.orderStatus] && (
-                    <button
-                      disabled={action.isPending}
-                      onClick={() =>
-                        void run(() =>
-                          action.mutateAsync({
-                            type: "status",
-                            id: order.id,
-                            status: nextStatus[order.orderStatus]!,
-                          })
-                        )
-                      }
-                      className="rounded-full border border-white/15 px-3 py-2 text-xs disabled:opacity-50"
-                    >
-                      Mark {nextStatus[order.orderStatus]?.toLowerCase()}
-                    </button>
-                  )}
+                <div className="flex items-center gap-2">
+                  <select
+                    aria-label={`Update status for order ${order.orderNumber}`}
+                    value={order.orderStatus}
+                    disabled={!nextStatus[order.orderStatus] || Boolean(updatingOrderId)}
+                    onChange={(event) => void handleStatusChange(order.id, order.orderStatus, event.target.value)}
+                    className="min-w-40 rounded-lg border border-white/15 bg-[#0a0a0a] px-3 py-2 text-xs text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {allStatuses.map((status) => {
+                      const allowed = nextStatus[order.orderStatus];
+                      return <option key={status} value={status} disabled={status !== order.orderStatus && status !== allowed}>
+                        {statusLabels[status]}
+                      </option>;
+                    })}
+                  </select>
+                  {updatingOrderId === order.id && <Loader2 className="h-4 w-4 animate-spin text-white/60" />}
                 </div>
               </article>
             ))}
@@ -342,22 +311,6 @@ export default function OrderDashboardPage() {
         )}
       </section>
 
-      {orderToReject && (
-        <RejectOrderModal
-          key={orderToReject.id}
-          order={{
-            id: orderToReject.id,
-            orderNumber: orderToReject.orderNumber,
-            customerName:
-              orderToReject.customer?.name ??
-              orderToReject.shippingAddress.fullName,
-          }}
-          isSubmitting={action.isPending}
-          errorMessage={rejectError}
-          onClose={closeRejectModal}
-          onSubmit={reason => void handleRejectOrder(reason)}
-        />
-      )}
     </main>
   );
 }
