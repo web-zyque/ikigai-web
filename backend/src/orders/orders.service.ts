@@ -131,6 +131,9 @@ export class OrdersService {
         if (!product || product.publicationStatus !== 'active') {
           throw new BadRequestException('A product in your cart is no longer available');
         }
+        if (!product.acceptCod) {
+          throw new BadRequestException(`Cash on Delivery is not available for ${product.name}`);
+        }
 
         let selectedVariant: { id: string; colorName: string; sku: string | null } | null = null;
         if (line.variantId) {

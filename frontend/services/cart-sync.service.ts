@@ -31,6 +31,8 @@ function enrichCart(cart: CartResponse): Promise<CartItem[]> {
         color: variant?.colorName ?? product?.color ?? "Default",
         quantity: item.quantity,
         variantId: item.variantId || undefined,
+        acceptCod: product?.acceptCod,
+        acceptUpi: product?.acceptUpi,
       };
     });
   });

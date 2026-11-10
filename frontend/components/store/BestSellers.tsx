@@ -161,6 +161,8 @@ function BestSellerCard({
       name: product.name,
       price: product.price,
       image: product.image,
+      acceptCod: product.acceptCod,
+      acceptUpi: product.acceptUpi,
     }, 1);
     addToast("Added to the cart successfully");
   };

@@ -12,6 +12,8 @@ export interface CartItem {
   color?: string;
   quantity: number;
   variantId?: string; // Support for product variants
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
 }
 
 // Product data needed when adding to cart
@@ -22,6 +24,8 @@ export interface AddToCartProduct {
   image: string;
   color?: string;
   variantId?: string;
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
 }
 
 interface CartState {
@@ -144,7 +148,7 @@ export const useCartStore = create<CartStore>()(
                 
                 if (itemKey === productKey) {
                   const newQuantity = validateQuantity(item.quantity + validQuantity);
-                  return { ...item, quantity: newQuantity };
+                  return { ...item, quantity: newQuantity, acceptCod: product.acceptCod, acceptUpi: product.acceptUpi };
                 }
                 return item;
               }),
@@ -161,6 +165,8 @@ export const useCartStore = create<CartStore>()(
             color: product.color || "Default",
             quantity: validQuantity,
             variantId: product.variantId,
+            acceptCod: product.acceptCod,
+            acceptUpi: product.acceptUpi,
           };
 
           return {

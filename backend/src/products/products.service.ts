@@ -27,6 +27,9 @@ export class ProductsService {
   ) {}
 
   async createProduct(dto: CreateProductDto): Promise<ProductResponse> {
+    if (!dto.acceptCod && !dto.acceptUpi) {
+      throw new BadRequestException('At least one payment method must be enabled');
+    }
     const [category] = await this.db
       .select()
       .from(categories)
@@ -285,6 +288,9 @@ export class ProductsService {
 
   async updateProduct(id: string, dto: UpdateProductDto): Promise<ProductResponse> {
     const existingProduct = await this.getProductById(id);
+    if (!(dto.acceptCod ?? existingProduct.acceptCod) && !(dto.acceptUpi ?? existingProduct.acceptUpi)) {
+      throw new BadRequestException('At least one payment method must be enabled');
+    }
     
     if (dto.categoryId) {
       const [category] = await this.db

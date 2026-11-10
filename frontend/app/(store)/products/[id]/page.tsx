@@ -33,6 +33,8 @@ export interface ProductDetailItem {
   inStock?: boolean;
   stockQuantity?: number;
   partType?: string;
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
 }
 
 const tabs = [
@@ -123,6 +125,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       inStock: storeProduct.inStock,
       stockQuantity: storeProduct.stockQuantity,
       partType: storeProduct.partType,
+      acceptCod: storeProduct.acceptCod,
+      acceptUpi: storeProduct.acceptUpi,
     };
   }, [apiProduct, variantImages]);
 
@@ -195,6 +199,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       image: product.image,
       color: selectedColor,
       variantId: selectedVariantId || undefined,
+      acceptCod: apiProduct?.acceptCod,
+      acceptUpi: apiProduct?.acceptUpi,
     }, quantity);
     addToast("Added to the cart successfully");
   };
@@ -208,6 +214,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         image: product.image,
         color: selectedColor,
         variantId: selectedVariantId || undefined,
+        acceptCod: apiProduct?.acceptCod,
+        acceptUpi: apiProduct?.acceptUpi,
       }, quantity);
     }
     router.push("/checkout");
@@ -394,6 +402,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             <p className="text-xs text-neutral-500 mb-6">(incl. of all taxes)</p>
+
+            {(product.acceptCod || product.acceptUpi) && (
+              <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Accepted payment methods">
+                <span className="text-xs text-neutral-500">Payment options:</span>
+                {product.acceptCod && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-neutral-200">Cash on Delivery</span>}
+                {product.acceptUpi && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-neutral-200">UPI · Coming Soon</span>}
+              </div>
+            )}
 
             <p className="text-sm leading-relaxed text-neutral-300 mb-6">
               {product.description}

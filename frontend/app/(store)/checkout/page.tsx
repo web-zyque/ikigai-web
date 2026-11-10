@@ -112,6 +112,10 @@ export default function CheckoutPage() {
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
   const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
   const [buyNowError, setBuyNowError] = useState("");
+  const [paymentFlags, setPaymentFlags] = useState<Record<string, { acceptCod: boolean; acceptUpi: boolean }>>({});
+  const [isPaymentFlagsLoading, setIsPaymentFlagsLoading] = useState(false);
+  const [paymentFlagsError, setPaymentFlagsError] = useState("");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"COD" | null>(null);
   const [guestAddresses, setGuestAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -197,6 +201,40 @@ export default function CheckoutPage() {
   };
 
   const checkoutItems = isBuyNowCheckout ? (buyNowItem ? [buyNowItem] : []) : normalCartItems;
+  const checkoutProductIds = [...new Set(checkoutItems.map((item) => String(item.id)))].sort();
+  const checkoutProductKey = checkoutProductIds.join(",");
+  useEffect(() => {
+    if (!checkoutProductIds.length) {
+      setPaymentFlags({});
+      setIsPaymentFlagsLoading(false);
+      setPaymentFlagsError("");
+      return;
+    }
+    let active = true;
+    setIsPaymentFlagsLoading(true);
+    setPaymentFlagsError("");
+    Promise.all(checkoutProductIds.map((id) => productsApi.getById(id)))
+      .then((products) => {
+        if (!active) return;
+        setPaymentFlags(Object.fromEntries(products.map((product) => [String(product.id), {
+          acceptCod: product.acceptCod ?? false,
+          acceptUpi: product.acceptUpi ?? false,
+        }])));
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setPaymentFlagsError(loadError instanceof Error ? loadError.message : "Could not verify payment options.");
+      })
+      .finally(() => { if (active) setIsPaymentFlagsLoading(false); });
+    return () => { active = false; };
+  }, [checkoutProductKey]);
+  const paymentFlagsReady = !isPaymentFlagsLoading && !paymentFlagsError && checkoutProductIds.length > 0 && checkoutProductIds.every((id) => paymentFlags[id] !== undefined);
+  const commonCod = paymentFlagsReady && checkoutProductIds.every((id) => paymentFlags[id]?.acceptCod);
+  const commonUpi = paymentFlagsReady && checkoutProductIds.every((id) => paymentFlags[id]?.acceptUpi);
+  const hasCommonPaymentMethod = commonCod || commonUpi;
+  useEffect(() => {
+    setSelectedPaymentMethod(commonCod ? "COD" : null);
+  }, [commonCod, checkoutProductKey]);
   const subtotal = checkoutItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
@@ -355,6 +393,12 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (checkoutItems.length === 0 || isBuyNowLoading || !user) {
       if (!user) router.push("/login?redirect=/checkout");
+      return;
+    }
+    if (!paymentFlagsReady || !hasCommonPaymentMethod || !commonCod || selectedPaymentMethod !== "COD") {
+      setOrderError(commonUpi && !commonCod
+        ? "UPI is marked Coming Soon and cannot be used yet. Please contact us for help placing this order."
+        : "These items do not share an available payment method.");
       return;
     }
     if (!selectedAddress) { setOrderError("Please select a saved shipping address."); return; }
@@ -643,6 +687,22 @@ export default function CheckoutPage() {
             <div className="bg-[#121212] rounded-2xl border border-white/10 p-5 md:p-6 shadow-xl space-y-5">
               <h2 className="text-base font-bold text-white">Payment Details</h2>
 
+              <div className="space-y-2" aria-label="Available payment methods">
+                {isPaymentFlagsLoading || (!paymentFlagsReady && !paymentFlagsError && checkoutItems.length > 0) ? (
+                  <p role="status" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/55"><Loader2 className="h-4 w-4 animate-spin" />Checking payment options…</p>
+                ) : paymentFlagsError ? (
+                  <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">{paymentFlagsError}</p>
+                ) : !checkoutItems.length ? null : !hasCommonPaymentMethod ? (
+                  <p role="alert" className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">These products don’t share an available payment method. Please adjust your cart or contact us.</p>
+                ) : (
+                  <>
+                    {commonCod && <button type="button" onClick={() => setSelectedPaymentMethod("COD")} aria-pressed={selectedPaymentMethod === "COD"} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaymentMethod === "COD" ? "border-[#992222] bg-[#640C0C]/15" : "border-white/10 bg-white/[0.03]"}`}><span className="block text-sm font-medium text-white">Cash on Delivery</span><span className="mt-1 block text-xs text-white/45">Pay when your order is delivered.</span></button>}
+                    {commonUpi && <div aria-disabled="true" className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-3 opacity-60"><div><span className="block text-sm font-medium text-white">UPI</span><span className="mt-1 block text-xs text-white/45">Online UPI payments are not available yet.</span></div><span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/55">Coming Soon</span></div>}
+                    {commonUpi && !commonCod && <p role="alert" className="text-xs text-amber-200">UPI is not available for payment yet. Choose products that accept Cash on Delivery or contact us for assistance.</p>}
+                  </>
+                )}
+              </div>
+
               <form onSubmit={handleApplyCoupon} className="space-y-2">
                 <div className="flex gap-2 bg-white/5 border border-white/10 p-1 rounded-full">
                   <div className="flex-1 flex items-center px-3 gap-2">
@@ -712,7 +772,7 @@ export default function CheckoutPage() {
               {orderError && <p role="alert" className="text-sm text-red-400">{orderError}</p>}
               {!user && <p className="text-xs text-white/50">Sign in to place an order. Your cart will remain saved.</p>}
               <Button
-                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
+                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || isPaymentFlagsLoading || paymentFlagsError || !hasCommonPaymentMethod || !commonCod || selectedPaymentMethod !== "COD" || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
                 onClick={handlePlaceOrder}
                 className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
               >
