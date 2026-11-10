@@ -85,8 +85,6 @@ export function useAdminOrderAction() {
   return useMutation({
     mutationFn: (
       action:
-        | { type: "confirm"; id: string }
-        | { type: "reject"; id: string; reason: string }
         | { type: "status"; id: string; status: OrderStatusValue }
         | {
             type: "review";
@@ -95,17 +93,13 @@ export function useAdminOrderAction() {
             adminNote?: string;
           }
     ) =>
-      action.type === "confirm"
-        ? ordersService.confirm(action.id)
-        : action.type === "reject"
-          ? ordersService.reject(action.id, action.reason)
-          : action.type === "status"
-            ? ordersService.updateStatus(action.id, action.status)
-            : ordersService.reviewCancellation(
-                action.id,
-                action.decision,
-                action.adminNote
-              ),
+      action.type === "status"
+        ? ordersService.updateStatus(action.id, action.status)
+        : ordersService.reviewCancellation(
+            action.id,
+            action.decision,
+            action.adminNote
+          ),
 
     onSuccess: async () => {
       await Promise.all([

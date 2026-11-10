@@ -60,22 +60,24 @@ export default function OrderConfirmationPage() {
         <h1 className="text-2xl font-bold">Order placed</h1>
 
         <p className="mt-2 text-white/60">
-          {order.paymentMethod === "COD"
-            ? "Your Cash on Delivery order is awaiting confirmation."
-            : order.paymentStatus === "PAID"
-              ? "Your UPI payment is verified and the order is awaiting confirmation."
-              : "Your UPI payment is not yet confirmed. You can retry securely below."}
+          {order.orderStatus === "CANCELLED"
+            ? "This order was cancelled. If payment was collected, check the order details for refund status."
+            : order.paymentMethod === "COD"
+              ? "Your Cash on Delivery order is confirmed. Payment remains pending until delivery."
+              : order.paymentStatus === "PAID"
+                ? "Your UPI payment is verified and your order is confirmed."
+                : "Your UPI payment is not yet confirmed. You can retry securely below."}
         </p>
 
         <div className="mt-6 flex justify-between border-b border-white/10 pb-4">
           <span className="text-white/50">Order number</span>
           <strong>{order.orderNumber}</strong>
         </div>
-        {order.paymentMethod === "ONLINE" && <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-          <span className="text-white/50">Payment method</span><strong>UPI · Cashfree</strong>
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+          <span className="text-white/50">Payment method</span><strong>{order.paymentMethod === "ONLINE" ? "UPI · Cashfree" : "Cash on Delivery"}</strong>
           <span className="text-white/50">Payment status</span><strong className={order.paymentStatus === "PAID" ? "text-emerald-300" : "text-amber-200"}>{order.paymentStatus}</strong>
           <span className="text-white/50">Order status</span><strong>{order.orderStatus}</strong>
-        </div>}
+        </div>
 
         <div className="divide-y divide-white/10">
           {order.items.map(item => (

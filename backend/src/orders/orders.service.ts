@@ -25,12 +25,12 @@ import {
 } from '../db/schema';
 import type {
   AdminOrderListDto,
-  AdminOrderRejectDto,
   AdminOrderStatusDto,
   CreateCancellationRequestDto,
   CreateOrderDto,
   ReviewCancellationDto,
 } from './dto/order.dto';
+import { deductOrderInventory } from './order-inventory';
 
 type Tx = Parameters<Parameters<NeonDatabase<typeof schema>['transaction']>[0]>[0];
 type AddressSnapshot = typeof orders.$inferSelect.shippingAddress;
@@ -202,19 +202,26 @@ export class OrdersService {
           shippingAddress: getAddressSnapshot(address),
           paymentMethod: isOnline ? 'ONLINE' : 'COD',
           paymentStatus: 'PENDING',
-          orderStatus: isOnline ? 'AWAITING_PAYMENT' : 'PENDING',
+          orderStatus: isOnline ? 'AWAITING_PAYMENT' : 'CONFIRMED',
+          stockDeducted: !isOnline,
           isBuyNow: Boolean(dto.buyNowItem),
         })
         .returning();
 
       await tx.insert(orderItems).values(itemSnapshots.map((item) => ({ orderId: order.id, ...item })));
+      if (!isOnline) {
+        const inventory = await deductOrderInventory(tx, itemSnapshots);
+        if (inventory.unavailableProduct) {
+          throw new ConflictException(`Insufficient inventory for ${inventory.unavailableProduct}`);
+        }
+      }
       await tx.insert(orderStatusHistory).values({
         orderId: order.id,
         previousStatus: null,
-        newStatus: isOnline ? 'AWAITING_PAYMENT' : 'PENDING',
+        newStatus: isOnline ? 'AWAITING_PAYMENT' : 'CONFIRMED',
         changedBy: userId,
         changedByRole: 'CUSTOMER',
-        note: isOnline ? 'UPI order awaiting payment' : 'COD order placed',
+        note: isOnline ? 'UPI order awaiting payment' : 'COD order automatically confirmed; inventory deducted',
       });
       if (cart && !isOnline) {
         await tx.delete(cartItems).where(eq(cartItems.cartId, cart.id));
@@ -315,6 +322,7 @@ export class OrdersService {
     const [orderCounts] = await this.db
       .select({
         total: sql<number>`count(*)::int`,
+        awaitingPayment: sql<number>`count(*) filter (where ${orders.orderStatus} = 'AWAITING_PAYMENT')::int`,
         pending: sql<number>`count(*) filter (where ${orders.orderStatus} = 'PENDING')::int`,
         confirmed: sql<number>`count(*) filter (where ${orders.orderStatus} = 'CONFIRMED')::int`,
         processing: sql<number>`count(*) filter (where ${orders.orderStatus} = 'PROCESSING')::int`,
@@ -330,49 +338,6 @@ export class OrdersService {
     return { ...orderCounts, pendingCancellationRequests: pendingCancellation.count };
   }
 
-  async confirm(orderId: string, adminId: string) {
-    return this.db.transaction(async (tx) => {
-      const order = await this.lockOrder(tx, orderId);
-      if (order.orderStatus !== 'PENDING') throw new ConflictException('Only pending orders can be confirmed');
-      if (order.paymentMethod === 'ONLINE' && order.paymentStatus !== 'PAID') {
-        throw new ConflictException('Online orders must be paid before confirmation');
-      }
-      if (order.stockDeducted) throw new ConflictException('Inventory has already been deducted for this order');
-      const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId));
-      for (const item of items) {
-        const update = item.variantId
-          ? await tx.update(productVariants)
-              .set({ stockQuantity: sql`${productVariants.stockQuantity} - ${item.quantity}`, updatedAt: new Date() })
-              .where(and(eq(productVariants.id, item.variantId), gte(productVariants.stockQuantity, item.quantity)))
-              .returning({ id: productVariants.id })
-          : await tx.update(products)
-              .set({ stockQuantity: sql`${products.stockQuantity} - ${item.quantity}`, updatedAt: new Date() })
-              .where(and(eq(products.id, item.productId), eq(products.publicationStatus, 'active'), gte(products.stockQuantity, item.quantity)))
-              .returning({ id: products.id });
-        if (!update.length) throw new ConflictException(`Insufficient inventory for ${item.productName}`);
-      }
-      const [updated] = await tx.update(orders)
-        .set({ orderStatus: 'CONFIRMED', stockDeducted: true, updatedAt: new Date() })
-        .where(eq(orders.id, orderId))
-        .returning();
-      await this.recordStatus(tx, orderId, order.orderStatus, 'CONFIRMED', adminId, 'ADMIN', 'Order confirmed; inventory deducted');
-      return this.loadOrder(tx, updated.id);
-    });
-  }
-
-  async reject(orderId: string, adminId: string, dto: AdminOrderRejectDto) {
-    return this.db.transaction(async (tx) => {
-      const order = await this.lockOrder(tx, orderId);
-      if (order.orderStatus !== 'PENDING') throw new ConflictException('Only pending orders can be rejected');
-      const [updated] = await tx.update(orders)
-        .set({ orderStatus: 'CANCELLED', updatedAt: new Date() })
-        .where(eq(orders.id, orderId))
-        .returning();
-      await this.recordStatus(tx, orderId, order.orderStatus, 'CANCELLED', adminId, 'ADMIN', dto.reason);
-      return this.loadOrder(tx, updated.id);
-    });
-  }
-
   async updateStatus(orderId: string, adminId: string, dto: AdminOrderStatusDto) {
     return this.db.transaction(async (tx) => {
       const order = await this.lockOrder(tx, orderId);
@@ -383,6 +348,10 @@ export class OrdersService {
       };
       if (nextAllowed[order.orderStatus] !== dto.status) {
         throw new BadRequestException(`Invalid order status transition: ${order.orderStatus} to ${dto.status}`);
+      }
+      if (!order.stockDeducted) throw new ConflictException('Only automatically confirmed orders can move through fulfillment');
+      if (order.paymentMethod === 'ONLINE' && order.paymentStatus !== 'PAID') {
+        throw new ConflictException('Online orders must be paid before fulfillment');
       }
       const [updated] = await tx.update(orders)
         .set({

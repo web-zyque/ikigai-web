@@ -105,14 +105,6 @@ export const ordersService = {
   adminStats: () =>
     api.get<Record<string, number>>("/admin/orders/stats").then(r => r.data),
 
-  confirm: (id: string) =>
-    api.patch<OrderRecord>(`/admin/orders/${id}/confirm`).then(r => r.data),
-
-  reject: (id: string, reason: string) =>
-    api
-      .patch<OrderRecord>(`/admin/orders/${id}/reject`, { reason })
-      .then(r => r.data),
-
   updateStatus: (id: string, status: OrderStatusValue) =>
     api
       .patch<OrderRecord>(`/admin/orders/${id}/status`, { status })
