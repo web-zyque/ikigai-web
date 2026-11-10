@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const CreateOrderSchema = z.object({
   addressId: z.string().uuid(),
-  paymentMethod: z.literal('COD').default('COD'),
+  paymentMethod: z.enum(['COD', 'ONLINE']).default('COD'),
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
   idempotencyKey: z.string().uuid(),
   buyNowItem: z.object({
@@ -19,7 +19,7 @@ export const CreateCancellationRequestSchema = z.object({
 export const AdminOrderListSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
+  status: z.enum(['AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']).optional(),
   paymentStatus: z.enum(['PENDING', 'PAID', 'FAILED', 'REFUNDED']).optional(),
   search: z.string().trim().max(120).optional(),
   from: z.coerce.date().optional(),

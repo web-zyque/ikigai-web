@@ -1,6 +1,7 @@
 import api from "@/api/axios";
 
 export type OrderStatusValue =
+  | "AWAITING_PAYMENT"
   | "PENDING"
   | "CONFIRMED"
   | "PROCESSING"
@@ -66,7 +67,7 @@ export interface OrderRecord {
 
 export interface CreateOrderPayload {
   addressId: string;
-  paymentMethod: "COD";
+  paymentMethod: "COD" | "ONLINE";
   couponCode?: string;
   idempotencyKey: string;
   buyNowItem?: {

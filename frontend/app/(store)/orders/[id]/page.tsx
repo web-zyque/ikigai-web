@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import Script from "next/script";
+import { useQuery } from "@tanstack/react-query";
 import {
   useMyOrder,
   useRequestOrderCancellation,
 } from "@/hooks/use-orders";
+import { getCashfreeCheckout, paymentsService } from "@/services/payments.service";
 
 const STATUS_STEPS = [
+  { key: "AWAITING_PAYMENT", label: "Payment Due" },
   { key: "PENDING", label: "Order Placed" },
   { key: "CONFIRMED", label: "Confirmed" },
   { key: "PROCESSING", label: "Processing" },
@@ -24,10 +28,17 @@ const getStatusIndex = (status: string) => {
 
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: order, isLoading, error } = useMyOrder(id);
   const cancellation = useRequestOrderCancellation();
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const paymentHistory = useQuery({
+    queryKey: ["payments", "order", id],
+    queryFn: () => paymentsService.history(id),
+    enabled: Boolean(order?.paymentMethod === "ONLINE"),
+  });
 
   const currentStatusIndex = order ? getStatusIndex(order.orderStatus) : -1;
 
@@ -50,7 +61,7 @@ export default function OrderDetailsPage() {
 
   const request = order.cancellationRequests?.[0];
   const canRequest =
-    ["PENDING", "CONFIRMED", "PROCESSING"].includes(order.orderStatus) &&
+    ["AWAITING_PAYMENT", "PENDING", "CONFIRMED", "PROCESSING"].includes(order.orderStatus) &&
     request?.status !== "PENDING";
 
   return (
@@ -193,10 +204,32 @@ export default function OrderDetailsPage() {
           </p>
 
           <p className="flex justify-between pt-2 text-base font-bold">
-            <span>Total · COD</span>
+            <span>Total · {order.paymentMethod === "ONLINE" ? "UPI" : "COD"}</span>
             <span>₹{Number(order.totalAmount).toFixed(2)}</span>
           </p>
         </div>
+
+        {order.paymentMethod === "ONLINE" && <section className="mt-6 border-t border-white/10 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">UPI payment · {order.paymentStatus}</h2>
+            {order.orderStatus === "AWAITING_PAYMENT" && order.paymentStatus !== "PAID" && <button type="button" disabled={retrying} className="rounded-full bg-[#640C0C] px-4 py-2 text-xs disabled:opacity-50" onClick={async () => {
+              setRetrying(true);
+              setMessage("");
+              try {
+                const session = await paymentsService.retry(id, crypto.randomUUID());
+                const Cashfree = await getCashfreeCheckout();
+                await Cashfree({ mode: session.environment }).checkout({ paymentSessionId: session.paymentSessionId, redirectTarget: "_self" });
+                router.replace(`/checkout/payment-return?ikigai_order_id=${encodeURIComponent(id)}`);
+              } catch (retryError) {
+                setMessage(retryError instanceof Error ? retryError.message : "Payment could not be restarted.");
+                setRetrying(false);
+              }
+            }}>{retrying ? "Preparing…" : "Retry payment"}</button>}
+          </div>
+          {paymentHistory.data?.attempts.map((attempt) => <p key={attempt.id} className="mt-2 text-xs text-white/55">Cashfree order {attempt.providerOrderId} · {attempt.status} · ₹{Number(attempt.amount).toFixed(2)}{attempt.providerPaymentId ? ` · Payment ${attempt.providerPaymentId}` : ""}</p>)}
+          {paymentHistory.data?.transactions.map((transaction) => <p key={transaction.providerPaymentId} className="mt-2 text-xs text-white/55">Transaction {transaction.providerPaymentId} · {transaction.paymentGroup ?? "Cashfree"} · {transaction.status} · ₹{Number(transaction.amount).toFixed(2)}{transaction.paidAt ? ` · ${new Date(transaction.paidAt).toLocaleString()}` : ""}</p>)}
+          {paymentHistory.data?.refunds.map((refund) => <p key={refund.id} className="mt-2 text-xs text-white/55">Refund {refund.status} · ₹{Number(refund.refundAmount).toFixed(2)}{refund.providerRefundId ? ` · ${refund.providerRefundId}` : ""}</p>)}
+        </section>}
 
         {request?.status === "PENDING" && (
           <p className="mt-5 text-amber-300">
@@ -255,6 +288,7 @@ export default function OrderDetailsPage() {
           </form>
         )}
       </article>
+      {order.paymentMethod === "ONLINE" && <Script src="https://sdk.cashfree.com/js/v3/cashfree.js" strategy="afterInteractive" />}
     </main>
   );
 }

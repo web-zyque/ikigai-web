@@ -25,7 +25,7 @@ export const inventoryStatusEnum = pgEnum('inventory_status', [
 ]);
 export const adminRoleEnum = pgEnum('admin_role', ['ADMIN', 'STAFF']);
 export const orderStatusEnum = pgEnum('order_status', [
-  'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED',
+  'AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED',
 ]);
 export const paymentMethodEnum = pgEnum('payment_method', ['COD', 'ONLINE']);
 export const paymentStatusEnum = pgEnum('payment_status', [
@@ -33,6 +33,15 @@ export const paymentStatusEnum = pgEnum('payment_status', [
 ]);
 export const cancellationStatusEnum = pgEnum('cancellation_status', [
   'PENDING', 'APPROVED', 'REJECTED',
+]);
+export const paymentAttemptStatusEnum = pgEnum('payment_attempt_status', [
+  'CREATED', 'PENDING', 'SUCCESS', 'FAILED', 'EXPIRED',
+]);
+export const paymentWebhookStatusEnum = pgEnum('payment_webhook_status', [
+  'RECEIVED', 'PROCESSED', 'FAILED',
+]);
+export const refundStatusEnum = pgEnum('refund_status', [
+  'PENDING', 'PROCESSING', 'SUCCESS', 'FAILED',
 ]);
 
 export const users = pgTable('users', {
@@ -250,6 +259,7 @@ export const orders = pgTable(
     paymentStatus: paymentStatusEnum('payment_status').default('PENDING').notNull(),
     orderStatus: orderStatusEnum('order_status').default('PENDING').notNull(),
     stockDeducted: boolean('stock_deducted').default(false).notNull(),
+    isBuyNow: boolean('is_buy_now').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -257,6 +267,95 @@ export const orders = pgTable(
     index('orders_user_created_idx').on(table.userId, table.createdAt),
     index('orders_status_created_idx').on(table.orderStatus, table.createdAt),
     uniqueIndex('orders_user_idempotency_unique').on(table.userId, table.idempotencyKey),
+  ],
+);
+
+export const paymentAttempts = pgTable(
+  'payment_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    provider: varchar('provider', { length: 20 }).default('CASHFREE').notNull(),
+    paymentMethod: varchar('payment_method', { length: 20 }).default('UPI').notNull(),
+    providerOrderId: varchar('provider_order_id', { length: 45 }).notNull().unique(),
+    providerPaymentId: varchar('provider_payment_id', { length: 80 }).unique(),
+    paymentSessionId: text('payment_session_id'),
+    amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).default('INR').notNull(),
+    status: paymentAttemptStatusEnum('status').default('CREATED').notNull(),
+    idempotencyKey: varchar('idempotency_key', { length: 100 }).notNull().unique(),
+    sessionExpiresAt: timestamp('session_expires_at'),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('payment_attempts_order_created_idx').on(table.orderId, table.createdAt),
+    index('payment_attempts_provider_order_idx').on(table.providerOrderId),
+    uniqueIndex('payment_attempts_active_order_unique').on(table.orderId)
+      .where(sql`${table.status} in ('CREATED', 'PENDING')`),
+  ],
+);
+
+export const paymentTransactions = pgTable(
+  'payment_transactions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    paymentAttemptId: uuid('payment_attempt_id').references(() => paymentAttempts.id, { onDelete: 'restrict' }).notNull(),
+    providerPaymentId: varchar('provider_payment_id', { length: 80 }).notNull().unique(),
+    amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).default('INR').notNull(),
+    status: varchar('status', { length: 20 }).notNull(),
+    paymentGroup: varchar('payment_group', { length: 30 }),
+    paidAt: timestamp('paid_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('payment_transactions_attempt_created_idx').on(table.paymentAttemptId, table.createdAt)],
+);
+
+export const paymentWebhookEvents = pgTable(
+  'payment_webhook_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    provider: varchar('provider', { length: 20 }).default('CASHFREE').notNull(),
+    eventKey: varchar('event_key', { length: 128 }).notNull().unique(),
+    eventId: varchar('event_id', { length: 128 }),
+    providerOrderId: varchar('provider_order_id', { length: 45 }),
+    providerPaymentId: varchar('provider_payment_id', { length: 80 }),
+    eventType: varchar('event_type', { length: 100 }).notNull(),
+    processingStatus: paymentWebhookStatusEnum('processing_status').default('RECEIVED').notNull(),
+    payloadHash: varchar('payload_hash', { length: 64 }).notNull(),
+    errorMessage: text('error_message'),
+    receivedAt: timestamp('received_at').defaultNow().notNull(),
+    processedAt: timestamp('processed_at'),
+  },
+  (table) => [
+    index('payment_webhook_events_provider_order_idx').on(table.providerOrderId),
+    index('payment_webhook_events_status_received_idx').on(table.processingStatus, table.receivedAt),
+  ],
+);
+
+export const paymentRefunds = pgTable(
+  'payment_refunds',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    paymentAttemptId: uuid('payment_attempt_id').references(() => paymentAttempts.id, { onDelete: 'restrict' }).notNull(),
+    merchantRefundId: varchar('merchant_refund_id', { length: 80 }).notNull().unique(),
+    providerRefundId: varchar('provider_refund_id', { length: 80 }).unique(),
+    providerPaymentId: varchar('provider_payment_id', { length: 80 }).notNull(),
+    refundAmount: decimal('refund_amount', { precision: 12, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).default('INR').notNull(),
+    status: refundStatusEnum('status').default('PENDING').notNull(),
+    idempotencyKey: varchar('idempotency_key', { length: 100 }).notNull().unique(),
+    reason: text('reason'),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('payment_refunds_order_created_idx').on(table.orderId, table.createdAt),
+    index('payment_refunds_status_idx').on(table.status),
   ],
 );
 
@@ -270,6 +369,7 @@ export const orderItems = pgTable(
     productId: uuid('product_id')
       .references(() => products.id, { onDelete: 'restrict' })
       .notNull(),
+    cartItemId: uuid('cart_item_id'),
     variantId: uuid('variant_id').references(() => productVariants.id, { onDelete: 'restrict' }),
     productName: varchar('product_name', { length: 255 }).notNull(),
     sku: varchar('sku', { length: 100 }).notNull(),
