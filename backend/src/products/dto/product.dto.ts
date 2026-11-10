@@ -9,6 +9,8 @@ export const CreateProductSchema = z.object({
   
   sellingPrice: z.number().positive(),
   mrpPrice: z.number().positive().optional(),
+  acceptCod: z.boolean().default(false),
+  acceptUpi: z.boolean().default(true),
   gstPercentage: z.number().min(0).max(100).default(18),
   
   stockQuantity: z.number().int().min(0).default(0),
@@ -78,6 +80,8 @@ export interface ProductResponse {
   description?: string;
   sellingPrice: string;
   mrpPrice?: string;
+  acceptCod: boolean;
+  acceptUpi: boolean;
   gstPercentage: string;
   stockQuantity: number;
   lowStockThreshold: number;

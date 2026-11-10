@@ -116,6 +116,8 @@ export const products = pgTable('products', {
 
   sellingPrice: decimal('selling_price', { precision: 12, scale: 2 }).notNull(),
   mrpPrice: decimal('mrp_price', { precision: 12, scale: 2 }),
+  acceptCod: boolean('accept_cod').default(false).notNull(),
+  acceptUpi: boolean('accept_upi').default(true).notNull(),
   gstPercentage: decimal('gst_percentage', { precision: 5, scale: 2 }).default(
     '18.00',
   ),

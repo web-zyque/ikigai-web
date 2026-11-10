@@ -6,6 +6,8 @@ export interface CreateProductRequest {
   description?: string;
   sellingPrice: number;
   mrpPrice?: number;
+  acceptCod: boolean;
+  acceptUpi: boolean;
   gstPercentage?: number;
   stockQuantity: number;
   lowStockThreshold: number;
@@ -39,6 +41,8 @@ export interface ProductResponse {
   description?: string;
   sellingPrice: string;
   mrpPrice?: string;
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
   gstPercentage: string;
   stockQuantity: number;
   lowStockThreshold: number;

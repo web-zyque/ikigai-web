@@ -55,7 +55,7 @@ export default function AddProductModal({
   onSuccess,
 }: AddProductModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   const { data: apiCategories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
   const availableCategories = apiCategories && apiCategories.length > 0 ? apiCategories : [];
@@ -83,12 +83,15 @@ export default function AddProductModal({
   const [isDragging, setIsDragging] = useState(false);
   const [draggingColor, setDraggingColor] = useState<string | null>(null);
 
-  // Step 3: Pricing, Inventory, Specifications & Vehicle Compatibility
+  // Step 4: Pricing, inventory and accepted payment methods
   const [sellingPrice, setSellingPrice] = useState("");
   const [mrpPrice, setMrpPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState<number | string>("");
   const [lowStockThreshold, setLowStockThreshold] = useState<number | string>("5");
+  const [acceptCod, setAcceptCod] = useState(false);
+  const [acceptUpi, setAcceptUpi] = useState(true);
 
+  // Step 3: Specifications & Vehicle Compatibility
   const [vehicleCompatibility, setVehicleCompatibility] = useState("");
   const [productType, setProductType] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -100,8 +103,8 @@ export default function AddProductModal({
 
   const mainFileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleClose = () => {
-    if (isSubmitting) return;
+  const handleClose = (force = false) => {
+    if (isSubmitting && !force) return;
     // Revoke all pending object URLs to avoid memory leaks
     uploadedImages.forEach((img) => {
       if (img.previewUrl?.startsWith('blob:')) {
@@ -125,6 +128,8 @@ export default function AddProductModal({
     setMrpPrice("");
     setStockQuantity("");
     setLowStockThreshold("5");
+    setAcceptCod(false);
+    setAcceptUpi(true);
     setVehicleCompatibility("");
     setProductType("");
     setDimensions("");
@@ -464,8 +469,12 @@ export default function AddProductModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateStep3 = (): boolean => {
+  const validateStep4 = (): boolean => {
     const newErrors: Record<string, string> = {};
+
+    if (!acceptCod && !acceptUpi) {
+      newErrors.paymentMethods = "Enable at least one accepted payment type";
+    }
     
     // Selling Price - Required and must be positive
     if (!sellingPrice.trim()) {
@@ -560,9 +569,27 @@ export default function AddProductModal({
     }
   }, [uploadedImages, hasColorVariants, colorValues]);
 
+  const imageRequirementProgress = useMemo(() => {
+    const groups = hasColorVariants && colorValues.length > 0
+      ? colorValues.map((color) => uploadedImages.filter((image) => image.variantColor === color))
+      : [uploadedImages];
+    const minimumPerGroup = 3;
+    const required = groups.length * minimumPerGroup;
+    const completed = groups.reduce(
+      (total, images) => total + Math.min(minimumPerGroup, images.filter((image) => image.uploadStatus === "done").length),
+      0,
+    );
+
+    return {
+      required,
+      completed,
+      percent: required > 0 ? Math.min(100, Math.round((completed / required) * 100)) : 0,
+    };
+  }, [uploadedImages, hasColorVariants, colorValues]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep1() || !validateStep2() || !validateStep3()) {
+    if (!validateStep1() || !validateStep2() || !validateStep4()) {
       return;
     }
 
@@ -598,6 +625,8 @@ export default function AddProductModal({
         description: description.trim() || undefined,
         sellingPrice: parseFloat(sellingPrice),
         mrpPrice: mrpPrice.trim() ? parseFloat(mrpPrice) : undefined,
+        acceptCod,
+        acceptUpi,
         stockQuantity: stockQuantity === "" || stockQuantity === undefined ? 0 : Number(stockQuantity),
         lowStockThreshold: lowStockThreshold === "" || lowStockThreshold === undefined ? 5 : Number(lowStockThreshold),
         publicationStatus: "active" as const,
@@ -613,7 +642,7 @@ export default function AddProductModal({
 
       const result = await createProductMutation.mutateAsync(productPayload);
       onSuccess?.(result as unknown as Record<string, unknown>);
-      handleClose();
+      handleClose(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to create product.';
       setErrors((prev) => ({ ...prev, submit: message }));
@@ -628,7 +657,7 @@ export default function AddProductModal({
     <div
       aria-modal="true"
       role="dialog"
-      onClick={handleClose}
+      onClick={() => handleClose()}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
@@ -646,7 +675,7 @@ export default function AddProductModal({
 
           <button
             type="button"
-            onClick={handleClose}
+            onClick={() => handleClose()}
             aria-label="Close modal"
             className="grid h-8 w-8 place-items-center rounded-full bg-white/5 border border-white/10 text-white/70 hover:bg-[#640C0C] hover:text-white transition-colors cursor-pointer"
           >
@@ -654,10 +683,10 @@ export default function AddProductModal({
           </button>
         </div>
 
-        {/* 3-Step Stepper with current step as pure white */}
+        {/* 4-Step Stepper with current step as pure white */}
         <div className="border-b border-white/10 bg-[#0e0e0e] px-8 py-4">
-          <div className="mx-auto max-w-md flex items-center justify-between">
-            {[1, 2, 3].map((step) => {
+          <div className="mx-auto max-w-xl flex items-center justify-between">
+            {[1, 2, 3, 4].map((step) => {
               const isCurrent = currentStep === step;
               const isCompleted = currentStep > step;
 
@@ -670,6 +699,7 @@ export default function AddProductModal({
                         if (step < currentStep) setCurrentStep(step);
                         else if (step === 2 && validateStep1()) setCurrentStep(2);
                         else if (step === 3 && validateStep1() && validateStep2()) setCurrentStep(3);
+                        else if (step === 4 && validateStep1() && validateStep2()) setCurrentStep(4);
                       }}
                       className={`relative flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all cursor-pointer ${isCurrent
                           ? "bg-white text-black ring-4 ring-white/20 shadow-md"
@@ -1024,9 +1054,6 @@ export default function AddProductModal({
                       <AlertCircle className="h-3 w-3" /> {errors.images}
                     </span>
                   )}
-                  <span className="text-xs text-white/50">
-                    {uploadedImages.length} / 3 min required
-                  </span>
                 </div>
               </div>
 
@@ -1322,13 +1349,19 @@ export default function AddProductModal({
                   )}
                 </div>
               )}
+
+              <div className="flex items-center pt-1">
+                <span className={`min-w-8 text-xs font-semibold tabular-nums ${isStep2Valid ? "text-emerald-300" : "text-white/55"}`}>
+                  {imageRequirementProgress.completed}/{imageRequirementProgress.required}
+                </span>
+              </div>
             </div>
           )}
 
-          {/* STEP 3: Specifications first, then Inventory */}
-          {currentStep === 3 && (
+          {/* STEP 3: Specifications */}
+          {(currentStep === 3 || currentStep === 4) && (
             <div className="space-y-6 animate-in fade-in duration-150">
-              {/* Specifications & Vehicle Compatibility (First) */}
+              {currentStep === 3 && (
               <div className="space-y-4">
                 <div className="border-b border-white/10 pb-2">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
@@ -1403,8 +1436,10 @@ export default function AddProductModal({
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Pricing & Inventory (Second) */}
+              {currentStep === 4 && (
+              <>
               <div className="space-y-4 pt-4 border-t border-white/10">
                 <div className="border-b border-white/10 pb-2">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
@@ -1519,6 +1554,45 @@ export default function AddProductModal({
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-4 border-t border-white/10 pt-4">
+                <div className="border-b border-white/10 pb-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">
+                    Accepted Payment Types
+                  </h3>
+                  <p className="mt-1 text-xs text-white/45">Choose which payment methods customers can use for this product.</p>
+                  {errors.paymentMethods && <p role="alert" className="mt-2 flex items-center gap-1.5 text-xs text-red-400"><AlertCircle className="h-3.5 w-3.5" />{errors.paymentMethods}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {([
+                    { id: "cod", title: "Cash on Delivery (COD)", description: "Customer pays when the order is delivered.", enabled: acceptCod, onChange: setAcceptCod },
+                    { id: "upi", title: "UPI", description: "Customer pays using a UPI app or QR code.", enabled: acceptUpi, onChange: setAcceptUpi },
+                  ] as const).map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#0a0a0a] p-4">
+                      <div>
+                        <p className="text-sm font-medium text-white">{payment.title}</p>
+                        <p className="mt-1 text-xs text-white/45">{payment.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={payment.enabled}
+                        aria-label={`${payment.title} accepted`}
+                        onClick={() => {
+                          payment.onChange((value) => !value);
+                          if (errors.paymentMethods) setErrors((previous) => ({ ...previous, paymentMethods: "" }));
+                        }}
+                        className={`relative h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${payment.enabled ? "bg-[#640C0C]" : "bg-white/20"}`}
+                      >
+                        <span className={`block h-5 w-5 rounded-full bg-white shadow transition-transform ${payment.enabled ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              </>
+              )}
             </div>
           )}
         </div>
