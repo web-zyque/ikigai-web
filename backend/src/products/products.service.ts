@@ -74,6 +74,8 @@ export class ProductsService {
           description: dto.description,
           sellingPrice: dto.sellingPrice.toString(),
           mrpPrice: dto.mrpPrice?.toString(),
+          acceptCod: dto.acceptCod,
+          acceptUpi: dto.acceptUpi,
           gstPercentage: dto.gstPercentage.toString(),
           stockQuantity: dto.stockQuantity,
           lowStockThreshold: dto.lowStockThreshold,
@@ -306,6 +308,8 @@ export class ProductsService {
       if (dto.description !== undefined) updateData.description = dto.description;
       if (dto.sellingPrice !== undefined) updateData.sellingPrice = dto.sellingPrice.toString();
       if (dto.mrpPrice !== undefined) updateData.mrpPrice = dto.mrpPrice?.toString();
+      if (dto.acceptCod !== undefined) updateData.acceptCod = dto.acceptCod;
+      if (dto.acceptUpi !== undefined) updateData.acceptUpi = dto.acceptUpi;
       if (dto.gstPercentage !== undefined) updateData.gstPercentage = dto.gstPercentage.toString();
       if (dto.stockQuantity !== undefined) updateData.stockQuantity = dto.stockQuantity;
       if (dto.lowStockThreshold !== undefined) updateData.lowStockThreshold = dto.lowStockThreshold;
@@ -574,6 +578,8 @@ export class ProductsService {
       description: product.description || undefined,
       sellingPrice: product.sellingPrice,
       mrpPrice: product.mrpPrice || undefined,
+      acceptCod: product.acceptCod,
+      acceptUpi: product.acceptUpi,
       gstPercentage: product.gstPercentage || '18.00',
       stockQuantity: product.stockQuantity,
       lowStockThreshold: product.lowStockThreshold,

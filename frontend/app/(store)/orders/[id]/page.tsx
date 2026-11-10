@@ -9,12 +9,27 @@ import {
   useRequestOrderCancellation,
 } from "@/hooks/use-orders";
 
+const STATUS_STEPS = [
+  { key: "PENDING", label: "Order Placed" },
+  { key: "CONFIRMED", label: "Confirmed" },
+  { key: "PROCESSING", label: "Processing" },
+  { key: "SHIPPED", label: "Shipped" },
+  { key: "DELIVERED", label: "Delivered" },
+  { key: "CANCELLED", label: "Cancelled" },
+];
+
+const getStatusIndex = (status: string) => {
+  return STATUS_STEPS.findIndex(step => step.key === status);
+};
+
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const { data: order, isLoading, error } = useMyOrder(id);
   const cancellation = useRequestOrderCancellation();
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
+
+  const currentStatusIndex = order ? getStatusIndex(order.orderStatus) : -1;
 
   if (isLoading)
     return (
@@ -56,6 +71,68 @@ export default function OrderDetailsPage() {
           <span className="h-fit rounded-full bg-white/10 px-3 py-1 text-xs">
             {order.orderStatus}
           </span>
+        </div>
+
+        {/* Status Timeline */}
+        <div className="mt-8 mb-8 px-2">
+          <div className="relative flex items-start">
+            {/* Background line */}
+            <div className="absolute top-4 left-0 right-0 h-1 bg-white/10"></div>
+            
+            {/* Filled progress line */}
+            <div
+              className="absolute top-4 left-0 h-1 bg-green-500 transition-all"
+              style={{
+                width: `${currentStatusIndex >= 0 ? ((currentStatusIndex + 1) / STATUS_STEPS.length) * 100 : 0}%`,
+              }}
+            ></div>
+
+            {/* Status dots and labels */}
+            <div className="relative w-full flex justify-between">
+              {STATUS_STEPS.map((step, index) => {
+                const isCompleted = index <= currentStatusIndex;
+                const isCurrent = index === currentStatusIndex;
+                
+                return (
+                  <div key={step.key} className="flex flex-col items-center">
+                    {/* Circle */}
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center mb-3 relative z-10 ${
+                        isCompleted ? "bg-green-500" : "bg-white/20"
+                      }`}
+                    >
+                      {isCompleted && (
+                        <svg
+                          className="w-5 h-5 text-black"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {/* Label */}
+                    <p
+                      className={`text-xs text-center whitespace-nowrap ${
+                        isCurrent
+                          ? "text-green-400 font-semibold"
+                          : isCompleted
+                          ? "text-green-500"
+                          : "text-white/50"
+                      }`}
+                    >
+                      {step.label}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <h2 className="mt-8 font-semibold">Items</h2>
