@@ -18,6 +18,8 @@ export interface StoreProduct {
   warranty?: string;
   stockQuantity?: number;
   inStock?: boolean;
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
 }
 
 export interface CategoryMeta {

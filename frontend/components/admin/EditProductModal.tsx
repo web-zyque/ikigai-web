@@ -75,6 +75,8 @@ export default function EditProductModal({
 
   // Step 3: Pricing, Inventory, Specifications
   const [sellingPrice, setSellingPrice] = useState("");
+  const [acceptCod, setAcceptCod] = useState(false);
+  const [acceptUpi, setAcceptUpi] = useState(true);
   const [mrpPrice, setMrpPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState<number | string>("");
   const [lowStockThreshold, setLowStockThreshold] = useState<number | string>("5");
@@ -166,6 +168,8 @@ export default function EditProductModal({
       }
 
       setSellingPrice(product.sellingPrice);
+      setAcceptCod(product.acceptCod ?? false);
+      setAcceptUpi(product.acceptUpi ?? true);
       setMrpPrice(product.mrpPrice || "");
       setStockQuantity(product.stockQuantity);
       setLowStockThreshold(product.lowStockThreshold);
@@ -470,6 +474,8 @@ export default function EditProductModal({
         newErrors.lowStockThreshold = "Low stock threshold must be a whole number of at least 1";
       }
     }
+
+    if (!acceptCod && !acceptUpi) newErrors.paymentMethods = "Enable at least one accepted payment type";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -558,6 +564,8 @@ export default function EditProductModal({
         brand: brand.trim() || undefined,
         description: description.trim() || undefined,
         sellingPrice: parseFloat(sellingPrice),
+        acceptCod,
+        acceptUpi,
         mrpPrice: mrpPrice.trim() ? parseFloat(mrpPrice) : undefined,
         stockQuantity: stockQuantity === "" || stockQuantity === undefined ? 0 : Number(stockQuantity),
         lowStockThreshold: lowStockThreshold === "" || lowStockThreshold === undefined ? 5 : Number(lowStockThreshold),
@@ -1263,6 +1271,25 @@ export default function EditProductModal({
                     onChange={(e) => setMrpPrice(e.target.value)}
                     className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
                   />
+                </div>
+
+                <div className="md:col-span-2 rounded-2xl border border-white/10 bg-[#0a0a0a] p-4">
+                  <h4 className="text-sm font-semibold text-white">Accepted Payment Types</h4>
+                  <p className="mt-1 text-xs text-white/45">Choose payment options allowed for this product.</p>
+                  {errors.paymentMethods && <p role="alert" className="mt-2 text-xs text-red-400">{errors.paymentMethods}</p>}
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {([
+                      { label: "Cash on Delivery (COD)", value: acceptCod, set: setAcceptCod },
+                      { label: "UPI", value: acceptUpi, set: setAcceptUpi },
+                    ] as const).map((option) => (
+                      <div key={option.label} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/40 p-3">
+                        <span className="text-sm text-white">{option.label}</span>
+                        <button type="button" role="switch" aria-checked={option.value} aria-label={`${option.label} accepted`} onClick={() => option.set((value) => !value)} className={`relative h-6 w-11 rounded-full p-0.5 transition-colors ${option.value ? "bg-[#640C0C]" : "bg-white/20"}`}>
+                          <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${option.value ? "translate-x-5" : "translate-x-0"}`} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Stock Quantity */}

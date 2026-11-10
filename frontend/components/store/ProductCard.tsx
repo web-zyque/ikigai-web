@@ -23,6 +23,8 @@ export interface Product {
   partType?: string;
   description?: string;
   inStock?: boolean;
+  acceptCod?: boolean;
+  acceptUpi?: boolean;
 }
 
 interface ProductCardProps {
@@ -60,6 +62,8 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
         name: product.name,
         price: product.price,
         image: product.image,
+        acceptCod: product.acceptCod,
+        acceptUpi: product.acceptUpi,
       });
       return;
     }
@@ -70,6 +74,8 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
       name: product.name,
       price: product.price,
       image: product.image,
+      acceptCod: product.acceptCod,
+      acceptUpi: product.acceptUpi,
     }).then((added) => {
       addToast(
         added ? "Added to the cart successfully" : "Could not add the item to your cart. Please try again.",

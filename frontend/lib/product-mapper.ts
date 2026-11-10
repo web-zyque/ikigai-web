@@ -24,6 +24,8 @@ export function mapProductToStoreProduct(product: ProductResponse): StoreProduct
     warranty: product.warranty,
     stockQuantity: product.stockQuantity,
     inStock: product.inventoryStatus !== "out_of_stock",
+    acceptCod: product.acceptCod,
+    acceptUpi: product.acceptUpi,
     features: [
       "Direct OEM replacement fitment",
       "Engineered for high stress and endurance",
