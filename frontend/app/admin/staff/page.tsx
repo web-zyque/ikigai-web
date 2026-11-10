@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Menu, Plus } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { StaffMember, StaffFormData } from "@/types/staff.types";
 import { INITIAL_MOCK_STAFF } from "@/data/mockStaff";
 import StaffSummaryCards, { StaffCounts } from "@/components/admin/staff/StaffSummaryCards";

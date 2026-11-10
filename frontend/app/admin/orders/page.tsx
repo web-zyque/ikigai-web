@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Menu, Loader2 } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import {
   useAdminCancellationRequests,
   useAdminOrderAction,

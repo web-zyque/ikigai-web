@@ -1,35 +1,10 @@
 "use client";
 
-import React, { useState, createContext, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useMe } from "@/hooks/auth";
 import AdminSidebar from "@/components/admin/sidebar/Sidebar";
 import AdminAuthWrapper from "@/components/admin/AdminAuthWrapper";
-
-export interface AdminLayoutContextType {
-  mobileOpen: boolean;
-  setMobileOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  isCollapsed: boolean;
-  setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
-  toggleCollapse: () => void;
-}
-
-export const AdminLayoutContext = createContext<AdminLayoutContextType>({
-  mobileOpen: false,
-  setMobileOpen: () => {},
-  isCollapsed: false,
-  setIsCollapsed: () => {},
-  toggleCollapse: () => {},
-});
-
-export const useMobileMenu = () => {
-  const ctx = useContext(AdminLayoutContext);
-  return {
-    mobileOpen: ctx.mobileOpen,
-    setMobileOpen: ctx.setMobileOpen,
-  };
-};
-
-export const useAdminSidebar = () => useContext(AdminLayoutContext);
+import { AdminLayoutContext } from "@/contexts/admin-layout-context";
 
 export default function AdminLayout({
   children,

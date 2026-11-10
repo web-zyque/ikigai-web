@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Menu, CheckCircle2, AlertCircle, X } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { AdminSettingsData } from "@/types/settings.types";
 import { DEFAULT_SETTINGS } from "@/data/mockSettings";
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Menu } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { ReportTab, DateFilterType } from "@/types/reports.types";
 import { MOCK_REPORTS_DATA } from "@/data/mockReports";
 import { exportToPdf } from "@/utils/exportPdf";

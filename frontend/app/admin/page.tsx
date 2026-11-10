@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Menu } from "lucide-react";
 
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import SummaryCards from "@/components/admin/SummaryCards";
 import RecentOrdersTable from "@/components/admin/RecentOrdersTable";
 import OrdersOverviewChart from "@/components/admin/dashboard/OrdersOverviewChart";

@@ -19,7 +19,7 @@ import {
   Save,
   Loader2,
 } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { useMe, useUpdateAdminProfile, useChangeAdminPassword } from "@/hooks/auth";
 
 function SectionCard({ title, description, children }: {

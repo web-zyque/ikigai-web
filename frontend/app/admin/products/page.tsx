@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { Package, Menu, Plus } from "lucide-react";
 import { useProducts, useProduct, useUpdateProduct, useDeleteProduct, useAddStock } from "@/hooks/use-products";
 import { InventoryProduct } from "@/components/admin/ProductsInventoryTable";

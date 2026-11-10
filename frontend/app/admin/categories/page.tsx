@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Plus, Menu } from "lucide-react";
-import { useMobileMenu } from "@/app/admin/layout";
+import { useMobileMenu } from "@/contexts/admin-layout-context";
 import { useCategories, useProducts } from "@/hooks/use-products";
 import CategoriesTable, { CategoryRowItem } from "@/components/admin/categories/CategoriesTable";
 import AddCategoryModal from "@/components/admin/categories/AddCategoryModal";
