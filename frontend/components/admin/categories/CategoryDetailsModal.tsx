@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
 import {
   X,
   Edit,
-  Copy,
-  Check,
   Image as ImageIcon,
 } from "lucide-react";
 import { CategoryRowItem } from "./CategoriesTable";
@@ -27,8 +25,6 @@ export default function CategoryDetailsModal({
   onEdit,
   assignedProducts = [],
 }: CategoryDetailsModalProps) {
-  const [copiedId, setCopiedId] = useState(false);
-
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -44,14 +40,6 @@ export default function CategoryDetailsModal({
   }, [isOpen, onClose]);
 
   if (!isOpen || !category) return null;
-
-  const handleCopyId = () => {
-    if (category.id) {
-      navigator.clipboard.writeText(category.id);
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    }
-  };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "N/A";
@@ -84,8 +72,6 @@ export default function CategoryDetailsModal({
             <span className="text-[11px] font-mono uppercase tracking-wider text-white/40">
               Category Details
             </span>
-            <span className="text-white/20">•</span>
-            <span className="font-mono text-xs text-white/70">#{category.slug}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -119,9 +105,6 @@ export default function CategoryDetailsModal({
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug">
               {category.name}
             </h2>
-            <p className="text-xs font-mono text-white/50 mt-1">
-              Route: /products?category={category.slug}
-            </p>
           </div>
 
           {/* Category Image View Card with Full Visibility */}
@@ -143,10 +126,10 @@ export default function CategoryDetailsModal({
             </div>
           )}
 
-          {/* Line-separated Metrics Section (Matching Product Details Top-Line Design) */}
+          {/* Line-separated Metrics Section */}
           <div className="pt-2 pb-5 border-y border-white/10">
-            <div className="grid grid-cols-2 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10 gap-y-4 sm:gap-y-0 mt-1">
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4">
+            <div className="grid grid-cols-2 divide-x divide-white/10 mt-1">
+              <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
                 <span className="text-xs font-medium text-white/70">Assigned Products</span>
                 <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
                   <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
@@ -157,19 +140,7 @@ export default function CategoryDetailsModal({
                 <span className="mt-1 text-xs text-white/40">Active catalogue items</span>
               </div>
 
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4">
-                <span className="text-xs font-medium text-white/70">URL Slug</span>
-                <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
-                  <span className="font-mono text-base sm:text-lg font-bold tracking-tight text-white truncate">
-                    {category.slug}
-                  </span>
-                </div>
-                <span className="mt-1 text-xs text-white/40 truncate">
-                  Store collection route
-                </span>
-              </div>
-
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-4 col-span-2 sm:col-span-1 border-t sm:border-t-0 pt-3 sm:pt-0">
+              <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
                 <span className="text-xs font-medium text-white/70">Category Status</span>
                 <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
                   <span className="text-xl sm:text-lg font-bold tracking-tight text-emerald-400">
@@ -183,41 +154,20 @@ export default function CategoryDetailsModal({
             </div>
           </div>
 
-          {/* Category Identification & Metadata (Line-divided, no card) */}
+          {/* Timestamps Section */}
           <div className="pt-2 pb-5 border-b border-white/10 space-y-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
-              Identification &amp; Timestamps
+              Timestamps
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10 gap-y-3 sm:gap-y-0">
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
-                <span className="text-xs text-white/50">Category ID</span>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className="font-mono text-xs text-white/90 select-all truncate">
-                    {category.id}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyId}
-                    aria-label="Copy Category ID"
-                    className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
-                  >
-                    {copiedId ? (
-                      <Check className="h-3 w-3 text-emerald-400" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+            <div className="grid grid-cols-2 divide-x divide-white/10">
+              <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
                 <span className="text-xs text-white/50">Created Date</span>
                 <span className="mt-1 text-sm text-white/90 font-medium truncate">
                   {formatDate(category.createdAt)}
                 </span>
               </div>
 
-              <div className="flex flex-col justify-between py-1 sm:py-0 px-2 sm:px-3">
+              <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
                 <span className="text-xs text-white/50">Last Updated</span>
                 <span className="mt-1 text-sm text-white/90 font-medium truncate">
                   {formatDate(category.updatedAt)}
