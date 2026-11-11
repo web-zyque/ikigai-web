@@ -48,11 +48,14 @@ export const GetProductsQuerySchema = z.object({
 });
 
 export const CreateCategorySchema = z.object({
-  name: z.string().min(1).max(255),
-  imageUrl: z.string().optional(),
+  name: z.string().trim().min(1, 'Category name is required').max(255),
+  imageUrl: z.string().trim().min(1, 'Category image is required'),
 });
 
-export const UpdateCategorySchema = CreateCategorySchema.partial();
+export const UpdateCategorySchema = z.object({
+  name: z.string().trim().min(1, 'Category name is required').max(255).optional(),
+  imageUrl: z.string().trim().min(1, 'Category image cannot be empty').optional(),
+});
 
 export const AddStockSchema = z.object({
   quantity: z.number().int().positive('Quantity must be a positive integer'),

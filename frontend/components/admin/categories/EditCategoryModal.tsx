@@ -105,6 +105,7 @@ export default function EditCategoryModal({
       setImageUrl(result.imageUrl);
       setUploadStatus("done");
       setUploadProgress(100);
+      setErrorMessage(null);
     } catch (err: unknown) {
       setUploadStatus("error");
       setUploadError(err instanceof Error ? err.message : "Image upload failed.");
@@ -138,6 +139,11 @@ export default function EditCategoryModal({
       return;
     }
 
+    if (!imageUrl.trim()) {
+      setErrorMessage("Category image is required.");
+      return;
+    }
+
     setErrorMessage(null);
 
     try {
@@ -145,7 +151,7 @@ export default function EditCategoryModal({
         id: category.id,
         data: {
           name: name.trim(),
-          imageUrl: imageUrl.trim() || undefined,
+          imageUrl: imageUrl.trim(),
         },
       });
 
@@ -244,7 +250,7 @@ export default function EditCategoryModal({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium text-white/70 block">
-                    Category Image <span className="text-white/40 font-normal">(Optional)</span>
+                    Category Image <span className="text-[#640C0C]">*</span>
                   </label>
                   {uploadStatus === "done" && imageUrl && (
                     <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
@@ -389,7 +395,7 @@ export default function EditCategoryModal({
 
             <button
               type="submit"
-              disabled={updateCategoryMutation.isPending || uploadStatus === "uploading" || !name.trim()}
+              disabled={updateCategoryMutation.isPending || uploadStatus === "uploading" || !name.trim() || !imageUrl.trim()}
               className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-md"
             >
               {updateCategoryMutation.isPending ? (

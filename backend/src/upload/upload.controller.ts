@@ -48,7 +48,11 @@ export class UploadController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ imageUrl: string; publicId: string }> {
     if (!file) {
-      throw new BadRequestException('A file field is required.');
+      throw new BadRequestException('A valid image file is required.');
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new BadRequestException('File size must be less than 10MB.');
     }
 
     return this.cloudinaryService.uploadImage(file);

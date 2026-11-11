@@ -102,7 +102,7 @@ export const useCreateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; imageUrl?: string }) =>
+    mutationFn: (data: { name: string; imageUrl: string }) =>
       categoriesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });

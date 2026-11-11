@@ -455,6 +455,10 @@ export class ProductsService {
   }
 
   async createCategory(dto: CreateCategoryDto): Promise<CategoryResponse> {
+    if (!dto.imageUrl || !dto.imageUrl.trim()) {
+      throw new BadRequestException('Category image is required');
+    }
+
     const slug = dto.name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
@@ -463,9 +467,9 @@ export class ProductsService {
       const [newCategory] = await this.db
         .insert(categories)
         .values({
-          name: dto.name,
+          name: dto.name.trim(),
           slug,
-          imageUrl: dto.imageUrl,
+          imageUrl: dto.imageUrl.trim(),
         })
         .returning();
 
@@ -482,12 +486,21 @@ export class ProductsService {
   }
 
   async updateCategory(id: string, dto: UpdateCategoryDto): Promise<CategoryResponse> {
+    const [existing] = await this.db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id));
+
+    if (!existing) {
+      throw new NotFoundException('Category not found');
+    }
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
     if (dto.name !== undefined) {
-      updateData.name = dto.name;
+      updateData.name = dto.name.trim();
       updateData.slug = dto.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -495,7 +508,12 @@ export class ProductsService {
     }
 
     if (dto.imageUrl !== undefined) {
-      updateData.imageUrl = dto.imageUrl;
+      if (!dto.imageUrl || !dto.imageUrl.trim()) {
+        throw new BadRequestException('Category image cannot be empty');
+      }
+      updateData.imageUrl = dto.imageUrl.trim();
+    } else if (!existing.imageUrl || !existing.imageUrl.trim()) {
+      throw new BadRequestException('Category image is required');
     }
 
     try {
@@ -504,10 +522,6 @@ export class ProductsService {
         .set(updateData)
         .where(eq(categories.id, id))
         .returning();
-
-      if (!updated) {
-        throw new NotFoundException('Category not found');
-      }
 
       return {
         ...updated,
