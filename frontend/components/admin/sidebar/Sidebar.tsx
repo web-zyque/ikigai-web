@@ -41,8 +41,8 @@ export interface SidebarProps {
 
 const DEFAULT_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-  { label: "Products", icon: Package, href: "/admin/products" },
   { label: "Categories", icon: ChartBarStacked, href: "/admin/categories" },
+  { label: "Products", icon: Package, href: "/admin/products" },
   { label: "Orders", icon: ShoppingCart, href: "/admin/orders" },
   { label: "Staff", icon: UserCheck, href: "/admin/staff" },
   //{ label: "Reports", icon: BarChart3, href: "/admin/reports" },
