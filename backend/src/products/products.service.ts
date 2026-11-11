@@ -110,7 +110,11 @@ export class ProductsService {
         });
       }
 
-      const imageData = dto.images.map((img, index) => {
+      const variantOrderCounters: Record<string, number> = {};
+      const imageData = dto.images.map((img) => {
+        const colorKey = img.variantColor || 'noVariant';
+        if (variantOrderCounters[colorKey] === undefined) variantOrderCounters[colorKey] = 1;
+        const displayOrder = img.isMainImage ? 0 : variantOrderCounters[colorKey]++;
         const variantId = img.variantColor ? variantMap.get(img.variantColor) : undefined;
         
         return {
@@ -119,7 +123,7 @@ export class ProductsService {
           imageUrl: img.imageUrl,
           cloudinaryPublicId: img.cloudinaryPublicId || null,
           isMainImage: img.isMainImage,
-          displayOrder: img.displayOrder || (img.isMainImage ? 0 : index + 1),
+          displayOrder,
           altText: img.altText || null,
         };
       });
@@ -215,7 +219,7 @@ export class ProductsService {
             .select()
             .from(productImages)
             .where(inArray(productImages.productId, productIds))
-            .orderBy(asc(productImages.displayOrder))
+            .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder))
         : [],
       productIds.length > 0
         ? this.db
@@ -276,7 +280,7 @@ export class ProductsService {
         .select()
         .from(productImages)
         .where(eq(productImages.productId, id))
-        .orderBy(asc(productImages.displayOrder)),
+        .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder)),
       this.db
         .select()
         .from(productVariants)
@@ -386,7 +390,11 @@ export class ProductsService {
             }
           }
 
-          const imageData = dto.images.map((img, index) => {
+          const variantOrderCounters: Record<string, number> = {};
+          const imageData = dto.images.map((img) => {
+            const colorKey = img.variantColor || 'noVariant';
+            if (variantOrderCounters[colorKey] === undefined) variantOrderCounters[colorKey] = 1;
+            const displayOrder = img.isMainImage ? 0 : variantOrderCounters[colorKey]++;
             const variantId = img.variantColor ? variantMap.get(img.variantColor) : undefined;
             
             return {
@@ -395,7 +403,7 @@ export class ProductsService {
               imageUrl: img.imageUrl,
               cloudinaryPublicId: img.cloudinaryPublicId || null,
               isMainImage: img.isMainImage,
-              displayOrder: img.displayOrder || (img.isMainImage ? 0 : index + 1),
+              displayOrder,
               altText: img.altText || null,
             };
           });
@@ -556,20 +564,43 @@ export class ProductsService {
       return acc;
     }, {} as Record<string, typeof images>);
 
-    const formattedVariants = variants.map(variant => ({
-      id: variant.id,
-      colorName: variant.colorName,
-      sku: variant.sku || undefined,
-      stockQuantity: variant.stockQuantity,
-      images: (imagesByVariant[variant.id] || []).map(img => ({
-        id: img.id,
-        imageUrl: img.imageUrl,
-        cloudinaryPublicId: img.cloudinaryPublicId || undefined,
-        isMainImage: img.isMainImage,
-        displayOrder: img.displayOrder,
-        altText: img.altText || undefined,
-      })),
-    }));
+    const sortImages = (imgs: (typeof productImages.$inferSelect)[]) => {
+      return [...imgs].sort((a, b) => {
+        if (a.isMainImage && !b.isMainImage) return -1;
+        if (!a.isMainImage && b.isMainImage) return 1;
+        return (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+      });
+    };
+
+    const formattedVariants = variants.map(variant => {
+      const sortedVariantImages = sortImages(imagesByVariant[variant.id] || []);
+      return {
+        id: variant.id,
+        colorName: variant.colorName,
+        sku: variant.sku || undefined,
+        stockQuantity: variant.stockQuantity,
+        images: sortedVariantImages.map(img => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          cloudinaryPublicId: img.cloudinaryPublicId || undefined,
+          isMainImage: img.isMainImage,
+          displayOrder: img.displayOrder,
+          altText: img.altText || undefined,
+        })),
+      };
+    });
+
+    let sortedAllImages: (typeof productImages.$inferSelect)[] = [];
+    if (variants.length > 0) {
+      for (const variant of variants) {
+        sortedAllImages.push(...sortImages(imagesByVariant[variant.id] || []));
+      }
+      if (imagesByVariant['noVariant']) {
+        sortedAllImages.push(...sortImages(imagesByVariant['noVariant']));
+      }
+    } else {
+      sortedAllImages = sortImages(images);
+    }
 
     return {
       id: product.id,
@@ -597,7 +628,7 @@ export class ProductsService {
       dimensions: product.dimensions || undefined,
       material: product.material || undefined,
       warranty: product.warranty || undefined,
-      images: images.map(img => ({
+      images: sortedAllImages.map(img => ({
         id: img.id,
         imageUrl: img.imageUrl,
         cloudinaryPublicId: img.cloudinaryPublicId || undefined,

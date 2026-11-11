@@ -596,14 +596,21 @@ export default function AddProductModal({
     setIsSubmitting(true);
     try {
       // All images must already be uploaded (validated above). Use their cloudinaryUrl.
-      const imagesPayload = uploadedImages.map((img, idx) => ({
-        imageUrl: img.cloudinaryUrl ?? img.previewUrl,
-        cloudinaryPublicId: img.publicId,
-        isMainImage: img.isMain,
-        displayOrder: idx + 1,
-        altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
-        variantColor: img.variantColor, // Add variant color association
-      }));
+      // Group by variant to assign displayOrder: main image = 0, others 1, 2, 3...
+      const variantOrderCounters: Record<string, number> = {};
+      const imagesPayload = uploadedImages.map((img) => {
+        const colorKey = img.variantColor || "noVariant";
+        if (variantOrderCounters[colorKey] === undefined) variantOrderCounters[colorKey] = 1;
+        const displayOrder = img.isMain ? 0 : variantOrderCounters[colorKey]++;
+        return {
+          imageUrl: img.cloudinaryUrl ?? img.previewUrl,
+          cloudinaryPublicId: img.publicId,
+          isMainImage: img.isMain,
+          displayOrder,
+          altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
+          variantColor: img.variantColor, // Add variant color association
+        };
+      });
 
       const vehicleCompatibilityArray = vehicleCompatibility
         ? vehicleCompatibility
