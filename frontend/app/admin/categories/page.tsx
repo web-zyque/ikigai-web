@@ -31,7 +31,10 @@ export default function CategoriesPage() {
 
     return (categoriesData || []).map((cat) => ({
       ...cat,
-      productsCount: countMap[cat.id] || 0,
+      productsCount:
+        typeof cat.productsCount === "number"
+          ? cat.productsCount
+          : countMap[cat.id] || 0,
     }));
   }, [categoriesData, productsData]);
 

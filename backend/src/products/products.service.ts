@@ -618,13 +618,24 @@ export class ProductsService {
 
   async getCategories(): Promise<CategoryResponse[]> {
     const result = await this.db
-      .select()
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        imageUrl: categories.imageUrl,
+        createdAt: categories.createdAt,
+        updatedAt: categories.updatedAt,
+        productsCount: sql<number>`cast(count(${products.id}) as integer)`,
+      })
       .from(categories)
+      .leftJoin(products, eq(products.categoryId, categories.id))
+      .groupBy(categories.id)
       .orderBy(asc(categories.name));
     
     return result.map(cat => ({
       ...cat,
       imageUrl: cat.imageUrl || undefined,
+      productsCount: Number(cat.productsCount) || 0,
     }));
   }
 
