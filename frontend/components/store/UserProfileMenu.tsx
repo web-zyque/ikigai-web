@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { User, ChevronDown, LogOut, Settings, ShoppingBag } from "lucide-react";
+import { User, ChevronDown, LogOut, Settings, ShoppingBag, LayoutDashboard } from "lucide-react";
 import { useLogout } from "@/hooks/auth";
 import type { User as UserType } from "@/types/auth.types";
 
@@ -49,6 +49,7 @@ export function UserProfileMenu({ user }: UserProfileMenuProps) {
   };
 
   const displayName = user.fullName.split(' ')[0];
+  const isAdmin = user.role === 'ADMIN' || user.role === 'STAFF';
 
   return (
     <div className="relative">
@@ -72,22 +73,24 @@ export function UserProfileMenu({ user }: UserProfileMenuProps) {
           className="absolute right-0 top-full mt-2 w-48 rounded-lg border border-white/10 bg-ik-surface shadow-lg backdrop-blur-sm z-50"
         >
           <div className="border-b border-white/10 px-4 py-3">
-            {(user.role === 'ADMIN' || user.role === 'STAFF') ? (
-              <Link
-                href="/admin"
-                onClick={() => setIsOpen(false)}
-                className="text-sm font-medium text-white hover:text-white/80 transition-colors"
-                aria-label="Go to admin dashboard"
-              >
-                {user.fullName}
-              </Link>
-            ) : (
-              <p className="text-sm font-medium text-white">{user.fullName}</p>
+            <p className="text-sm font-medium text-white">{user.fullName}</p>
+            {(user.phone || user.email) && (
+              <p className="text-xs text-white/60">{user.phone || user.email}</p>
             )}
-            <p className="text-xs text-white/60">{user.phone}</p>
           </div>
 
           <div className="py-1">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </Link>
+            )}
+
             <Link
               href="/profile"
               onClick={() => setIsOpen(false)}
@@ -97,23 +100,25 @@ export function UserProfileMenu({ user }: UserProfileMenuProps) {
               Profile
             </Link>
             
-            {(user.role === 'ADMIN' || user.role === 'STAFF') ? (
-            <Link
-              href="/admin/orders"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Orders
-            </Link> ) : <Link
-              href="/orders"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Orders
-            </Link>
-            }
+            {isAdmin ? (
+              <Link
+                href="/admin/orders"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Orders
+              </Link>
+            ) : (
+              <Link
+                href="/orders"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-2 text-sm text-white/80 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Orders
+              </Link>
+            )}
 
             <Link
               href="/settings"
@@ -125,7 +130,6 @@ export function UserProfileMenu({ user }: UserProfileMenuProps) {
             </Link>
           </div>
 
-         
           <div className="border-t border-white/10 py-1">
             <button
               onClick={handleLogout}
