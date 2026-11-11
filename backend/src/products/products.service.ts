@@ -580,7 +580,12 @@ export class ProductsService {
       }
 
       updateData.name = trimmedName;
-      updateData.slug = await this.generateUniqueCategorySlug(trimmedName, id);
+
+      // Only re-generate slug if the category name actually changed
+      const existingNormalized = this.normalizeCategoryName(existing.name);
+      if (normalizedName !== existingNormalized) {
+        updateData.slug = await this.generateUniqueCategorySlug(trimmedName, id);
+      }
     }
 
     if (dto.imageUrl !== undefined) {
