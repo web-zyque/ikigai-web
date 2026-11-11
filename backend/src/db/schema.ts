@@ -103,14 +103,20 @@ export const admins = pgTable('admins', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const categories = pgTable('categories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull().unique(),
-  slug: text('slug').notNull().unique(),
-  imageUrl: text('image_url'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull().unique(),
+    imageUrl: text('image_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('categories_name_lower_idx').on(sql`lower(trim(${table.name}))`),
+  ],
+);
 
 export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),

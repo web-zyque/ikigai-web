@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, ilike, or, sql, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, or, sql, inArray, ne } from 'drizzle-orm';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
@@ -454,20 +454,71 @@ export class ProductsService {
     return this.getProductById(id);
   }
 
+  private normalizeCategoryName(name: string): string {
+    return name.trim().toLowerCase();
+  }
+
+  private async generateUniqueCategorySlug(name: string, excludeId?: string): Promise<string> {
+    const baseSlug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'category';
+
+    let candidate = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const conditions = [eq(categories.slug, candidate)];
+      if (excludeId) {
+        conditions.push(ne(categories.id, excludeId));
+      }
+
+      const [existing] = await this.db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(...conditions))
+        .limit(1);
+
+      if (!existing) {
+        return candidate;
+      }
+
+      counter++;
+      candidate = `${baseSlug}-${counter}`;
+    }
+  }
+
   async createCategory(dto: CreateCategoryDto): Promise<CategoryResponse> {
+    const trimmedName = dto.name?.trim();
+    if (!trimmedName) {
+      throw new BadRequestException('Category name is required');
+    }
+
     if (!dto.imageUrl || !dto.imageUrl.trim()) {
       throw new BadRequestException('Category image is required');
     }
 
-    const slug = dto.name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const normalizedName = this.normalizeCategoryName(trimmedName);
+
+    // Case-insensitive duplicate check in DB
+    const [existingByName] = await this.db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(sql`lower(trim(${categories.name})) = ${normalizedName}`)
+      .limit(1);
+
+    if (existingByName) {
+      throw new ConflictException('A category with this name already exists.');
+    }
+
+    const slug = await this.generateUniqueCategorySlug(trimmedName);
 
     try {
       const [newCategory] = await this.db
         .insert(categories)
         .values({
-          name: dto.name.trim(),
+          name: trimmedName,
           slug,
           imageUrl: dto.imageUrl.trim(),
         })
@@ -479,7 +530,12 @@ export class ProductsService {
       };
     } catch (error: any) {
       if (error?.code === '23505') {
-        throw new ConflictException('Category name already exists');
+        const detail = (error?.detail || error?.message || '').toLowerCase();
+        const constraint = (error?.constraint || '').toLowerCase();
+        if (constraint.includes('slug') || detail.includes('slug') || detail.includes('key (slug)')) {
+          throw new ConflictException('A category with this URL slug already exists.');
+        }
+        throw new ConflictException('A category with this name already exists.');
       }
       throw error;
     }
@@ -500,11 +556,31 @@ export class ProductsService {
     };
 
     if (dto.name !== undefined) {
-      updateData.name = dto.name.trim();
-      updateData.slug = dto.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      const trimmedName = dto.name.trim();
+      if (!trimmedName) {
+        throw new BadRequestException('Category name cannot be empty');
+      }
+
+      const normalizedName = this.normalizeCategoryName(trimmedName);
+
+      // Check if another category already uses this name (excluding current category ID)
+      const [existingByName] = await this.db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(
+          and(
+            sql`lower(trim(${categories.name})) = ${normalizedName}`,
+            ne(categories.id, id),
+          ),
+        )
+        .limit(1);
+
+      if (existingByName) {
+        throw new ConflictException('A category with this name already exists.');
+      }
+
+      updateData.name = trimmedName;
+      updateData.slug = await this.generateUniqueCategorySlug(trimmedName, id);
     }
 
     if (dto.imageUrl !== undefined) {
@@ -529,7 +605,12 @@ export class ProductsService {
       };
     } catch (error: any) {
       if (error?.code === '23505') {
-        throw new ConflictException('Category name already exists');
+        const detail = (error?.detail || error?.message || '').toLowerCase();
+        const constraint = (error?.constraint || '').toLowerCase();
+        if (constraint.includes('slug') || detail.includes('slug') || detail.includes('key (slug)')) {
+          throw new ConflictException('A category with this URL slug already exists.');
+        }
+        throw new ConflictException('A category with this name already exists.');
       }
       throw error;
     }
