@@ -66,13 +66,6 @@ export default function AddCategoryModal({
 
   if (!isOpen) return null;
 
-  const slugPreview = name.trim()
-    ? name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-    : "";
-
   const handleFileSelected = async (file: File) => {
     const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
     if (!ALLOWED.has(file.type)) {
@@ -227,20 +220,6 @@ export default function AddCategoryModal({
                   }}
                   className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
                 />
-              </div>
-
-              {/* URL Slug (Auto-generated preview) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-white/70 block">
-                  URL Slug <span className="text-white/40 font-normal">(Auto-generated identifier)</span>
-                </label>
-                <div className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/5 px-4 flex items-center text-sm font-mono text-white/70 select-all">
-                  {slugPreview ? (
-                    <span className="text-white/90">{slugPreview}</span>
-                  ) : (
-                    <span className="text-white/30 italic">Generated based on category name</span>
-                  )}
-                </div>
               </div>
 
               {/* Category Image Upload Area */}
