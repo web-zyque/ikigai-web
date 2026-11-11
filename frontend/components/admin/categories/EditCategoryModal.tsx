@@ -88,13 +88,6 @@ export default function EditCategoryModal({
 
   if (!isOpen || !category) return null;
 
-  const slugPreview = name.trim()
-    ? name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-    : category.slug;
-
   const handleFileSelected = async (file: File) => {
     const ALLOWED = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
     if (!ALLOWED.has(file.type)) {
@@ -201,10 +194,7 @@ export default function EditCategoryModal({
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-8 py-5 bg-[#0a0a0a] shrink-0">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold tracking-tight text-white">Edit Category</h2>
-              <span className="font-mono text-xs text-white/40">#{category.slug}</span>
-            </div>
+            <h2 className="text-lg font-bold tracking-tight text-white">Edit Category</h2>
             <p className="text-xs text-white/50 mt-0.5">
               Update category details, image, and catalog organization
             </p>
@@ -265,16 +255,6 @@ export default function EditCategoryModal({
                     <span>{nameError}</span>
                   </p>
                 )}
-              </div>
-
-              {/* URL Slug (Auto-generated preview) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-white/70 block">
-                  URL Slug <span className="text-white/40 font-normal">(Auto-updated from name)</span>
-                </label>
-                <div className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/5 px-4 flex items-center text-sm font-mono text-white/70 select-all">
-                  <span className="text-white/90">{slugPreview}</span>
-                </div>
               </div>
 
               {/* Category Image Upload Area */}
