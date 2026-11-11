@@ -83,21 +83,40 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         setSelectedVariantId(apiProduct.variants[0].id);
       }
     }
-  }, [productColors, apiProduct]);
+  }, [productColors, apiProduct, selectedColor]);
+
+  const activeVariant = useMemo(() => {
+    if (!apiProduct?.variants || apiProduct.variants.length === 0) return null;
+    if (selectedVariantId) {
+      return apiProduct.variants.find((v) => v.id === selectedVariantId) || apiProduct.variants[0];
+    }
+    if (selectedColor) {
+      return (
+        apiProduct.variants.find(
+          (v) => v.colorName.toLowerCase() === selectedColor.toLowerCase()
+        ) || apiProduct.variants[0]
+      );
+    }
+    return apiProduct.variants[0];
+  }, [apiProduct, selectedVariantId, selectedColor]);
 
   const variantImages = useMemo(() => {
     if (!apiProduct) return [];
     
-    if (apiProduct.variants && apiProduct.variants.length > 0 && selectedVariantId) {
-      const variant = apiProduct.variants.find(v => v.id === selectedVariantId);
-      if (variant && variant.images.length > 0) {
-        return variant.images;
-      }
+    if (activeVariant && activeVariant.images.length > 0) {
+      const main = activeVariant.images.find((img) => img.isMainImage);
+      const others = activeVariant.images.filter((img) => img !== main);
+      return main ? [main, ...others] : activeVariant.images;
     }
     
     // Fallback to all product images
-    return apiProduct.images || [];
-  }, [apiProduct, selectedVariantId]);
+    if (apiProduct.images && apiProduct.images.length > 0) {
+      const main = apiProduct.images.find((img) => img.isMainImage);
+      const others = apiProduct.images.filter((img) => img !== main);
+      return main ? [main, ...others] : apiProduct.images;
+    }
+    return [];
+  }, [apiProduct, activeVariant]);
 
   const product: ProductDetailItem | null = useMemo(() => {
     if (!apiProduct) return null;
@@ -106,14 +125,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     const imageUrls = variantImages.length > 0 
       ? variantImages.map(img => img.imageUrl) 
       : (apiProduct.images?.length ? apiProduct.images.map(img => img.imageUrl) : []);
+    const mainImageUrl = imageUrls[0] || storeProduct.image;
     
     return {
       id: storeProduct.id,
       name: storeProduct.name,
       price: storeProduct.price,
       mrpPrice: storeProduct.mrpPrice,
-      image: imageUrls[0] || storeProduct.image,
-      images: imageUrls,
+      image: mainImageUrl,
+      images: imageUrls.length > 0 ? imageUrls : [mainImageUrl],
       category: storeProduct.category,
       categoryLabel: storeProduct.categoryLabel,
       brand: storeProduct.brand,
@@ -421,33 +441,41 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   Colors
                 </span>
                 <div className="flex items-center gap-2.5">
-                  {productColors.map((col, idx) => (
-                    <button
-                      key={col.name}
-                      type="button"
-                      onClick={() => {
-                        setSelectedColor(col.name);
-                        setSelectedImageIndex(0); // Reset to first image when switching colors
-                        if (apiProduct?.variants && apiProduct.variants[idx]) {
-                          setSelectedVariantId(apiProduct.variants[idx].id);
-                        }
-                      }}
-                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
-                        selectedColor === col.name
-                          ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
-                          : "border-white/20 hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: col.hex }}
-                      aria-label={col.name}
-                      title={col.name}
-                    >
-                      {selectedColor === col.name && (
-                        <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
-                      )}
-                    </button>
-                  ))}
+                  {productColors.map((col) => {
+                    const isSelected = selectedColor
+                      ? selectedColor.toLowerCase() === col.name.toLowerCase()
+                      : activeVariant?.colorName.toLowerCase() === col.name.toLowerCase();
+                    return (
+                      <button
+                        key={col.name}
+                        type="button"
+                        onClick={() => {
+                          setSelectedColor(col.name);
+                          setSelectedImageIndex(0); // Reset to first image (Main image) when switching colors
+                          const matchedVariant = apiProduct?.variants?.find(
+                            (v) => v.colorName.toLowerCase() === col.name.toLowerCase()
+                          );
+                          if (matchedVariant) {
+                            setSelectedVariantId(matchedVariant.id);
+                          }
+                        }}
+                        className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition-all flex items-center justify-center ${
+                          isSelected
+                            ? "ring-2 ring-[#640C0C] ring-offset-2 ring-offset-black border-white scale-110"
+                            : "border-white/20 hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: col.hex }}
+                        aria-label={col.name}
+                        title={col.name}
+                      >
+                        {isSelected && (
+                          <Check className={`w-3 h-3 ${col.isLight ? "text-black" : "text-white"}`} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-                <span className="text-xs text-neutral-300 font-medium">({selectedColor})</span>
+                <span className="text-xs text-neutral-300 font-medium">({selectedColor || activeVariant?.colorName || ""})</span>
               </div>
             )}
 

@@ -544,14 +544,21 @@ export default function EditProductModal({
         hasColorVariants && colorValues.length > 0 ? colorValues.join(", ") : undefined;
 
       // Build images payload with variantColor property
-      const imagesPayload = uploadedImages.map((img, idx) => ({
-        imageUrl: img.cloudinaryUrl ?? img.previewUrl,
-        cloudinaryPublicId: img.publicId,
-        isMainImage: img.isMain,
-        displayOrder: idx + 1,
-        altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
-        variantColor: img.variantColor, // Include variantColor for backend
-      }));
+      // Group by variant to assign displayOrder: main image = 0, others 1, 2, 3...
+      const variantOrderCounters: Record<string, number> = {};
+      const imagesPayload = uploadedImages.map((img) => {
+        const colorKey = img.variantColor || "noVariant";
+        if (variantOrderCounters[colorKey] === undefined) variantOrderCounters[colorKey] = 1;
+        const displayOrder = img.isMain ? 0 : variantOrderCounters[colorKey]++;
+        return {
+          imageUrl: img.cloudinaryUrl ?? img.previewUrl,
+          cloudinaryPublicId: img.publicId,
+          isMainImage: img.isMain,
+          displayOrder,
+          altText: img.variantColor ? `${productName} (${img.variantColor})` : productName,
+          variantColor: img.variantColor, // Include variantColor for backend
+        };
+      });
 
       const vehicleCompatibilityArray = vehicleCompatibility
         ? vehicleCompatibility.split(",").map((v) => v.trim()).filter((v) => v.length > 0)

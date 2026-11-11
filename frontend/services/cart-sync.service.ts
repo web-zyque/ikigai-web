@@ -18,8 +18,11 @@ function enrichCart(cart: CartResponse): Promise<CartItem[]> {
     return cart.items.map((item) => {
       const product = productsById.get(item.productId);
       const variant = product?.variants?.find((candidate) => candidate.id === item.variantId);
-      const image = variant?.images?.[0]?.imageUrl
+      const image = variant?.images?.find((img) => img.isMainImage)?.imageUrl
+        ?? variant?.images?.[0]?.imageUrl
+        ?? product?.images?.find((candidate) => candidate.variantId === item.variantId && candidate.isMainImage)?.imageUrl
         ?? product?.images?.find((candidate) => candidate.variantId === item.variantId)?.imageUrl
+        ?? product?.images?.find((img) => img.isMainImage)?.imageUrl
         ?? product?.images?.[0]?.imageUrl
         ?? "";
 
