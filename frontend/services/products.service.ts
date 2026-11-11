@@ -40,7 +40,7 @@ export const categoriesApi = {
     return response.data;
   },
 
-  create: async (data: { name: string; imageUrl?: string }): Promise<CategoryResponse> => {
+  create: async (data: { name: string; imageUrl: string }): Promise<CategoryResponse> => {
     const response = await api.post('/categories', data);
     return response.data;
   },
