@@ -21,7 +21,6 @@ export default function EditCategoryModal({
   onSuccess,
 }: EditCategoryModalProps) {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -37,7 +36,6 @@ export default function EditCategoryModal({
   useEffect(() => {
     if (category && isOpen) {
       setName(category.name || "");
-      setDescription(category.description || "");
       setImageUrl(category.imageUrl || "");
       setPreviewUrl(category.imageUrl || "");
       setImageFile(null);
@@ -147,7 +145,6 @@ export default function EditCategoryModal({
         id: category.id,
         data: {
           name: name.trim(),
-          description: description.trim() || undefined,
           imageUrl: imageUrl.trim() || undefined,
         },
       });
@@ -375,20 +372,7 @@ export default function EditCategoryModal({
                 )}
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label htmlFor="edit-category-desc" className="text-xs font-medium text-white/70 block">
-                  Description <span className="text-white/40 font-normal">(Optional)</span>
-                </label>
-                <textarea
-                  id="edit-category-desc"
-                  rows={3}
-                  placeholder="Provide a clear description of the products and accessories included under this category..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-2xl bg-[#0a0a0a] border border-white/10 p-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors resize-none"
-                />
-              </div>
+
             </div>
           </div>
 

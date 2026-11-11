@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { 
-  productsApi, 
-  categoriesApi, 
+import {
+  productsApi,
+  categoriesApi,
 } from '@/services/products.service';
 import { CreateProductRequest, GetProductsParams, ProductResponse } from '@/types/products.types';
 
@@ -13,6 +13,7 @@ export const useCreateProduct = () => {
     mutationFn: (data: CreateProductRequest) => productsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['store-products'] });
       console.log('Product created successfully');
     },
     onError: (error: any) => {
@@ -44,7 +45,9 @@ export const useUpdateProduct = () => {
       productsApi.update(id, data),
     onSuccess: (updatedProduct: ProductResponse) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['store-products'] });
       queryClient.setQueryData(['products', updatedProduct.id], updatedProduct);
+      queryClient.setQueryData(['store-products', updatedProduct.id], updatedProduct);
       console.log('Product updated successfully');
     },
     onError: (error: any) => {
@@ -61,7 +64,9 @@ export const useAddStock = () => {
       productsApi.addStock(id, quantity),
     onSuccess: (updatedProduct: ProductResponse) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['store-products'] });
       queryClient.setQueryData(['products', updatedProduct.id], updatedProduct);
+      queryClient.setQueryData(['store-products', updatedProduct.id], updatedProduct);
       console.log('Stock added successfully');
     },
     onError: (error: any) => {
@@ -77,6 +82,7 @@ export const useDeleteProduct = () => {
     mutationFn: (id: string) => productsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['store-products'] });
       console.log('Product deleted successfully');
     },
     onError: (error: any) => {
@@ -96,7 +102,7 @@ export const useCreateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; description?: string; imageUrl?: string }) =>
+    mutationFn: (data: { name: string; imageUrl?: string }) =>
       categoriesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
@@ -112,7 +118,7 @@ export const useUpdateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name?: string; description?: string; imageUrl?: string } }) =>
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; imageUrl?: string } }) =>
       categoriesApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });

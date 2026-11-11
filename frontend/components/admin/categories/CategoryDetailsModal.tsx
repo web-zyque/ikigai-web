@@ -183,16 +183,6 @@ export default function CategoryDetailsModal({
             </div>
           </div>
 
-          {/* Description Section (Line-divided, no card) */}
-          <div className="pt-2 pb-5 border-b border-white/10 space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
-              Description
-            </span>
-            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
-              {category.description || "No description provided for this category."}
-            </p>
-          </div>
-
           {/* Category Identification & Metadata (Line-divided, no card) */}
           <div className="pt-2 pb-5 border-b border-white/10 space-y-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">

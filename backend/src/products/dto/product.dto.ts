@@ -49,7 +49,6 @@ export const GetProductsQuerySchema = z.object({
 
 export const CreateCategorySchema = z.object({
   name: z.string().min(1).max(255),
-  description: z.string().optional(),
   imageUrl: z.string().optional(),
 });
 
@@ -124,7 +123,6 @@ export interface CategoryResponse {
   id: string;
   name: string;
   slug: string;
-  description?: string;
   imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
