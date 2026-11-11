@@ -40,12 +40,12 @@ export const categoriesApi = {
     return response.data;
   },
 
-  create: async (data: { name: string; description?: string; imageUrl?: string }): Promise<CategoryResponse> => {
+  create: async (data: { name: string; imageUrl?: string }): Promise<CategoryResponse> => {
     const response = await api.post('/categories', data);
     return response.data;
   },
 
-  update: async (id: string, data: { name?: string; description?: string; imageUrl?: string }): Promise<CategoryResponse> => {
+  update: async (id: string, data: { name?: string; imageUrl?: string }): Promise<CategoryResponse> => {
     const response = await api.patch(`/categories/${id}`, data);
     return response.data;
   },

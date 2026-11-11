@@ -81,8 +81,7 @@ export default function CategoriesTable({
       const matchName = cat.name.toLowerCase().includes(q);
       const matchSlug = cat.slug.toLowerCase().includes(q);
       const matchId = cat.id.toLowerCase().includes(q);
-      const matchDesc = cat.description ? cat.description.toLowerCase().includes(q) : false;
-      return matchName || matchSlug || matchId || matchDesc;
+      return matchName || matchSlug || matchId;
     });
   }, [categories, activeFilter, searchQuery]);
 
@@ -276,11 +275,6 @@ export default function CategoriesTable({
                         <span className="font-medium text-white group-hover:text-white transition-colors truncate">
                           {cat.name}
                         </span>
-                        {cat.description && (
-                          <span className="text-[11px] text-white/40 line-clamp-1 mt-0.5">
-                            {cat.description}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </td>

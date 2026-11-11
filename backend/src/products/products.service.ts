@@ -465,14 +465,12 @@ export class ProductsService {
         .values({
           name: dto.name,
           slug,
-          description: dto.description,
           imageUrl: dto.imageUrl,
         })
         .returning();
 
       return {
         ...newCategory,
-        description: newCategory.description || undefined,
         imageUrl: newCategory.imageUrl || undefined,
       };
     } catch (error: any) {
@@ -496,10 +494,6 @@ export class ProductsService {
         .replace(/^-+|-+$/g, '');
     }
 
-    if (dto.description !== undefined) {
-      updateData.description = dto.description;
-    }
-
     if (dto.imageUrl !== undefined) {
       updateData.imageUrl = dto.imageUrl;
     }
@@ -517,7 +511,6 @@ export class ProductsService {
 
       return {
         ...updated,
-        description: updated.description || undefined,
         imageUrl: updated.imageUrl || undefined,
       };
     } catch (error: any) {
@@ -536,7 +529,6 @@ export class ProductsService {
     
     return result.map(cat => ({
       ...cat,
-      description: cat.description || undefined,
       imageUrl: cat.imageUrl || undefined,
     }));
   }

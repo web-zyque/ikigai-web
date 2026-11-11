@@ -18,7 +18,6 @@ export default function AddCategoryModal({
   onSuccess,
 }: AddCategoryModalProps) {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -37,7 +36,6 @@ export default function AddCategoryModal({
       URL.revokeObjectURL(previewUrl);
     }
     setName("");
-    setDescription("");
     setImageUrl("");
     setImageFile(null);
     setPreviewUrl("");
@@ -129,7 +127,6 @@ export default function AddCategoryModal({
     try {
       await createCategoryMutation.mutateAsync({
         name: name.trim(),
-        description: description.trim() || undefined,
         imageUrl: imageUrl.trim() || undefined,
       });
 
@@ -137,7 +134,6 @@ export default function AddCategoryModal({
         URL.revokeObjectURL(previewUrl);
       }
       setName("");
-      setDescription("");
       setImageUrl("");
       setImageFile(null);
       setPreviewUrl("");
@@ -354,20 +350,7 @@ export default function AddCategoryModal({
                 )}
               </div>
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label htmlFor="category-desc-input" className="text-xs font-medium text-white/70 block">
-                  Description <span className="text-white/40 font-normal">(Optional)</span>
-                </label>
-                <textarea
-                  id="category-desc-input"
-                  rows={3}
-                  placeholder="Provide a clear description of the products and accessories included under this category..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-2xl bg-[#0a0a0a] border border-white/10 p-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors resize-none"
-                />
-              </div>
+
             </div>
           </div>
 
