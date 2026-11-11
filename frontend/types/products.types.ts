@@ -86,6 +86,7 @@ export interface CategoryResponse {
   name: string;
   slug: string;
   imageUrl?: string;
+  productsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, X, ChevronLeft, ChevronRight, ChartBarStacked, Plus } from "lucide-react";
+import { Search, X, ChevronLeft, ChevronRight, ChartBarStacked, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { CategoryResponse } from "@/types/products.types";
 
 export interface CategoryRowItem extends CategoryResponse {
@@ -9,6 +9,17 @@ export interface CategoryRowItem extends CategoryResponse {
 }
 
 export type CategoryFilterType = "All" | "Populated" | "Empty";
+
+function formatDate(dateStr?: string | Date): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 export interface CategoriesTableProps {
   categories: CategoryRowItem[];
@@ -44,6 +55,17 @@ export default function CategoriesTable({
   const [internalFilter, setInternalFilter] = useState<CategoryFilterType>("All");
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<"name" | "products" | "createdAt">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: "name" | "products" | "createdAt") => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
 
   const activeFilter =
     externalFilter !== undefined ? externalFilter : internalFilter;
@@ -74,16 +96,31 @@ export default function CategoriesTable({
       list = list.filter((cat) => (cat.productsCount || 0) === 0);
     }
 
-    if (!searchQuery.trim()) return list;
-    const q = searchQuery.toLowerCase().trim();
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((cat) => {
+        const matchName = cat.name.toLowerCase().includes(q);
+        const matchSlug = cat.slug.toLowerCase().includes(q);
+        const matchId = cat.id.toLowerCase().includes(q);
+        const matchDate = formatDate(cat.createdAt).toLowerCase().includes(q);
+        return matchName || matchSlug || matchId || matchDate;
+      });
+    }
 
-    return list.filter((cat) => {
-      const matchName = cat.name.toLowerCase().includes(q);
-      const matchSlug = cat.slug.toLowerCase().includes(q);
-      const matchId = cat.id.toLowerCase().includes(q);
-      return matchName || matchSlug || matchId;
+    return [...list].sort((a, b) => {
+      let comparison = 0;
+      if (sortField === "name") {
+        comparison = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      } else if (sortField === "products") {
+        comparison = (a.productsCount || 0) - (b.productsCount || 0);
+      } else if (sortField === "createdAt") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        comparison = timeA - timeB;
+      }
+      return sortOrder === "asc" ? comparison : -comparison;
     });
-  }, [categories, activeFilter, searchQuery]);
+  }, [categories, activeFilter, searchQuery, sortField, sortOrder]);
 
   const effectiveTotal =
     externalTotalCount !== undefined ? externalTotalCount : filteredCategories.length;
@@ -191,14 +228,56 @@ export default function CategoriesTable({
         <table className="w-full text-left text-xs">
           <thead>
             <tr className="border-b border-white/5 bg-[#0a0a0a] text-white/40">
-              <th className="px-6 py-3.5 font-medium uppercase tracking-wider">
-                Category Name
+              <th
+                onClick={() => handleSort("name")}
+                className="px-6 py-3.5 font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span>Category Name</span>
+                  {sortField === "name" ? (
+                    sortOrder === "asc" ? (
+                      <ArrowUp className="h-3 w-3 text-white" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 text-white" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </div>
               </th>
-              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
-                Slug
+              <th
+                onClick={() => handleSort("products")}
+                className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span>Products</span>
+                  {sortField === "products" ? (
+                    sortOrder === "asc" ? (
+                      <ArrowUp className="h-3 w-3 text-white" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 text-white" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </div>
               </th>
-              <th className="px-12 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap text-right">
-                Products
+              <th
+                onClick={() => handleSort("createdAt")}
+                className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap text-right cursor-pointer hover:text-white transition-colors select-none"
+              >
+                <div className="flex items-center justify-end gap-1.5">
+                  <span>Created Date</span>
+                  {sortField === "createdAt" ? (
+                    sortOrder === "asc" ? (
+                      <ArrowUp className="h-3 w-3 text-white" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 text-white" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </div>
               </th>
             </tr>
           </thead>
@@ -269,7 +348,7 @@ export default function CategoriesTable({
                   onClick={() => onViewCategory?.(cat)}
                   className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-4 min-w-[220px]">
+                  <td className="px-6 py-4 min-w-[200px]">
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col min-w-0">
                         <span className="font-medium text-white group-hover:text-white transition-colors truncate">
@@ -280,14 +359,14 @@ export default function CategoriesTable({
                   </td>
 
                   <td className="px-6 py-4 font-medium whitespace-nowrap">
-                    <span className="text-xs text-white bg-white/[0.04] px-2 py-0.5 rounded-md border group-hover:border-[#640C0C]/50 transition-colors duration-100 border-white/10 inline-block">
-                      {cat.slug}
+                    <span className="text-white/90 text-xs">
+                      {cat.productsCount}
                     </span>
                   </td>
 
-                  <td className="px-12 font-bold py-4 whitespace-nowrap text-right">
-                    <span className="text-white/90 text-[13px]">
-                      {cat.productsCount}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <span className="text-xs text-white/60">
+                      {formatDate(cat.createdAt)}
                     </span>
                   </td>
                 </tr>
