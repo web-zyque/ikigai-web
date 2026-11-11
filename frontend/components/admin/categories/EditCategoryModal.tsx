@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { X, Check, AlertCircle, Loader2, Upload, Trash2, RefreshCw } from "lucide-react";
-import { useUpdateCategory } from "@/hooks/use-products";
+import { useUpdateCategory, useCategories } from "@/hooks/use-products";
 import { CategoryRowItem } from "./CategoriesTable";
 import { uploadApi } from "@/services/upload.service";
 
@@ -32,6 +32,21 @@ export default function EditCategoryModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const updateCategoryMutation = useUpdateCategory();
+  const { data: existingCategories } = useCategories();
+
+  const normalizedInputName = name.trim().toLowerCase();
+  const isDuplicateName = Boolean(
+    category &&
+      normalizedInputName &&
+      existingCategories?.some(
+        (cat) =>
+          cat.id !== category.id &&
+          cat.name.trim().toLowerCase() === normalizedInputName,
+      ),
+  );
+  const nameError = isDuplicateName
+    ? "A category with this name already exists."
+    : null;
 
   useEffect(() => {
     if (category && isOpen) {
@@ -134,6 +149,11 @@ export default function EditCategoryModal({
       return;
     }
 
+    if (isDuplicateName) {
+      setErrorMessage("A category with this name already exists.");
+      return;
+    }
+
     if (uploadStatus === "uploading") {
       setErrorMessage("Please wait for the image upload to complete.");
       return;
@@ -159,9 +179,10 @@ export default function EditCategoryModal({
         onSuccess();
       }
       onClose();
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg =
-        err instanceof Error ? err.message : "Failed to update category. Please try again.";
+        err?.response?.data?.message ||
+        (err instanceof Error ? err.message : "Failed to update category. Please try again.");
       setErrorMessage(msg);
     }
   };
@@ -232,8 +253,18 @@ export default function EditCategoryModal({
                     setName(e.target.value);
                     if (errorMessage) setErrorMessage(null);
                   }}
-                  className="w-full h-12 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition-colors"
+                  className={`w-full h-12 rounded-full bg-[#0a0a0a] border px-4 text-sm text-white placeholder-white/30 outline-none transition-colors ${
+                    nameError
+                      ? "border-red-500/50 focus:border-red-500"
+                      : "border-white/10 focus:border-white/30"
+                  }`}
                 />
+                {nameError && (
+                  <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1.5">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{nameError}</span>
+                  </p>
+                )}
               </div>
 
               {/* URL Slug (Auto-generated preview) */}
@@ -395,7 +426,7 @@ export default function EditCategoryModal({
 
             <button
               type="submit"
-              disabled={updateCategoryMutation.isPending || uploadStatus === "uploading" || !name.trim() || !imageUrl.trim()}
+              disabled={updateCategoryMutation.isPending || uploadStatus === "uploading" || !name.trim() || !imageUrl.trim() || isDuplicateName}
               className="inline-flex items-center gap-2 rounded-full bg-[#640C0C] hover:bg-[#7a1010] px-7 py-2.5 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-md"
             >
               {updateCategoryMutation.isPending ? (
