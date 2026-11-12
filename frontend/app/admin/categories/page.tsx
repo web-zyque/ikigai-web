@@ -15,7 +15,7 @@ export default function CategoriesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  const { data: categoriesData, isLoading: isCategoriesLoading, refetch: refetchCategories } = useCategories();
+  const { data: categoriesData, isLoading: isCategoriesLoading, refetch: refetchCategories } = useCategories({ includeArchived: true });
   const { data: productsData, isLoading: isProductsLoading, refetch: refetchProducts } = useProducts({ limit: 100 });
 
   const categoriesList: CategoryRowItem[] = useMemo(() => {
@@ -115,6 +115,10 @@ export default function CategoriesPage() {
         isOpen={Boolean(selectedCategoryId && selectedCategory && !isEditModalOpen)}
         onClose={() => setSelectedCategoryId(null)}
         onEdit={() => setIsEditModalOpen(true)}
+        onRefresh={() => {
+          refetchCategories();
+          refetchProducts();
+        }}
         assignedProducts={assignedProducts}
       />
     </>

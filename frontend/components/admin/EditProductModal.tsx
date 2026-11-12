@@ -52,7 +52,20 @@ export default function EditProductModal({
   const totalSteps = 3;
 
   const { data: apiCategories, isLoading: categoriesLoading } = useCategories();
-  const availableCategories = apiCategories && apiCategories.length > 0 ? apiCategories : [];
+  const availableCategories = useMemo(() => {
+    const list = apiCategories && apiCategories.length > 0 ? [...apiCategories] : [];
+    if (product?.category?.id && !list.some((c) => c.id === product.category.id)) {
+      list.unshift({
+        id: product.category.id,
+        name: `${product.category.name} (Archived)`,
+        slug: product.category.slug,
+        isArchived: true,
+        createdAt: "",
+        updatedAt: "",
+      });
+    }
+    return list;
+  }, [apiCategories, product]);
 
   const updateProductMutation = useUpdateProduct();
 

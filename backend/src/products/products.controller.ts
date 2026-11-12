@@ -90,8 +90,8 @@ export class CategoriesController {
   }
 
   @Get()
-  async getCategories() {
-    return this.productsService.getCategories();
+  async getCategories(@Query('includeArchived') includeArchived?: string) {
+    return this.productsService.getCategories(includeArchived === 'true');
   }
 
   @Patch(':id')
@@ -101,5 +101,23 @@ export class CategoriesController {
     @Body(new ZodValidationPipe(UpdateCategorySchema)) dto: UpdateCategoryDto,
   ) {
     return this.productsService.updateCategory(id, dto);
+  }
+
+  @Patch(':id/archive')
+  @UseGuards(StaffGuard)
+  async archiveCategory(@Param('id') id: string) {
+    return this.productsService.archiveCategory(id);
+  }
+
+  @Patch(':id/restore')
+  @UseGuards(StaffGuard)
+  async restoreCategory(@Param('id') id: string) {
+    return this.productsService.restoreCategory(id);
+  }
+
+  @Delete(':id')
+  @UseGuards(StaffGuard)
+  async deleteCategory(@Param('id') id: string) {
+    return this.productsService.deleteCategory(id);
   }
 }

@@ -110,6 +110,7 @@ export const categories = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull().unique(),
     imageUrl: text('image_url'),
+    isArchived: boolean('is_archived').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

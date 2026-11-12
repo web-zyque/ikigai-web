@@ -39,6 +39,10 @@ export class ProductsService {
       throw new BadRequestException('Category not found');
     }
 
+    if (category.isArchived) {
+      throw new BadRequestException('Cannot assign an archived category to a product');
+    }
+
     const colorNames = dto.color ? dto.color.split(',').map(c => c.trim()).filter(Boolean) : [];
     
     if (colorNames.length > 0) {
@@ -305,6 +309,10 @@ export class ProductsService {
       if (!category) {
         throw new BadRequestException('Category not found');
       }
+
+      if (category.isArchived && existingProduct.category?.id !== dto.categoryId) {
+        throw new BadRequestException('Cannot assign an archived category to a product');
+      }
     }
 
     try {
@@ -527,6 +535,8 @@ export class ProductsService {
       return {
         ...newCategory,
         imageUrl: newCategory.imageUrl || undefined,
+        isArchived: false,
+        productsCount: 0,
       };
     } catch (error: any) {
       if (error?.code === '23505') {
@@ -604,9 +614,16 @@ export class ProductsService {
         .where(eq(categories.id, id))
         .returning();
 
+      const [countResult] = await this.db
+        .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
+        .from(products)
+        .where(eq(products.categoryId, id));
+
       return {
         ...updated,
         imageUrl: updated.imageUrl || undefined,
+        isArchived: Boolean(updated.isArchived),
+        productsCount: Number(countResult?.count) || 0,
       };
     } catch (error: any) {
       if (error?.code === '23505') {
@@ -621,27 +638,130 @@ export class ProductsService {
     }
   }
 
-  async getCategories(): Promise<CategoryResponse[]> {
-    const result = await this.db
+  async getCategories(includeArchived = false): Promise<CategoryResponse[]> {
+    const baseQuery = this.db
       .select({
         id: categories.id,
         name: categories.name,
         slug: categories.slug,
         imageUrl: categories.imageUrl,
+        isArchived: categories.isArchived,
         createdAt: categories.createdAt,
         updatedAt: categories.updatedAt,
         productsCount: sql<number>`cast(count(${products.id}) as integer)`,
       })
       .from(categories)
-      .leftJoin(products, eq(products.categoryId, categories.id))
-      .groupBy(categories.id)
-      .orderBy(asc(categories.name));
+      .leftJoin(products, eq(products.categoryId, categories.id));
+
+    const result = includeArchived
+      ? await baseQuery.groupBy(categories.id).orderBy(asc(categories.name))
+      : await baseQuery.where(eq(categories.isArchived, false)).groupBy(categories.id).orderBy(asc(categories.name));
     
     return result.map(cat => ({
       ...cat,
       imageUrl: cat.imageUrl || undefined,
+      isArchived: Boolean(cat.isArchived),
       productsCount: Number(cat.productsCount) || 0,
     }));
+  }
+
+  async archiveCategory(id: string): Promise<CategoryResponse> {
+    const [existing] = await this.db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id));
+
+    if (!existing) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const [updated] = await this.db
+      .update(categories)
+      .set({
+        isArchived: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(categories.id, id))
+      .returning();
+
+    const [countResult] = await this.db
+      .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
+      .from(products)
+      .where(eq(products.categoryId, id));
+
+    return {
+      ...updated,
+      imageUrl: updated.imageUrl || undefined,
+      isArchived: true,
+      productsCount: Number(countResult?.count) || 0,
+    };
+  }
+
+  async restoreCategory(id: string): Promise<CategoryResponse> {
+    const [existing] = await this.db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id));
+
+    if (!existing) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const [updated] = await this.db
+      .update(categories)
+      .set({
+        isArchived: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(categories.id, id))
+      .returning();
+
+    const [countResult] = await this.db
+      .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
+      .from(products)
+      .where(eq(products.categoryId, id));
+
+    return {
+      ...updated,
+      imageUrl: updated.imageUrl || undefined,
+      isArchived: false,
+      productsCount: Number(countResult?.count) || 0,
+    };
+  }
+
+  async deleteCategory(id: string): Promise<{ success: boolean; message: string }> {
+    const [existing] = await this.db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, id));
+
+    if (!existing) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const [assignedProducts] = await this.db
+      .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
+      .from(products)
+      .where(eq(products.categoryId, id));
+
+    const productCount = Number(assignedProducts?.count) || 0;
+    if (productCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete category "${existing.name}" because it has ${productCount} assigned product${productCount > 1 ? 's' : ''}. Please reassign or delete the products first.`
+      );
+    }
+
+    try {
+      await this.db.delete(categories).where(eq(categories.id, id));
+      return { success: true, message: 'Category deleted successfully' };
+    } catch (error: any) {
+      if (error?.code === '23503') {
+        throw new BadRequestException(
+          'Cannot delete category because dependent records exist. Please reassign or remove them first.'
+        );
+      }
+      throw error;
+    }
   }
 
   private formatProductResponse(

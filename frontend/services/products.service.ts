@@ -35,8 +35,8 @@ export const productsApi = {
 };
 
 export const categoriesApi = {
-  getAll: async (): Promise<CategoryResponse[]> => {
-    const response = await api.get('/categories');
+  getAll: async (params?: { includeArchived?: boolean }): Promise<CategoryResponse[]> => {
+    const response = await api.get('/categories', { params });
     return response.data;
   },
 
@@ -47,6 +47,21 @@ export const categoriesApi = {
 
   update: async (id: string, data: { name?: string; imageUrl?: string }): Promise<CategoryResponse> => {
     const response = await api.patch(`/categories/${id}`, data);
+    return response.data;
+  },
+
+  archive: async (id: string): Promise<CategoryResponse> => {
+    const response = await api.patch(`/categories/${id}/archive`);
+    return response.data;
+  },
+
+  restore: async (id: string): Promise<CategoryResponse> => {
+    const response = await api.patch(`/categories/${id}/restore`);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.delete(`/categories/${id}`);
     return response.data;
   },
 };
