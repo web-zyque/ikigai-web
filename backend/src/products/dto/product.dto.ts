@@ -127,6 +127,7 @@ export interface CategoryResponse {
   name: string;
   slug: string;
   imageUrl?: string;
+  isArchived: boolean;
   productsCount?: number;
   createdAt: Date;
   updatedAt: Date;

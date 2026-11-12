@@ -8,7 +8,7 @@ export interface CategoryRowItem extends CategoryResponse {
   productsCount: number;
 }
 
-export type CategoryFilterType = "All" | "Populated" | "Empty";
+export type CategoryFilterType = "All" | "Populated" | "Empty" | "Archived";
 
 function formatDate(dateStr?: string | Date): string {
   if (!dateStr) return "—";
@@ -76,7 +76,7 @@ export default function CategoriesTable({
   const currentPage =
     externalPage !== undefined ? externalPage : internalCurrentPage;
 
-  const statusTabs: Array<CategoryFilterType> = ["All", "Populated", "Empty"];
+  const statusTabs: Array<CategoryFilterType> = ["All", "Populated", "Empty", "Archived"];
 
   const handleTabChange = (tab: CategoryFilterType) => {
     setFilter(tab);
@@ -91,9 +91,11 @@ export default function CategoriesTable({
     let list = categories;
 
     if (activeFilter === "Populated") {
-      list = list.filter((cat) => (cat.productsCount || 0) > 0);
+      list = list.filter((cat) => (cat.productsCount || 0) > 0 && !cat.isArchived);
     } else if (activeFilter === "Empty") {
-      list = list.filter((cat) => (cat.productsCount || 0) === 0);
+      list = list.filter((cat) => (cat.productsCount || 0) === 0 && !cat.isArchived);
+    } else if (activeFilter === "Archived") {
+      list = list.filter((cat) => Boolean(cat.isArchived));
     }
 
     if (searchQuery.trim()) {
@@ -350,10 +352,15 @@ export default function CategoriesTable({
                 >
                   <td className="px-6 py-4 min-w-[200px]">
                     <div className="flex items-center gap-3">
-                      <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-white group-hover:text-white transition-colors truncate">
                           {cat.name}
                         </span>
+                        {cat.isArchived && (
+                          <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                            Archived
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>

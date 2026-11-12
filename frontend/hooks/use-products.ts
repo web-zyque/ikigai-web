@@ -91,10 +91,10 @@ export const useDeleteProduct = () => {
   });
 };
 
-export const useCategories = () => {
+export const useCategories = (params?: { includeArchived?: boolean }) => {
   return useQuery({
-    queryKey: ['categories'],
-    queryFn: () => categoriesApi.getAll(),
+    queryKey: ['categories', params?.includeArchived ? 'all' : 'active'],
+    queryFn: () => categoriesApi.getAll(params),
   });
 };
 
@@ -126,6 +126,51 @@ export const useUpdateCategory = () => {
     },
     onError: (error: any) => {
       console.error('Failed to update category:', error);
+    },
+  });
+};
+
+export const useArchiveCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => categoriesApi.archive(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to archive category:', error);
+    },
+  });
+};
+
+export const useRestoreCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => categoriesApi.restore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to restore category:', error);
+    },
+  });
+};
+
+export const useDeleteCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => categoriesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete category:', error);
     },
   });
 };

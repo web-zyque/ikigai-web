@@ -29,7 +29,7 @@ export default function AddCategoryModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const createCategoryMutation = useCreateCategory();
-  const { data: existingCategories } = useCategories();
+  const { data: existingCategories } = useCategories({ includeArchived: true });
 
   const normalizedInputName = name.trim().toLowerCase();
   const isDuplicateName = Boolean(
