@@ -20,6 +20,7 @@ import { useCategories, useUpdateProduct } from "@/hooks/use-products";
 import { uploadApi } from "@/services/upload.service";
 import { ProductResponse } from "@/types/products.types";
 import { normalizeColorName, getColorInfo } from "@/lib/color-utils";
+import { WarrantySelector } from "./WarrantySelector";
 
 export interface EditProductModalProps {
   isOpen: boolean;
@@ -39,15 +40,6 @@ const STANDARD_SIZES = [
   { label: "XX Large", code: "XXL" },
 ];
 
-const WARRANTY_OPTIONS = [
-  "No Warranty",
-  "6 Months Warranty",
-  "1 Year Warranty",
-  "2 Years Warranty",
-  "3 Years Warranty",
-  "5 Years Warranty",
-  "Lifetime Warranty",
-];
 
 export interface UploadedImageItem {
   id: string;
@@ -1319,38 +1311,14 @@ export default function EditProductModal({
                       <label className="text-xs font-medium text-white/70 block">
                         Warranty
                       </label>
-                      <div className="relative" ref={warrantyDropdownRef}>
-                        <button
-                          type="button"
-                          onClick={() => togglePopup("warranty")}
-                          className="w-full h-11 rounded-full bg-[#0a0a0a] border border-white/10 px-4 text-xs text-white flex items-center justify-between hover:border-white/20 transition-colors cursor-pointer"
-                        >
-                          <span>{warranty || "No Warranty"}</span>
-                          <ChevronDown className={`h-3.5 w-3.5 text-white/50 transition-transform ${activePopup === "warranty" ? "rotate-180" : ""}`} />
-                        </button>
-                        {activePopup === "warranty" && (
-                          <div className="absolute left-0 bottom-full mb-2 w-full z-50 rounded-2xl border border-white/15 bg-[#161616] p-1.5 shadow-2xl">
-                            {WARRANTY_OPTIONS.map((opt) => (
-                              <button
-                                key={opt}
-                                type="button"
-                                onClick={() => {
-                                  setWarranty(opt);
-                                  setActivePopup(null);
-                                }}
-                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
-                                  warranty === opt
-                                    ? "bg-white/10 text-white font-medium"
-                                    : "text-white/70 hover:bg-white/5 hover:text-white"
-                                }`}
-                              >
-                                <span>{opt}</span>
-                                {warranty === opt && <Check className="h-3.5 w-3.5 text-white" />}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <WarrantySelector
+                        value={warranty}
+                        onChange={setWarranty}
+                        isOpen={activePopup === "warranty"}
+                        onToggle={() => togglePopup("warranty")}
+                        onClose={() => setActivePopup(null)}
+                        containerRef={warrantyDropdownRef}
+                      />
                     </div>
                   </div>
                 </div>
