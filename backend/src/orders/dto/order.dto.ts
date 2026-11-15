@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 export const CreateOrderSchema = z.object({
   addressId: z.string().uuid(),
-  paymentMethod: z.enum(['COD', 'ONLINE']).default('COD'),
+  paymentMethod: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+    z.enum(['COD', 'ONLINE']),
+  ),
   couponCode: z.string().trim().min(1).max(40).optional().nullable(),
   idempotencyKey: z.string().uuid(),
   buyNowItem: z.object({

@@ -235,9 +235,23 @@ export default function CheckoutPage() {
   const commonCod = paymentFlagsReady && checkoutProductIds.every((id) => paymentFlags[id]?.acceptCod);
   const commonUpi = paymentFlagsReady && checkoutProductIds.every((id) => paymentFlags[id]?.acceptUpi);
   const hasCommonPaymentMethod = commonCod || commonUpi;
+
   useEffect(() => {
-    setSelectedPaymentMethod(commonCod ? "COD" : commonUpi ? "UPI" : null);
-  }, [commonCod, checkoutProductKey]);
+    if (!paymentFlagsReady || !hasCommonPaymentMethod) {
+      setSelectedPaymentMethod(null);
+      return;
+    }
+
+    if (commonUpi && !commonCod) {
+      setSelectedPaymentMethod("UPI");
+    } else if (commonCod && !commonUpi) {
+      setSelectedPaymentMethod("COD");
+    } else if (commonCod && commonUpi) {
+      setSelectedPaymentMethod((prev) => (prev === "COD" || prev === "UPI" ? prev : "UPI"));
+    } else {
+      setSelectedPaymentMethod(null);
+    }
+  }, [paymentFlagsReady, commonCod, commonUpi, hasCommonPaymentMethod, checkoutProductKey]);
   const subtotal = checkoutItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0
@@ -705,17 +719,77 @@ export default function CheckoutPage() {
             <div className="bg-[#121212] rounded-2xl border border-white/10 p-5 md:p-6 shadow-xl space-y-5">
               <h2 className="text-base font-bold text-white">Payment Details</h2>
 
-              <div className="space-y-2" aria-label="Available payment methods">
+              <div className="space-y-3" aria-label="Available payment methods">
                 {isPaymentFlagsLoading || (!paymentFlagsReady && !paymentFlagsError && checkoutItems.length > 0) ? (
-                  <p role="status" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/55"><Loader2 className="h-4 w-4 animate-spin" />Checking payment options…</p>
+                  <p role="status" className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/55">
+                    <Loader2 className="h-4 w-4 animate-spin" />Checking payment options…
+                  </p>
                 ) : paymentFlagsError ? (
-                  <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">{paymentFlagsError}</p>
+                  <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-xs text-red-300">
+                    {paymentFlagsError}
+                  </p>
                 ) : !checkoutItems.length ? null : !hasCommonPaymentMethod ? (
-                  <p role="alert" className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">These products don’t share an available payment method. Please adjust your cart or contact us.</p>
+                  <p role="alert" className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
+                    No payment method is available for the items in your cart. Please adjust your cart or contact us.
+                  </p>
                 ) : (
                   <>
-                    {commonCod && <button type="button" onClick={() => setSelectedPaymentMethod("COD")} aria-pressed={selectedPaymentMethod === "COD"} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaymentMethod === "COD" ? "border-[#992222] bg-[#640C0C]/15" : "border-white/10 bg-white/[0.03]"}`}><span className="block text-sm font-medium text-white">Cash on Delivery</span><span className="mt-1 block text-xs text-white/45">Pay when your order is delivered.</span></button>}
-                    {commonUpi && <button type="button" onClick={() => setSelectedPaymentMethod("UPI")} aria-pressed={selectedPaymentMethod === "UPI"} className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedPaymentMethod === "UPI" ? "border-[#992222] bg-[#640C0C]/15" : "border-white/10 bg-white/[0.03]"}`}><span className="block text-sm font-medium text-white">UPI Payment</span><span className="mt-1 block text-xs text-white/45">Pay securely with UPI through Cashfree.</span></button>}
+                    {commonCod && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod("COD")}
+                        aria-pressed={selectedPaymentMethod === "COD"}
+                        className={`w-full rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                          selectedPaymentMethod === "COD"
+                            ? "border-[#992222] bg-[#640C0C]/15 ring-1 ring-[#992222]"
+                            : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="block text-sm font-medium text-white">Cash on Delivery</span>
+                          <div
+                            className={`h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${
+                              selectedPaymentMethod === "COD"
+                                ? "border-[#992222] bg-[#640C0C]"
+                                : "border-white/30"
+                            }`}
+                          >
+                            {selectedPaymentMethod === "COD" && (
+                              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            )}
+                          </div>
+                        </div>
+                        <span className="mt-1 block text-xs text-white/50">Pay when your order is delivered.</span>
+                      </button>
+                    )}
+                    {commonUpi && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod("UPI")}
+                        aria-pressed={selectedPaymentMethod === "UPI"}
+                        className={`w-full rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                          selectedPaymentMethod === "UPI"
+                            ? "border-[#992222] bg-[#640C0C]/15 ring-1 ring-[#992222]"
+                            : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="block text-sm font-medium text-white">UPI Payment</span>
+                          <div
+                            className={`h-4 w-4 rounded-full border flex items-center justify-center transition-colors ${
+                              selectedPaymentMethod === "UPI"
+                                ? "border-[#992222] bg-[#640C0C]"
+                                : "border-white/30"
+                            }`}
+                          >
+                            {selectedPaymentMethod === "UPI" && (
+                              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            )}
+                          </div>
+                        </div>
+                        <span className="mt-1 block text-xs text-white/50">Pay securely with UPI through Cashfree.</span>
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -789,11 +863,37 @@ export default function CheckoutPage() {
               {orderError && <p role="alert" className="text-sm text-red-400">{orderError}</p>}
               {!user && <p className="text-xs text-white/50">Sign in to place an order. Your cart will remain saved.</p>}
               <Button
-                disabled={Boolean(checkoutItems.length === 0 || isBuyNowLoading || buyNowError || isPaymentFlagsLoading || paymentFlagsError || !hasCommonPaymentMethod || !selectedPaymentMethod || (selectedPaymentMethod === "COD" && !commonCod) || (selectedPaymentMethod === "UPI" && !commonUpi) || !selectedAddress || isSubmitting || (!isBuyNowCheckout && isCartSyncPending))}
+                disabled={Boolean(
+                  checkoutItems.length === 0 ||
+                  isBuyNowLoading ||
+                  Boolean(buyNowError) ||
+                  isPaymentFlagsLoading ||
+                  Boolean(paymentFlagsError) ||
+                  !hasCommonPaymentMethod ||
+                  !selectedPaymentMethod ||
+                  (selectedPaymentMethod === "COD" && !commonCod) ||
+                  (selectedPaymentMethod === "UPI" && !commonUpi) ||
+                  !selectedAddress ||
+                  isSubmitting ||
+                  (!isBuyNowCheckout && isCartSyncPending)
+                )}
                 onClick={handlePlaceOrder}
-                className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
+                className="w-full rounded-full bg-[#640C0C] hover:bg-[#7a1010] text-white h-12 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer transition-all"
               >
-                {isSubmitting ? "Processing Order..." : `Place ${selectedPaymentMethod === "UPI" ? "UPI" : "COD"} Order • ₹${total.toFixed(2)}`}
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {isSubmitting
+                  ? (selectedPaymentMethod === "UPI" ? "Redirecting to Payment..." : "Processing Order...")
+                  : checkoutItems.length === 0
+                  ? "Cart is Empty"
+                  : isPaymentFlagsLoading || (!paymentFlagsReady && !paymentFlagsError)
+                  ? "Checking Payment Options..."
+                  : !hasCommonPaymentMethod
+                  ? "No Payment Method Available"
+                  : !selectedPaymentMethod
+                  ? "Select a Payment Method"
+                  : selectedPaymentMethod === "UPI"
+                  ? `Pay Now – ₹${total.toFixed(2)}`
+                  : `Place COD Order – ₹${total.toFixed(2)}`}
               </Button>
             </div>
           </div>
