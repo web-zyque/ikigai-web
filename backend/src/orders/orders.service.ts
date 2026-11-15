@@ -341,18 +341,6 @@ export class OrdersService {
   async updateStatus(orderId: string, adminId: string, dto: AdminOrderStatusDto) {
     return this.db.transaction(async (tx) => {
       const order = await this.lockOrder(tx, orderId);
-      const nextAllowed: Record<string, string> = {
-        CONFIRMED: 'PROCESSING',
-        PROCESSING: 'SHIPPED',
-        SHIPPED: 'DELIVERED',
-      };
-      if (nextAllowed[order.orderStatus] !== dto.status) {
-        throw new BadRequestException(`Invalid order status transition: ${order.orderStatus} to ${dto.status}`);
-      }
-      if (!order.stockDeducted) throw new ConflictException('Only automatically confirmed orders can move through fulfillment');
-      if (order.paymentMethod === 'ONLINE' && order.paymentStatus !== 'PAID') {
-        throw new ConflictException('Online orders must be paid before fulfillment');
-      }
       const [updated] = await tx.update(orders)
         .set({
           orderStatus: dto.status,
