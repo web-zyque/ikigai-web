@@ -16,6 +16,8 @@ export interface CreateProductRequest {
   productType?: string;
   color?: string;
   dimensions?: string;
+  sizeType?: 'standard' | 'inch';
+  sizes?: string[];
   material?: string;
   warranty?: string;
   images: {
@@ -52,6 +54,8 @@ export interface ProductResponse {
   productType?: string;
   color?: string;
   dimensions?: string;
+  sizeType?: 'standard' | 'inch';
+  sizes?: string[];
   material?: string;
   warranty?: string;
   images: {
