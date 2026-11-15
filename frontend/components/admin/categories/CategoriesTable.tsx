@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, X, ChevronLeft, ChevronRight, ChartBarStacked, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChartBarStacked,
+  Plus,
+} from "lucide-react";
 import { CategoryResponse } from "@/types/products.types";
 
 export interface CategoryRowItem extends CategoryResponse {
@@ -55,10 +62,14 @@ export default function CategoriesTable({
   const [internalFilter, setInternalFilter] = useState<CategoryFilterType>("All");
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<"name" | "products" | "createdAt">("name");
+  const [sortField, setSortField] = useState<
+    "name" | "products" | "status" | "createdAt"
+  >("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  const handleSort = (field: "name" | "products" | "createdAt") => {
+  const handleSort = (
+    field: "name" | "products" | "status" | "createdAt"
+  ) => {
     if (sortField === field) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -76,7 +87,12 @@ export default function CategoriesTable({
   const currentPage =
     externalPage !== undefined ? externalPage : internalCurrentPage;
 
-  const statusTabs: Array<CategoryFilterType> = ["All", "Populated", "Empty", "Archived"];
+  const statusTabs: Array<CategoryFilterType> = [
+    "All",
+    "Populated",
+    "Empty",
+    "Archived",
+  ];
 
   const handleTabChange = (tab: CategoryFilterType) => {
     setFilter(tab);
@@ -104,8 +120,17 @@ export default function CategoriesTable({
         const matchName = cat.name.toLowerCase().includes(q);
         const matchSlug = cat.slug.toLowerCase().includes(q);
         const matchId = cat.id.toLowerCase().includes(q);
-        const matchDate = formatDate(cat.createdAt).toLowerCase().includes(q);
-        return matchName || matchSlug || matchId || matchDate;
+        const matchCreated = formatDate(cat.createdAt).toLowerCase().includes(q);
+        const matchUpdated = formatDate(cat.updatedAt).toLowerCase().includes(q);
+        const matchStatus = (cat.isArchived ? "archived" : "active").includes(q);
+        return (
+          matchName ||
+          matchSlug ||
+          matchId ||
+          matchCreated ||
+          matchUpdated ||
+          matchStatus
+        );
       });
     }
 
@@ -115,6 +140,8 @@ export default function CategoriesTable({
         comparison = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
       } else if (sortField === "products") {
         comparison = (a.productsCount || 0) - (b.productsCount || 0);
+      } else if (sortField === "status") {
+        comparison = (a.isArchived ? 1 : 0) - (b.isArchived ? 1 : 0);
       } else if (sortField === "createdAt") {
         const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -181,7 +208,6 @@ export default function CategoriesTable({
   return (
     <div className="rounded-[20px] border border-white/5 bg-[#121212] overflow-hidden shadow-sm animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 px-6 py-4 bg-[#121212]">
-        {/* Left: Tab Selector Pill */}
         <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/5 w-fit overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {statusTabs.map((tab) => {
             const isActive = activeFilter === tab;
@@ -202,7 +228,6 @@ export default function CategoriesTable({
           })}
         </div>
 
-        {/* Right: Search Box */}
         <div className="relative flex-1 sm:max-w-xs w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
           <input
@@ -234,59 +259,35 @@ export default function CategoriesTable({
                 onClick={() => handleSort("name")}
                 className="px-6 py-3.5 font-medium uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <span>Category Name</span>
-                  {sortField === "name" ? (
-                    sortOrder === "asc" ? (
-                      <ArrowUp className="h-3 w-3 text-white" />
-                    ) : (
-                      <ArrowDown className="h-3 w-3 text-white" />
-                    )
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 opacity-30" />
-                  )}
-                </div>
+                <span>Category Name</span>
               </th>
+
               <th
                 onClick={() => handleSort("products")}
                 className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none"
               >
-                <div className="flex items-center gap-1.5">
-                  <span>Products</span>
-                  {sortField === "products" ? (
-                    sortOrder === "asc" ? (
-                      <ArrowUp className="h-3 w-3 text-white" />
-                    ) : (
-                      <ArrowDown className="h-3 w-3 text-white" />
-                    )
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 opacity-30" />
-                  )}
-                </div>
+                <span>Number of Items</span>
               </th>
+
+              <th
+                onClick={() => handleSort("status")}
+                className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap cursor-pointer hover:text-white transition-colors select-none"
+              >
+                <span>Status</span>
+              </th>
+
               <th
                 onClick={() => handleSort("createdAt")}
                 className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap text-right cursor-pointer hover:text-white transition-colors select-none"
               >
-                <div className="flex items-center justify-end gap-1.5">
-                  <span>Created Date</span>
-                  {sortField === "createdAt" ? (
-                    sortOrder === "asc" ? (
-                      <ArrowUp className="h-3 w-3 text-white" />
-                    ) : (
-                      <ArrowDown className="h-3 w-3 text-white" />
-                    )
-                  ) : (
-                    <ArrowUpDown className="h-3 w-3 opacity-30" />
-                  )}
-                </div>
+                <span>Created Date</span>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {isLoading ? (
               <tr>
-                <td colSpan={3} className="py-16 text-center">
+                <td colSpan={4} className="py-16 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                     <span className="text-xs text-white/40">Loading categories...</span>
@@ -295,7 +296,7 @@ export default function CategoriesTable({
               </tr>
             ) : categories.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-16 text-center">
+                <td colSpan={4} className="py-16 text-center">
                   <div className="flex flex-col items-center justify-center max-w-sm mx-auto px-4 text-center">
                     <ChartBarStacked className="h-10 w-10 text-white/20 mb-3" />
                     <p className="text-sm font-semibold text-white">No categories available yet.</p>
@@ -317,7 +318,7 @@ export default function CategoriesTable({
               </tr>
             ) : paginatedCategories.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-12 text-center text-xs text-white/40">
+                <td colSpan={4} className="py-12 text-center text-xs text-white/40">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <p>
                       {searchQuery ? (
@@ -351,23 +352,24 @@ export default function CategoriesTable({
                   className="hover:bg-white/[0.04] transition-colors cursor-pointer group"
                 >
                   <td className="px-6 py-4 min-w-[200px]">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-white group-hover:text-white transition-colors truncate">
-                          {cat.name}
-                        </span>
-                        {cat.isArchived && (
-                          <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                            Archived
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <span className="font-medium text-white group-hover:text-white transition-colors truncate">
+                      {cat.name}
+                    </span>
                   </td>
 
-                  <td className="px-6 py-4 font-medium whitespace-nowrap">
-                    <span className="text-white/90 text-xs">
-                      {cat.productsCount}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-xs font-medium text-white/90">
+                      {cat.productsCount} {cat.productsCount === 1 ? "item" : "items"}
+                    </span>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`text-xs font-medium ${
+                        cat.isArchived ? "text-amber-400" : "text-emerald-400"
+                      }`}
+                    >
+                      {cat.isArchived ? "Archived" : "Active"}
                     </span>
                   </td>
 
