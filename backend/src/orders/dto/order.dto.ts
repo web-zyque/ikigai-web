@@ -30,7 +30,7 @@ export const AdminOrderListSchema = z.object({
 });
 
 export const AdminOrderStatusSchema = z.object({
-  status: z.enum(['PROCESSING', 'SHIPPED', 'DELIVERED']),
+  status: z.enum(['AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
   note: z.string().trim().max(1000).optional(),
 });
 
