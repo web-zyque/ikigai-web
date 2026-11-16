@@ -28,7 +28,6 @@ export function mapProductToStoreProduct(product: ProductResponse): StoreProduct
     category: product.category.slug,
     categoryLabel: product.category.name,
     brand: product.brand || "Ikigai Customs",
-    partType: product.productType,
     vehicleCompatibility: product.vehicleCompatibility,
     description: product.description,
     material: product.material,

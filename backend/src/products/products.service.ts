@@ -152,7 +152,6 @@ export class ProductsService {
           lowStockThreshold: dto.lowStockThreshold,
           publicationStatus: dto.publicationStatus,
           vehicleCompatibility: dto.vehicleCompatibility,
-          productType: dto.productType,
           color: dto.color,
           dimensions,
           sizeType,
@@ -402,7 +401,6 @@ export class ProductsService {
       if (dto.lowStockThreshold !== undefined) updateData.lowStockThreshold = dto.lowStockThreshold;
       if (dto.publicationStatus !== undefined) updateData.publicationStatus = dto.publicationStatus;
       if (dto.vehicleCompatibility !== undefined) updateData.vehicleCompatibility = dto.vehicleCompatibility;
-      if (dto.productType !== undefined) updateData.productType = dto.productType;
       if (dto.color !== undefined) updateData.color = dto.color;
       if (dto.dimensions !== undefined) updateData.dimensions = dto.dimensions;
       if (dto.material !== undefined) updateData.material = dto.material;
@@ -940,7 +938,6 @@ export class ProductsService {
       inventoryStatus,
       publicationStatus: product.publicationStatus,
       vehicleCompatibility: product.vehicleCompatibility as string[] || undefined,
-      productType: product.productType || undefined,
       color: product.color || undefined,
       dimensions: product.dimensions || undefined,
       material: product.material || undefined,

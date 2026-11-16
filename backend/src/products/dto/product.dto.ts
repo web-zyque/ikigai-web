@@ -20,7 +20,6 @@ export const CreateProductSchema = z.object({
   
   vehicleCompatibility: z.array(z.string()).optional(),
   
-  productType: z.string().optional(),
   color: z.string().optional(),
   dimensions: z.string().optional(),
   material: z.string().optional(),
@@ -95,7 +94,6 @@ export interface ProductResponse {
   inventoryStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
   publicationStatus: 'active' | 'draft';
   vehicleCompatibility?: string[];
-  productType?: string;
   color?: string;
   dimensions?: string;
   material?: string;

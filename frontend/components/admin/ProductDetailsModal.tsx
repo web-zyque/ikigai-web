@@ -231,10 +231,8 @@ export default function ProductDetailsModal({
     { label: "SKU Code", value: product.sku },
     { label: "Category", value: product.category?.name || "Uncategorized" },
     { label: "Brand", value: product.brand || "—" },
-    { label: "Product Type", value: product.productType || "—" },
     { label: "Material", value: product.material || "—" },
     { label: "Warranty", value: product.warranty || "No Warranty" },
-    { label: "Color / Finish", value: product.color || "—" },
     {
       label: "Dimensions / Size",
       value:

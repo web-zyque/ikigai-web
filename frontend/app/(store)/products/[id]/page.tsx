@@ -35,7 +35,6 @@ export interface ProductDetailItem {
   sizes?: string[];
   inStock?: boolean;
   stockQuantity?: number;
-  partType?: string;
   acceptCod?: boolean;
   acceptUpi?: boolean;
 }
@@ -157,7 +156,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       sizes: storeProduct.sizes,
       inStock: storeProduct.inStock,
       stockQuantity: storeProduct.stockQuantity,
-      partType: storeProduct.partType,
       acceptCod: storeProduct.acceptCod,
       acceptUpi: storeProduct.acceptUpi,
     };
@@ -544,12 +542,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   <dt className="text-neutral-500">Warranty</dt>
                   <dd className="text-white font-medium mt-0.5">{product.warranty}</dd>
                 </div>
-                {product.partType && (
-                  <div>
-                    <dt className="text-neutral-500">Part Type</dt>
-                    <dd className="text-white font-medium mt-0.5">{product.partType}</dd>
-                  </div>
-                )}
                 <div>
                   <dt className="text-neutral-500">Availability</dt>
                   <dd className={`font-medium mt-0.5 ${product.inStock ? "text-emerald-400" : "text-rose-400"}`}>
