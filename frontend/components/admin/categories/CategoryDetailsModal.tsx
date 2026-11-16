@@ -285,38 +285,75 @@ export default function CategoryDetailsModal({
                 </p>
               ) : (
                 <div className="divide-y divide-white/10 border-y border-white/10">
-                  {assignedProducts.slice(0, 10).map((prod) => (
-                    <div
-                      key={prod.id}
-                      className="flex items-center justify-between py-3 px-1 text-xs hover:bg-white/[0.02] transition-colors"
-                    >
-                      <div className="flex flex-col min-w-0 pr-3">
-                        <span className="font-medium text-white truncate">
-                          {prod.name}
-                        </span>
-                        <span className="font-mono text-[11px] text-white/40 mt-0.5">
-                          SKU: {prod.sku}
-                        </span>
-                      </div>
+                  {assignedProducts.slice(0, 10).map((prod) => {
+                    const mainImage = prod.images?.find((img) => img.isMainImage)?.imageUrl || prod.images?.[0]?.imageUrl;
+                    const displaySize = prod.sizes && prod.sizes.length > 0 ? prod.sizes[0] : prod.dimensions || null;
 
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="font-bold text-white">
-                          ₹{parseFloat(prod.sellingPrice).toFixed(2)}
-                        </span>
-                        <span
-                          className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                            prod.inventoryStatus === "in_stock"
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : prod.inventoryStatus === "low_stock"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-red-500/10 text-red-400"
-                          }`}
-                        >
-                          {prod.stockQuantity} in stock
-                        </span>
+                    return (
+                      <div
+                        key={prod.id}
+                        className="flex items-start gap-3 py-3 px-1 text-xs hover:bg-white/[0.02] transition-colors"
+                      >
+                        <div className="relative h-12 w-12 rounded-lg bg-[#0a0a0a] border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+                          {mainImage ? (
+                            <Image
+                              src={mainImage}
+                              alt={prod.name}
+                              fill
+                              unoptimized
+                              sizes="48px"
+                              className="object-contain p-1"
+                            />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-white/30" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-medium text-white truncate text-xs">
+                              {prod.name}
+                            </span>
+                            <span className="font-bold text-white shrink-0">
+                              ₹{parseFloat(prod.sellingPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {prod.brand && (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#d4af37] bg-[#d4af37]/10 px-1.5 py-0.2 rounded border border-[#d4af37]/20">
+                                {prod.brand}
+                              </span>
+                            )}
+                            <span className="font-mono text-[10px] text-white/40 bg-white/5 px-1.5 py-0.2 rounded border border-white/10">
+                              SKU: {prod.sku}
+                            </span>
+                            {prod.color && (
+                              <span className="text-[10px] text-white/60 bg-white/5 px-1.5 py-0.2 rounded border border-white/10">
+                                {prod.color}
+                              </span>
+                            )}
+                            {displaySize && (
+                              <span className="text-[10px] text-white/60 bg-white/5 px-1.5 py-0.2 rounded border border-white/10">
+                                Size: {displaySize}
+                              </span>
+                            )}
+                            <span
+                              className={`text-[10px] font-medium px-1.5 py-0.2 rounded-full ${
+                                prod.inventoryStatus === "in_stock"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : prod.inventoryStatus === "low_stock"
+                                  ? "bg-amber-500/10 text-amber-400"
+                                  : "bg-red-500/10 text-red-400"
+                              }`}
+                            >
+                              {prod.stockQuantity} in stock
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {assignedProducts.length > 10 && (
                     <div className="py-2.5 text-center text-[11px] text-white/40">
                       + {assignedProducts.length - 10} more products

@@ -446,7 +446,34 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
     const [[customer], items, statusHistory, cancellationRequests] = await Promise.all([
       executor.select({ id: users.id, name: users.fullName, phone: users.phone }).from(users).where(eq(users.id, order.userId)).limit(1),
-      executor.select().from(orderItems).where(eq(orderItems.orderId, orderId)).orderBy(asc(orderItems.createdAt)),
+      executor
+        .select({
+          id: orderItems.id,
+          orderId: orderItems.orderId,
+          productId: orderItems.productId,
+          cartItemId: orderItems.cartItemId,
+          variantId: orderItems.variantId,
+          productName: orderItems.productName,
+          sku: orderItems.sku,
+          imageUrl: orderItems.imageUrl,
+          selectedVariant: orderItems.selectedVariant,
+          size: orderItems.size,
+          quantity: orderItems.quantity,
+          unitPrice: orderItems.unitPrice,
+          totalPrice: orderItems.totalPrice,
+          createdAt: orderItems.createdAt,
+          brand: products.brand,
+          productColor: products.color,
+          productSizes: products.sizes,
+          productDimensions: products.dimensions,
+          variantColorName: productVariants.colorName,
+          variantSku: productVariants.sku,
+        })
+        .from(orderItems)
+        .leftJoin(products, eq(products.id, orderItems.productId))
+        .leftJoin(productVariants, eq(productVariants.id, orderItems.variantId))
+        .where(eq(orderItems.orderId, orderId))
+        .orderBy(asc(orderItems.createdAt)),
       executor.select().from(orderStatusHistory).where(eq(orderStatusHistory.orderId, orderId)).orderBy(asc(orderStatusHistory.createdAt)),
       executor.select().from(orderCancellationRequests).where(eq(orderCancellationRequests.orderId, orderId)).orderBy(desc(orderCancellationRequests.createdAt)),
     ]);
