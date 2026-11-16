@@ -58,6 +58,7 @@ export function useCart() {
           await addToServerCart.mutateAsync({
             productId: String(product.id),
             variantId: product.variantId,
+            size: product.size,
             quantity,
           });
           return true;
@@ -85,13 +86,14 @@ export function useCart() {
   );
 
   const removeFromCart = useCallback(
-    (id: string | number, variantId?: string) => {
+    (id: string | number, variantId?: string, size?: string) => {
       if (pendingGuestCart) return;
       if (user) {
         const itemIndex = cartItems.findIndex(
           (item) =>
             String(item.id) === String(id) &&
-            (!variantId || item.variantId === variantId),
+            (!variantId || item.variantId === variantId) &&
+            (!size || item.size === size),
         );
         const item = cartItems[itemIndex];
         const itemId = String(id);
@@ -117,7 +119,8 @@ export function useCart() {
             (cartItem) =>
               !(
                 String(cartItem.id) === itemId &&
-                (!variantId || cartItem.variantId === variantId)
+                (!variantId || cartItem.variantId === variantId) &&
+                (!size || cartItem.size === size)
               ),
           ),
         }));
@@ -140,7 +143,8 @@ export function useCart() {
               const alreadyRestored = state.cartItems.some(
                 (cartItem) =>
                   String(cartItem.id) === itemId &&
-                  (!variantId || cartItem.variantId === variantId),
+                  (!variantId || cartItem.variantId === variantId) &&
+                  (!size || cartItem.size === size),
               );
               if (alreadyRestored) return state;
               const restoredItems = [...state.cartItems];
@@ -164,18 +168,21 @@ export function useCart() {
       } else {
         // Guest: use local cart
         markAsGuestCart();
-        removeFromCartAction(id, variantId);
+        removeFromCartAction(id, variantId, size);
       }
     },
     [user, cartItems, queryClient, removeFromServerCart, removeFromCartAction, markAsGuestCart, pendingGuestCart, updatingItems]
   );
 
   const updateQuantity = useCallback(
-    (id: string | number, delta: number, variantId?: string) => {
+    (id: string | number, delta: number, variantId?: string, size?: string) => {
       if (pendingGuestCart) return;
       if (user) {
         const item = cartItems.find(
-          (i) => String(i.id) === String(id) && (!variantId || i.variantId === variantId)
+          (i) =>
+            String(i.id) === String(id) &&
+            (!variantId || i.variantId === variantId) &&
+            (!size || i.size === size)
         );
         if (!item) return;
 
@@ -185,7 +192,7 @@ export function useCart() {
         setError(null);
         setUpdatingItems((current) => [...current, String(id)]);
         // Reflect the change immediately; restore the previous value if the API fails.
-        updateQuantityAction(id, newQuantity - item.quantity, variantId);
+        updateQuantityAction(id, newQuantity - item.quantity, variantId, size);
         updateServerCartItem.mutate(
           {
             cartItemId: String(id),
@@ -196,7 +203,7 @@ export function useCart() {
               setUpdatingItems((current) => current.filter((itemId) => itemId !== String(id)));
             },
             onError: (error) => {
-              updateQuantityAction(id, item.quantity - newQuantity, variantId);
+              updateQuantityAction(id, item.quantity - newQuantity, variantId, size);
               setUpdatingItems((current) => current.filter((itemId) => itemId !== String(id)));
               setError("Could not update the cart. Please try again.");
               console.error("Failed to update cart item:", error);
@@ -206,7 +213,7 @@ export function useCart() {
       } else {
         // Guest: use local cart
         markAsGuestCart();
-        updateQuantityAction(id, delta, variantId);
+        updateQuantityAction(id, delta, variantId, size);
       }
     },
     [user, cartItems, updateServerCartItem, updateQuantityAction, updatingItems, markAsGuestCart, pendingGuestCart]

@@ -11,6 +11,7 @@ export const CreateOrderSchema = z.object({
   buyNowItem: z.object({
     productId: z.string().uuid(),
     variantId: z.string().uuid().nullable().optional(),
+    size: z.string().max(100).optional().nullable(),
     quantity: z.number().int().min(1).max(1000),
   }).optional(),
 });

@@ -10,6 +10,7 @@ export interface CartItem {
   price: number;
   image: string;
   color?: string;
+  size?: string;
   quantity: number;
   variantId?: string; // Support for product variants
   acceptCod?: boolean;
@@ -23,6 +24,7 @@ export interface AddToCartProduct {
   price: string;
   image: string;
   color?: string;
+  size?: string;
   variantId?: string;
   acceptCod?: boolean;
   acceptUpi?: boolean;
@@ -43,14 +45,15 @@ export interface PendingGuestCart {
   items: {
     productId: string;
     variantId: string | null;
+    size?: string | null;
     quantity: number;
   }[];
 }
 
 interface CartActions {
   addToCart: (product: AddToCartProduct, quantity?: number) => void;
-  removeFromCart: (id: string | number, variantId?: string) => void;
-  updateQuantity: (id: string | number, delta: number, variantId?: string) => void;
+  removeFromCart: (id: string | number, variantId?: string, size?: string) => void;
+  updateQuantity: (id: string | number, delta: number, variantId?: string, size?: string) => void;
   clearCart: () => void;
   setHydrated: (hydrated: boolean) => void;
   prepareGuestCartSync: () => PendingGuestCart | null;
@@ -67,25 +70,29 @@ interface CartActions {
 interface CartSelectors {
   getTotalItems: () => number;
   getSubtotal: () => number;
-  isInCart: (id: string | number, variantId?: string) => boolean;
+  isInCart: (id: string | number, variantId?: string, size?: string) => boolean;
 }
 
 type CartStore = CartState & CartActions & CartSelectors;
 
 // Helper function to generate a stable cart line key
-const getCartLineKey = (id: string | number, variantId?: string): string => {
-  return variantId ? `${id}-${variantId}` : String(id);
+const getCartLineKey = (id: string | number, variantId?: string, size?: string): string => {
+  const parts = [String(id)];
+  if (variantId) parts.push(variantId);
+  if (size) parts.push(size);
+  return parts.join('-');
 };
 
-// Helper to find cart item by product ID and optional variant
+// Helper to find cart item by product ID and optional variant/size
 const findCartItem = (
   items: CartItem[],
   id: string | number,
-  variantId?: string
+  variantId?: string,
+  size?: string,
 ): CartItem | undefined => {
   return items.find((item) => {
-    const itemKey = getCartLineKey(item.id, item.variantId);
-    const searchKey = getCartLineKey(id, variantId);
+    const itemKey = getCartLineKey(item.id, item.variantId, item.size);
+    const searchKey = getCartLineKey(id, variantId, size);
     return itemKey === searchKey;
   });
 };
@@ -135,7 +142,7 @@ export const useCartStore = create<CartStore>()(
         const validQuantity = validateQuantity(quantity);
         
         set((state) => {
-          const existing = findCartItem(state.cartItems, product.id, product.variantId);
+          const existing = findCartItem(state.cartItems, product.id, product.variantId, product.size);
           
           if (existing) {
             // Update existing item quantity
@@ -143,8 +150,8 @@ export const useCartStore = create<CartStore>()(
               cartSource: "guest",
               ownerUserId: null,
               cartItems: state.cartItems.map((item) => {
-                const itemKey = getCartLineKey(item.id, item.variantId);
-                const productKey = getCartLineKey(product.id, product.variantId);
+                const itemKey = getCartLineKey(item.id, item.variantId, item.size);
+                const productKey = getCartLineKey(product.id, product.variantId, product.size);
                 
                 if (itemKey === productKey) {
                   const newQuantity = validateQuantity(item.quantity + validQuantity);
@@ -163,6 +170,7 @@ export const useCartStore = create<CartStore>()(
             price: numericPrice,
             image: product.image,
             color: product.color || "Default",
+            size: product.size,
             quantity: validQuantity,
             variantId: product.variantId,
             acceptCod: product.acceptCod,
@@ -177,23 +185,23 @@ export const useCartStore = create<CartStore>()(
         });
       },
 
-      removeFromCart: (id, variantId) => {
+      removeFromCart: (id, variantId, size) => {
         set((state) => ({
           cartSource: "guest",
           ownerUserId: null,
           cartItems: state.cartItems.filter((item) => {
-            const itemKey = getCartLineKey(item.id, item.variantId);
-            const removeKey = getCartLineKey(id, variantId);
+            const itemKey = getCartLineKey(item.id, item.variantId, item.size);
+            const removeKey = getCartLineKey(id, variantId, size);
             return itemKey !== removeKey;
           }),
         }));
       },
 
-      updateQuantity: (id, delta, variantId) => {
+      updateQuantity: (id, delta, variantId, size) => {
         set((state) => ({
           cartItems: state.cartItems.map((item) => {
-            const itemKey = getCartLineKey(item.id, item.variantId);
-            const updateKey = getCartLineKey(id, variantId);
+            const itemKey = getCartLineKey(item.id, item.variantId, item.size);
+            const updateKey = getCartLineKey(id, variantId, size);
             
             if (itemKey === updateKey) {
               const newQuantity = validateQuantity(item.quantity + delta);
@@ -222,6 +230,7 @@ export const useCartStore = create<CartStore>()(
           items: state.cartItems.map((item) => ({
             productId: String(item.id),
             variantId: item.variantId ?? null,
+            size: item.size ?? null,
             quantity: item.quantity,
           })),
         };
@@ -300,8 +309,8 @@ export const useCartStore = create<CartStore>()(
         );
       },
 
-      isInCart: (id, variantId) => {
-        return !!findCartItem(get().cartItems, id, variantId);
+      isInCart: (id, variantId, size) => {
+        return !!findCartItem(get().cartItems, id, variantId, size);
       },
     }),
     {
@@ -432,6 +441,6 @@ export const useCartActions = () => {
 
 export const useCartTotalItems = () => useCartStore((state) => state.getTotalItems());
 export const useCartSubtotal = () => useCartStore((state) => state.getSubtotal());
-export const useIsInCart = (id: string | number, variantId?: string) =>
-  useCartStore((state) => state.isInCart(id, variantId));
+export const useIsInCart = (id: string | number, variantId?: string, size?: string) =>
+  useCartStore((state) => state.isInCart(id, variantId, size));
 export const useCartHydrated = () => useCartStore((state) => state.isHydrated);

@@ -20,6 +20,9 @@ export interface CreateProductRequest {
   sizes?: string[];
   material?: string;
   warranty?: string;
+  warrantyType?: 'none' | 'lifetime' | 'custom';
+  warrantyDuration?: number;
+  warrantyUnit?: 'days' | 'weeks' | 'months' | 'years';
   images: {
     imageUrl: string;
     cloudinaryPublicId?: string;
@@ -58,6 +61,9 @@ export interface ProductResponse {
   sizes?: string[];
   material?: string;
   warranty?: string;
+  warrantyType?: 'none' | 'lifetime' | 'custom';
+  warrantyDuration?: number;
+  warrantyUnit?: 'days' | 'weeks' | 'months' | 'years';
   images: {
     id: string;
     imageUrl: string;

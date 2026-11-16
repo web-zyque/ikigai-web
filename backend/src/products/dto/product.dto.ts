@@ -24,7 +24,12 @@ export const CreateProductSchema = z.object({
   color: z.string().optional(),
   dimensions: z.string().optional(),
   material: z.string().optional(),
-  warranty: z.string().optional(),
+  warranty: z.string().optional().nullable(),
+  warrantyType: z.enum(['none', 'lifetime', 'custom']).optional().nullable(),
+  warrantyDuration: z.number().int().positive().optional().nullable(),
+  warrantyUnit: z.enum(['days', 'weeks', 'months', 'years']).optional().nullable(),
+  sizeType: z.enum(['standard', 'inch']).optional().nullable(),
+  sizes: z.array(z.string()).optional().nullable(),
   
   images: z.array(z.object({
     imageUrl: z.string().url(),
@@ -95,6 +100,11 @@ export interface ProductResponse {
   dimensions?: string;
   material?: string;
   warranty?: string;
+  warrantyType?: 'none' | 'lifetime' | 'custom';
+  warrantyDuration?: number | null;
+  warrantyUnit?: 'days' | 'weeks' | 'months' | 'years' | null;
+  sizeType?: 'standard' | 'inch';
+  sizes?: string[];
   images: {
     id: string;
     imageUrl: string;

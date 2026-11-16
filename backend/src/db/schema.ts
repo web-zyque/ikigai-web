@@ -151,6 +151,11 @@ export const products = pgTable('products', {
   dimensions: text('dimensions'),
   material: text('material'),
   warranty: text('warranty'),
+  warrantyType: varchar('warranty_type', { length: 50 }),
+  warrantyDuration: integer('warranty_duration'),
+  warrantyUnit: varchar('warranty_unit', { length: 20 }),
+  sizeType: varchar('size_type', { length: 50 }),
+  sizes: json('sizes').$type<string[]>(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -162,6 +167,7 @@ export const productVariants = pgTable('product_variants', {
     .references(() => products.id, { onDelete: 'cascade' })
     .notNull(),
   colorName: text('color_name').notNull(),
+  size: text('size'),
   sku: text('sku'),
   stockQuantity: integer('stock_quantity').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -210,6 +216,7 @@ export const cartItems = pgTable(
     variantId: uuid('variant_id').references(() => productVariants.id, {
       onDelete: 'cascade',
     }),
+    size: text('size'),
     quantity: integer('quantity').notNull().default(1),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -382,9 +389,11 @@ export const orderItems = pgTable(
     imageUrl: text('image_url'),
     selectedVariant: json('selected_variant').$type<{
       id: string;
-      colorName: string;
+      colorName?: string | null;
       sku: string | null;
+      size?: string | null;
     } | null>(),
+    size: varchar('size', { length: 100 }),
     quantity: integer('quantity').notNull(),
     unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
     totalPrice: decimal('total_price', { precision: 12, scale: 2 }).notNull(),
