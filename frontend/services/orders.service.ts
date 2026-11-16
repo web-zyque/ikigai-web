@@ -18,9 +18,17 @@ export interface OrderItemRecord {
   imageUrl: string | null;
   selectedVariant: {
     id: string;
-    colorName: string;
+    colorName?: string | null;
     sku: string | null;
+    size?: string | null;
   } | null;
+  size?: string | null;
+  brand?: string | null;
+  productColor?: string | null;
+  productSizes?: string[] | null;
+  productDimensions?: string | null;
+  variantColorName?: string | null;
+  variantSku?: string | null;
   quantity: number;
   unitPrice: string;
   totalPrice: string;
