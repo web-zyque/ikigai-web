@@ -69,30 +69,34 @@ export default function CartPage() {
               <div className="space-y-4">
                 {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
                 {cartItems.map((item) => (
-                  <div key={`${item.id}-${item.variantId ?? "default"}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-b border-white/10 pb-4 last:border-0 last:pb-0">
+                  <div key={`${item.id}-${item.variantId ?? "default"}-${item.size ?? "nosize"}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-b border-white/10 pb-4 last:border-0 last:pb-0">
                     <div className="col-span-1 md:col-span-6 flex gap-4 items-center">
                       <div className="w-20 h-20 bg-[#0a0a0a] rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center p-2">
                         <Image src={item.image} alt={item.name} fill className="object-contain p-2 mix-blend-screen" />
                       </div>
                       <div>
                         <h3 className="text-white text-sm font-medium line-clamp-2">{item.name}</h3>
-                        {item.color && <p className="text-white/50 text-xs mt-1">Color: {item.color}</p>}
+                        <div className="flex flex-wrap gap-2 text-white/50 text-xs mt-1">
+                          {item.color && <span>Color: {item.color}</span>}
+                          {item.color && item.size && <span>•</span>}
+                          {item.size && <span>Size: {item.size}</span>}
+                        </div>
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-center items-center">
                       <span className="md:hidden text-white/50 text-xs">Quantity:</span>
                       <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-2 py-1 text-sm">
-                        <button type="button" onClick={() => updateQuantity(item.id, -1, item.variantId)} disabled={isCartSyncPending || item.quantity <= 1 || isUpdating(item.id) || isRemoving(item.id)} aria-label="Decrease quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Minus className="w-3 h-3" /></button>
+                        <button type="button" onClick={() => updateQuantity(item.id, -1, item.variantId, item.size)} disabled={isCartSyncPending || item.quantity <= 1 || isUpdating(item.id) || isRemoving(item.id)} aria-label="Decrease quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Minus className="w-3 h-3" /></button>
                         <span className="text-white font-medium w-5 text-center">{item.quantity}</span>
-                        <button type="button" onClick={() => updateQuantity(item.id, 1, item.variantId)} disabled={isCartSyncPending || isUpdating(item.id) || isRemoving(item.id)} aria-label="Increase quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Plus className="w-3 h-3" /></button>
+                        <button type="button" onClick={() => updateQuantity(item.id, 1, item.variantId, item.size)} disabled={isCartSyncPending || isUpdating(item.id) || isRemoving(item.id)} aria-label="Increase quantity" className="text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-1"><Plus className="w-3 h-3" /></button>
                       </div>
                     </div>
 
                     <div className="col-span-1 md:col-span-3 flex justify-between md:justify-end items-center gap-4">
                       <span className="md:hidden text-white/50 text-xs">Price:</span>
                       <span className="text-[#640C0C] font-bold text-base">${(item.price * item.quantity).toFixed(2)}</span>
-                      <button type="button" disabled={isCartSyncPending || isRemoving(item.id) || isUpdating(item.id)} onClick={() => removeFromCart(item.id, item.variantId)} aria-label={`Remove ${item.name} from cart`} aria-busy={isRemoving(item.id)} className="text-white/50 hover:text-[#640C0C] hover:scale-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                      <button type="button" disabled={isCartSyncPending || isRemoving(item.id) || isUpdating(item.id)} onClick={() => removeFromCart(item.id, item.variantId, item.size)} aria-label={`Remove ${item.name} from cart`} aria-busy={isRemoving(item.id)} className="text-white/50 hover:text-[#640C0C] hover:scale-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                         {isRemoving(item.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                       </button>
                     </div>

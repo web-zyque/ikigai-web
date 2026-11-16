@@ -74,12 +74,13 @@ export class OrdersService {
       if (prior) return this.loadOrder(tx, prior.id);
 
       let cart: typeof carts.$inferSelect | undefined;
-      let lines: Array<{ id?: string; productId: string; variantId: string | null; quantity: number }>;
+      let lines: Array<{ id?: string; productId: string; variantId: string | null; size?: string | null; quantity: number }>;
       if (dto.buyNowItem) {
         cart = undefined;
         lines = [{
           productId: dto.buyNowItem.productId,
           variantId: dto.buyNowItem.variantId ?? null,
+          size: dto.buyNowItem.size ?? null,
           quantity: dto.buyNowItem.quantity,
         }];
       } else {
@@ -112,10 +113,11 @@ export class OrdersService {
         productId: string;
         cartItemId: string | null;
         variantId: string | null;
+        size: string | null;
         productName: string;
         sku: string;
         imageUrl: string | null;
-        selectedVariant: { id: string; colorName: string; sku: string | null } | null;
+        selectedVariant: { id: string; colorName?: string | null; sku: string | null; size?: string | null } | null;
         quantity: number;
         unitPrice: string;
         totalPrice: string;
@@ -137,7 +139,7 @@ export class OrdersService {
           throw new BadRequestException(`${isOnline ? 'UPI' : 'Cash on Delivery'} is not available for ${product.name}`);
         }
 
-        let selectedVariant: { id: string; colorName: string; sku: string | null } | null = null;
+        let selectedVariant: { id: string; colorName?: string | null; sku: string | null; size?: string | null } | null = null;
         if (line.variantId) {
           const [variant] = await tx
             .select()
@@ -148,7 +150,12 @@ export class OrdersService {
           if (variant.stockQuantity < line.quantity) {
             throw new ConflictException(`Insufficient stock for ${product.name} (${variant.colorName})`);
           }
-          selectedVariant = { id: variant.id, colorName: variant.colorName, sku: variant.sku };
+          selectedVariant = { id: variant.id, colorName: variant.colorName, sku: variant.sku, size: line.size || null };
+        } else if (line.size) {
+          if (product.stockQuantity < line.quantity) {
+            throw new ConflictException(`Insufficient stock for ${product.name}`);
+          }
+          selectedVariant = { id: product.id, colorName: null, sku: product.sku, size: line.size };
         } else if (product.stockQuantity < line.quantity) {
           throw new ConflictException(`Insufficient stock for ${product.name}`);
         }
@@ -168,6 +175,7 @@ export class OrdersService {
           productId: product.id,
           cartItemId: line.id ?? null,
           variantId: line.variantId,
+          size: line.size ?? null,
           productName: product.name,
           sku: selectedVariant?.sku ?? product.sku,
           imageUrl: image?.imageUrl ?? null,

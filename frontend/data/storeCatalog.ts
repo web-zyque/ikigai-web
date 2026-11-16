@@ -16,6 +16,11 @@ export interface StoreProduct {
   features?: string[];
   material?: string;
   warranty?: string;
+  warrantyType?: 'none' | 'lifetime' | 'custom';
+  warrantyDuration?: number;
+  warrantyUnit?: string;
+  sizeType?: 'standard' | 'inch';
+  sizes?: string[];
   stockQuantity?: number;
   inStock?: boolean;
   acceptCod?: boolean;

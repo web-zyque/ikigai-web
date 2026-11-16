@@ -26,6 +26,65 @@ export class ProductsService {
     @Inject(DB) private db: NeonDatabase<typeof schema>,
   ) {}
 
+  private resolveWarrantyFields(dto: {
+    warranty?: string | null;
+    warrantyType?: 'none' | 'lifetime' | 'custom' | null;
+    warrantyDuration?: number | null;
+    warrantyUnit?: 'days' | 'weeks' | 'months' | 'years' | null;
+  }): {
+    warranty: string | null;
+    warrantyType: 'none' | 'lifetime' | 'custom' | null;
+    warrantyDuration: number | null;
+    warrantyUnit: 'days' | 'weeks' | 'months' | 'years' | null;
+  } {
+    let warrantyType = dto.warrantyType ?? null;
+    let warrantyDuration = dto.warrantyDuration ?? null;
+    let warrantyUnit = dto.warrantyUnit ?? null;
+    let warranty = dto.warranty?.trim() ?? null;
+
+    if (!warrantyType && warranty) {
+      const lower = warranty.toLowerCase();
+      if (lower === 'no warranty' || lower === 'none') {
+        warrantyType = 'none';
+        warranty = 'No Warranty';
+      } else if (lower.includes('lifetime')) {
+        warrantyType = 'lifetime';
+        warranty = 'Lifetime Warranty';
+      } else {
+        const match = warranty.match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)/i);
+        if (match) {
+          warrantyType = 'custom';
+          warrantyDuration = parseInt(match[1], 10) || 1;
+          const rawUnit = match[2].toLowerCase();
+          if (rawUnit.startsWith('day')) warrantyUnit = 'days';
+          else if (rawUnit.startsWith('week')) warrantyUnit = 'weeks';
+          else if (rawUnit.startsWith('month')) warrantyUnit = 'months';
+          else if (rawUnit.startsWith('year')) warrantyUnit = 'years';
+        }
+      }
+    } else if (warrantyType) {
+      if (warrantyType === 'none') {
+        warranty = 'No Warranty';
+        warrantyDuration = null;
+        warrantyUnit = null;
+      } else if (warrantyType === 'lifetime') {
+        warranty = 'Lifetime Warranty';
+        warrantyDuration = null;
+        warrantyUnit = null;
+      } else if (warrantyType === 'custom') {
+        const dur = Math.max(1, warrantyDuration || 1);
+        const u = warrantyUnit || 'years';
+        const unitLabel = dur === 1 ? u.replace(/s$/, '') : (u.endsWith('s') ? u : `${u}s`);
+        const capitalizedUnit = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
+        warranty = `${dur} ${capitalizedUnit} Warranty`;
+        warrantyDuration = dur;
+        warrantyUnit = u;
+      }
+    }
+
+    return { warranty, warrantyType, warrantyDuration, warrantyUnit };
+  }
+
   async createProduct(dto: CreateProductDto): Promise<ProductResponse> {
     if (!dto.acceptCod && !dto.acceptUpi) {
       throw new BadRequestException('At least one payment method must be enabled');
@@ -70,6 +129,11 @@ export class ProductsService {
       }
     }
 
+    const warrantyInfo = this.resolveWarrantyFields(dto);
+    const sizeValues = dto.sizes && dto.sizes.length > 0 ? dto.sizes : null;
+    const sizeType = sizeValues ? (dto.sizeType || 'standard') : null;
+    const dimensions = dto.dimensions || (sizeValues ? sizeValues.join(', ') : null);
+
     try {
       const [newProduct] = await this.db
         .insert(products)
@@ -90,9 +154,14 @@ export class ProductsService {
           vehicleCompatibility: dto.vehicleCompatibility,
           productType: dto.productType,
           color: dto.color,
-          dimensions: dto.dimensions,
+          dimensions,
+          sizeType,
+          sizes: sizeValues,
           material: dto.material,
-          warranty: dto.warranty,
+          warranty: warrantyInfo.warranty,
+          warrantyType: warrantyInfo.warrantyType,
+          warrantyDuration: warrantyInfo.warrantyDuration,
+          warrantyUnit: warrantyInfo.warrantyUnit,
         })
         .returning();
 
@@ -337,7 +406,32 @@ export class ProductsService {
       if (dto.color !== undefined) updateData.color = dto.color;
       if (dto.dimensions !== undefined) updateData.dimensions = dto.dimensions;
       if (dto.material !== undefined) updateData.material = dto.material;
-      if (dto.warranty !== undefined) updateData.warranty = dto.warranty;
+      if (
+        dto.warranty !== undefined ||
+        dto.warrantyType !== undefined ||
+        dto.warrantyDuration !== undefined ||
+        dto.warrantyUnit !== undefined
+      ) {
+        const warrantyInfo = this.resolveWarrantyFields({
+          warranty: dto.warranty !== undefined ? dto.warranty : existingProduct.warranty,
+          warrantyType: dto.warrantyType !== undefined ? dto.warrantyType : existingProduct.warrantyType,
+          warrantyDuration: dto.warrantyDuration !== undefined ? dto.warrantyDuration : existingProduct.warrantyDuration,
+          warrantyUnit: dto.warrantyUnit !== undefined ? dto.warrantyUnit : existingProduct.warrantyUnit,
+        });
+        updateData.warranty = warrantyInfo.warranty;
+        updateData.warrantyType = warrantyInfo.warrantyType;
+        updateData.warrantyDuration = warrantyInfo.warrantyDuration;
+        updateData.warrantyUnit = warrantyInfo.warrantyUnit;
+      }
+
+      if (dto.sizes !== undefined || dto.sizeType !== undefined) {
+        const sizeValues = dto.sizes && dto.sizes.length > 0 ? dto.sizes : null;
+        updateData.sizes = sizeValues;
+        updateData.sizeType = sizeValues ? (dto.sizeType || existingProduct.sizeType || 'standard') : null;
+        if (dto.dimensions === undefined && sizeValues) {
+          updateData.dimensions = sizeValues.join(', ');
+        }
+      }
 
       updateData.updatedAt = new Date();
 
@@ -851,6 +945,11 @@ export class ProductsService {
       dimensions: product.dimensions || undefined,
       material: product.material || undefined,
       warranty: product.warranty || undefined,
+      warrantyType: (product.warrantyType as 'none' | 'lifetime' | 'custom') || undefined,
+      warrantyDuration: product.warrantyDuration ?? null,
+      warrantyUnit: (product.warrantyUnit as 'days' | 'weeks' | 'months' | 'years') ?? null,
+      sizeType: (product.sizeType as 'standard' | 'inch') || undefined,
+      sizes: (product.sizes as string[]) || undefined,
       images: sortedAllImages.map(img => ({
         id: img.id,
         imageUrl: img.imageUrl,

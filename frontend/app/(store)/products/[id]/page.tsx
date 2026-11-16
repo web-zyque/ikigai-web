@@ -30,6 +30,9 @@ export interface ProductDetailItem {
   compatibility?: string[];
   material?: string;
   warranty?: string;
+  warrantyType?: 'none' | 'lifetime' | 'custom';
+  sizeType?: 'standard' | 'inch';
+  sizes?: string[];
   inStock?: boolean;
   stockQuantity?: number;
   partType?: string;
@@ -75,6 +78,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
   
   useEffect(() => {
     if (productColors.length > 0 && !selectedColor) {
@@ -84,6 +88,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       }
     }
   }, [productColors, apiProduct, selectedColor]);
+
+  useEffect(() => {
+    if (apiProduct?.sizes && apiProduct.sizes.length > 0 && !selectedSize) {
+      setSelectedSize(apiProduct.sizes[0]);
+    }
+  }, [apiProduct, selectedSize]);
 
   const activeVariant = useMemo(() => {
     if (!apiProduct?.variants || apiProduct.variants.length === 0) return null;
@@ -142,6 +152,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       compatibility: storeProduct.vehicleCompatibility,
       material: storeProduct.material,
       warranty: storeProduct.warranty,
+      warrantyType: storeProduct.warrantyType,
+      sizeType: storeProduct.sizeType,
+      sizes: storeProduct.sizes,
       inStock: storeProduct.inStock,
       stockQuantity: storeProduct.stockQuantity,
       partType: storeProduct.partType,
@@ -152,11 +165,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const images = useMemo(() => product?.images || [], [product]);
 
-  const isInLocalCart = useIsInCart(product?.id || "", selectedVariantId);
+  const isInLocalCart = useIsInCart(product?.id || "", selectedVariantId, selectedSize);
   const isInServerCart = serverCart?.items.some(
     (item) =>
       String(item.productId) === String(product?.id) &&
-      (item.variantId ?? "") === (selectedVariantId || ""),
+      (item.variantId ?? "") === (selectedVariantId || "") &&
+      (item.size ?? "") === (selectedSize || ""),
   );
   const isAdded = user
     ? (isInServerCart ?? isInLocalCart)
@@ -211,13 +225,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       return;
     }
 
-    // Add with quantity support and variant ID
+    // Add with quantity support, variant ID and size
     addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
       color: selectedColor,
+      size: selectedSize || undefined,
       variantId: selectedVariantId || undefined,
       acceptCod: apiProduct?.acceptCod,
       acceptUpi: apiProduct?.acceptUpi,
@@ -233,6 +248,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         price: product.price,
         image: product.image,
         color: selectedColor,
+        size: selectedSize || undefined,
         variantId: selectedVariantId || undefined,
         acceptCod: apiProduct?.acceptCod,
         acceptUpi: apiProduct?.acceptUpi,
@@ -476,6 +492,36 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   })}
                 </div>
                 <span className="text-xs text-neutral-300 font-medium">({selectedColor || activeVariant?.colorName || ""})</span>
+              </div>
+            )}
+
+            {apiProduct?.sizes && apiProduct.sizes.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                    {apiProduct.sizeType === "inch" ? "Sizes (Inches)" : "Sizes"}
+                  </span>
+                  <span className="text-xs text-neutral-300 font-medium">{selectedSize}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {apiProduct.sizes.map((sizeOption) => {
+                    const isSelected = selectedSize === sizeOption;
+                    return (
+                      <button
+                        key={sizeOption}
+                        type="button"
+                        onClick={() => setSelectedSize(sizeOption)}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-white text-black border-white shadow-md ring-2 ring-white/20"
+                            : "bg-[#161616] text-white/80 border-white/10 hover:border-white/30 hover:text-white"
+                        }`}
+                      >
+                        {sizeOption}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

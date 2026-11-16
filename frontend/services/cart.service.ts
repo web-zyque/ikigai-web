@@ -4,6 +4,7 @@ export interface CartItemResponse {
   id: string;
   productId: string;
   variantId?: string | null;
+  size?: string | null;
   quantity: number;
   createdAt: Date;
   updatedAt: Date;
@@ -20,6 +21,7 @@ export interface CartResponse {
 export interface AddToCartPayload {
   productId: string;
   variantId?: string;
+  size?: string;
   quantity: number;
 }
 
@@ -32,6 +34,7 @@ export interface MergeGuestCartPayload {
   items: {
     productId: string;
     variantId: string | null;
+    size?: string | null;
     quantity: number;
   }[];
 }

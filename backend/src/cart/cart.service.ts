@@ -87,6 +87,7 @@ export class CartService {
         id: item.id,
         productId: item.productId,
         variantId: item.variantId,
+        size: item.size,
         quantity: item.quantity,
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
@@ -103,12 +104,13 @@ export class CartService {
     const cartId = await this.getOrCreateCart(userId);
     const aggregated = new Map<
       string,
-      { productId: string; variantId: string | null; quantity: number }
+      { productId: string; variantId: string | null; size: string | null; quantity: number }
     >();
 
     for (const item of dto.items) {
       const variantId = item.variantId ?? null;
-      const key = `${item.productId}:${variantId ?? ''}`;
+      const size = item.size ?? null;
+      const key = `${item.productId}:${variantId ?? ''}:${size ?? ''}`;
       const existing = aggregated.get(key);
       const quantity = (existing?.quantity ?? 0) + item.quantity;
       if (quantity > 1000) {
@@ -116,12 +118,12 @@ export class CartService {
           'Total quantity would exceed maximum limit of 1000',
         );
       }
-      aggregated.set(key, { productId: item.productId, variantId, quantity });
+      aggregated.set(key, { productId: item.productId, variantId, size, quantity });
     }
 
     const lines = [...aggregated.values()].sort((a, b) =>
-      `${a.productId}:${a.variantId ?? ''}`.localeCompare(
-        `${b.productId}:${b.variantId ?? ''}`,
+      `${a.productId}:${a.variantId ?? ''}:${a.size ?? ''}`.localeCompare(
+        `${b.productId}:${b.variantId ?? ''}:${b.size ?? ''}`,
       ),
     );
     const payloadHash = createHash('sha256')
@@ -198,6 +200,9 @@ export class CartService {
                 line.variantId
                   ? eq(cartItems.variantId, line.variantId)
                   : isNull(cartItems.variantId),
+                line.size
+                  ? eq(cartItems.size, line.size)
+                  : isNull(cartItems.size),
               ),
             );
 
@@ -218,6 +223,7 @@ export class CartService {
               cartId,
               productId: line.productId,
               variantId: line.variantId,
+              size: line.size || null,
               quantity: line.quantity,
             });
           }
@@ -245,6 +251,7 @@ export class CartService {
           id: item.id,
           productId: item.productId,
           variantId: item.variantId,
+          size: item.size,
           quantity: item.quantity,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
@@ -301,6 +308,9 @@ export class CartService {
             dto.variantId
               ? eq(cartItems.variantId, dto.variantId)
               : isNull(cartItems.variantId),
+            dto.size
+              ? eq(cartItems.size, dto.size)
+              : isNull(cartItems.size),
           ),
         );
       const newQuantity = (existingItem?.quantity ?? 0) + dto.quantity;
@@ -320,6 +330,7 @@ export class CartService {
           cartId,
           productId: dto.productId,
           variantId: dto.variantId,
+          size: dto.size || null,
           quantity: dto.quantity,
         });
       }

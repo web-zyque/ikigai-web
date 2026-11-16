@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const AddToCartSchema = z.object({
   productId: z.string().uuid('Invalid product ID'),
   variantId: z.string().uuid('Invalid variant ID').optional(),
+  size: z.string().max(100).optional().nullable(),
   quantity: z
     .number()
     .int()
@@ -25,6 +26,7 @@ export const MergeGuestCartSchema = z.object({
       z.object({
         productId: z.string().uuid('Invalid product ID'),
         variantId: z.string().uuid('Invalid variant ID').nullable().optional(),
+        size: z.string().max(100).optional().nullable(),
         quantity: z
           .number()
           .int()
@@ -43,6 +45,7 @@ export interface CartItemResponse {
   id: string;
   productId: string;
   variantId?: string | null;
+  size?: string | null;
   quantity: number;
   createdAt: Date;
   updatedAt: Date;

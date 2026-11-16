@@ -240,7 +240,7 @@ export default function ProductDetailsModal({
       value:
         product.dimensions ||
         (product.sizes && product.sizes.length > 0
-          ? product.sizes.join(", ")
+          ? `${product.sizes.join(", ")}${product.sizeType ? ` (${product.sizeType === "inch" ? "Inch Sizes" : "Standard Sizes"})` : ""}`
           : "—"),
     },
     {

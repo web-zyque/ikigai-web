@@ -599,6 +599,7 @@ export default function CheckoutPage() {
                           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-white/50 truncate mt-0.5">
                             <span>₹{item.price.toFixed(2)}</span>
                             {item.color && <span>• {item.color}</span>}
+                            {item.size && <span>• Size: {item.size}</span>}
                           </div>
                         </div>
                       </div>
