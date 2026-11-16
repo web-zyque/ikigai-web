@@ -144,6 +144,25 @@ export default function ProductDetailsModal({
     return product.images || [];
   }, [product, selectedColor, selectedVariantId]);
 
+  const productSizes = useMemo(() => {
+    if (product?.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+      return product.sizes;
+    }
+    if (product?.dimensions) {
+      if (
+        product.sizeType ||
+        product.dimensions.toLowerCase().includes("inch") ||
+        product.dimensions.includes(",")
+      ) {
+        return product.dimensions
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  }, [product?.sizes, product?.sizeType, product?.dimensions]);
+
   if (!isOpen || !product) return null;
 
   const selling = parseFloat(product.sellingPrice) || 0;
@@ -233,14 +252,9 @@ export default function ProductDetailsModal({
     { label: "Brand", value: product.brand || "—" },
     { label: "Material", value: product.material || "—" },
     { label: "Warranty", value: product.warranty || "No Warranty" },
-    {
-      label: "Dimensions / Size",
-      value:
-        product.dimensions ||
-        (product.sizes && product.sizes.length > 0
-          ? `${product.sizes.join(", ")}${product.sizeType ? ` (${product.sizeType === "inch" ? "Inch Sizes" : "Standard Sizes"})` : ""}`
-          : "—"),
-    },
+    ...(product.dimensions && productSizes.length === 0
+      ? [{ label: "Dimensions", value: product.dimensions }]
+      : []),
     {
       label: "Payment Modes",
       value:
@@ -443,7 +457,7 @@ export default function ProductDetailsModal({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="rounded-xl border border-white/10 bg-[#161616] p-3.5 flex flex-col justify-between">
+              <div className="rounded-xl border border-white/5 bg-[#161616] p-3.5 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-white/50">
                     Selling Price
@@ -471,7 +485,7 @@ export default function ProductDetailsModal({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-[#161616] p-3.5 flex flex-col justify-between">
+              <div className="rounded-xl border border-white/5 bg-[#161616] p-3.5 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-white/50">
                     Stock Quantity
@@ -526,7 +540,7 @@ export default function ProductDetailsModal({
                   <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
                     Vehicle Compatibility
                   </span>
-                  <div className="flex flex-wrap gap-1.5 p-3 rounded-xl border border-white/5 bg-[#161616]">
+                  <div className="flex flex-wrap gap-1.5">
                     {product.vehicleCompatibility.map((veh, i) => (
                       <span
                         key={i}
@@ -538,6 +552,24 @@ export default function ProductDetailsModal({
                   </div>
                 </div>
               )}
+
+            {productSizes.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
+                  Available Sizes
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {productSizes.map((size, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-white/80 font-medium"
+                    >
+                      {size}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs text-white/50">
               <div className="flex items-center justify-between px-1">

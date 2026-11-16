@@ -162,7 +162,14 @@ export default function CategoryDetailsModal({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <span
+                className={`text-xs font-semibold ${
+                  category.isArchived ? "text-amber-400" : "text-emerald-400"
+                }`}
+              >
+                {category.isArchived ? "Archived" : "Active"}
+              </span>
               <button
                 type="button"
                 onClick={onClose}
@@ -230,16 +237,15 @@ export default function CategoryDetailsModal({
 
           {/* Scrollable Content Body with Clean Line-Divided Sections */}
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {/* Title Header with Archived badge if applicable */}
+            {/* Title Header with Total Products */}
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-snug truncate">
                 {category.name}
               </h2>
-              {category.isArchived && (
-                <span className="text-[11px] uppercase tracking-wider font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                  Archived
-                </span>
-              )}
+              <span className="text-xs text-white/50 font-medium shrink-0">
+                Total Products:{" "}
+                <span className="text-white font-semibold">{totalAssignedCount}</span>
+              </span>
             </div>
 
             {/* Category Image View Card with Full Visibility */}
@@ -260,70 +266,6 @@ export default function CategoryDetailsModal({
                 <p className="text-xs">No image available for this category</p>
               </div>
             )}
-
-            {/* Line-separated Metrics Section */}
-            <div className="pt-2 pb-5 border-y border-white/10">
-              <div className="grid grid-cols-2 divide-x divide-white/10 mt-1">
-                <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
-                  <span className="text-xs font-medium text-white/70">
-                    Assigned Products
-                  </span>
-                  <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                      {totalAssignedCount}
-                    </span>
-                    <span className="text-xs text-white/40">products</span>
-                  </div>
-                  <span className="mt-1 text-xs text-white/40">
-                    Catalogue items
-                  </span>
-                </div>
-
-                <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
-                  <span className="text-xs font-medium text-white/70">
-                    Category Status
-                  </span>
-                  <div className="mt-1 sm:mt-2 flex items-baseline gap-1.5">
-                    <span
-                      className={`text-xl sm:text-lg font-bold tracking-tight ${
-                        category.isArchived
-                          ? "text-amber-400"
-                          : "text-emerald-400"
-                      }`}
-                    >
-                      {category.isArchived ? "Archived" : "Active"}
-                    </span>
-                  </div>
-                  <span className="mt-1 text-xs text-white/40">
-                    {category.isArchived
-                      ? "Hidden from customer store"
-                      : "Visible on customer store"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Timestamps Section */}
-            <div className="pt-2 pb-5 border-b border-white/10 space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-white/50 block">
-                Timestamps
-              </span>
-              <div className="grid grid-cols-2 divide-x divide-white/10">
-                <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
-                  <span className="text-xs text-white/50">Created Date</span>
-                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
-                    {formatDate(category.createdAt)}
-                  </span>
-                </div>
-
-                <div className="flex flex-col justify-between py-1 px-2 sm:px-4">
-                  <span className="text-xs text-white/50">Last Updated</span>
-                  <span className="mt-1 text-sm text-white/90 font-medium truncate">
-                    {formatDate(category.updatedAt)}
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* Associated Products Section */}
             <div className="pt-2 pb-5 space-y-3">
@@ -382,6 +324,22 @@ export default function CategoryDetailsModal({
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Sticky Bottom Timestamps Footer */}
+          <div className="px-6 py-2.5 border-t border-white/10 bg-[#0e0e0e] shrink-0 flex items-center justify-between text-[11px] text-white/40">
+            <div>
+              <span>Created: </span>
+              <span className="font-mono text-white/60">
+                {formatDate(category.createdAt)}
+              </span>
+            </div>
+            <div>
+              <span>Last Updated: </span>
+              <span className="font-mono text-white/60">
+                {formatDate(category.updatedAt)}
+              </span>
             </div>
           </div>
         </div>
