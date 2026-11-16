@@ -509,7 +509,7 @@ export default function ProductDetailsModal({
                 {specItems.map((spec) => (
                   <div
                     key={spec.label}
-                    className="rounded-xl border border-white/5 bg-[#161616] px-3.5 py-2.5 flex items-center justify-between gap-2"
+                    className="rounded-xl  px-3.5 py-2.5 flex items-center justify-between gap-2"
                   >
                     <span className="text-xs text-white/50 shrink-0">
                       {spec.label}
