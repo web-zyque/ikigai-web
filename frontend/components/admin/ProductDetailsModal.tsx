@@ -570,20 +570,21 @@ export default function ProductDetailsModal({
                 </div>
               </div>
             )}
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs text-white/50">
-              <div className="flex items-center justify-between px-1">
-                <span>Created</span>
-                <span className="font-mono text-white/70">
-                  {formatDate(product.createdAt)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-1">
-                <span>Last Modified</span>
-                <span className="font-mono text-white/70">
-                  {formatDate(product.updatedAt || product.createdAt)}
-                </span>
-              </div>
+          {/* Sticky Bottom Timestamps Footer */}
+          <div className="px-6 py-2.5 border-t border-white/10 bg-[#0e0e0e] shrink-0 flex items-center justify-between text-[11px] text-white/40">
+            <div>
+              <span>Created: </span>
+              <span className="font-mono text-white/60">
+                {formatDate(product.createdAt)}
+              </span>
+            </div>
+            <div>
+              <span>Last Updated: </span>
+              <span className="font-mono text-white/60">
+                {formatDate(product.updatedAt || product.createdAt)}
+              </span>
             </div>
           </div>
         </div>
