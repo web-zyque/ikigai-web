@@ -13,7 +13,6 @@ export interface CreateProductRequest {
   lowStockThreshold: number;
   publicationStatus: 'active' | 'draft';
   vehicleCompatibility?: string[];
-  productType?: string;
   color?: string;
   dimensions?: string;
   sizeType?: 'standard' | 'inch';
@@ -54,7 +53,6 @@ export interface ProductResponse {
   inventoryStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
   publicationStatus: 'active' | 'draft';
   vehicleCompatibility?: string[];
-  productType?: string;
   color?: string;
   dimensions?: string;
   sizeType?: 'standard' | 'inch';

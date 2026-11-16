@@ -192,7 +192,6 @@ const mappedDemoProducts: StoreProduct[] = DEMO_PRODUCTS_DETAILS.map((p) => ({
   category: mapDemoCategorySlug(p.category.slug),
   categoryLabel: p.category.name,
   brand: p.brand || "Ikigai Customs",
-  partType: p.productType,
   vehicleCompatibility: p.vehicleCompatibility,
   description: p.description,
   material: p.material,

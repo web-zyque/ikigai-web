@@ -146,7 +146,6 @@ export const products = pgTable('products', {
 
   vehicleCompatibility: json('vehicle_compatibility').$type<string[]>(),
 
-  productType: text('product_type'),
   color: text('color'),
   dimensions: text('dimensions'),
   material: text('material'),
