@@ -311,11 +311,6 @@ export default function OrderDetailsModal({
                 <span className="text-[11px] font-mono uppercase tracking-wider text-white/40">
                   Customer Details
                 </span>
-                {order.userId && (
-                  <span className="font-mono text-[10px] text-white/30 truncate max-w-[100px]">
-                    #{order.userId.slice(0, 8)}
-                  </span>
-                )}
               </div>
               <div className="space-y-1 text-xs">
                 <p className="font-semibold text-white text-sm">
@@ -327,6 +322,14 @@ export default function OrderDetailsModal({
                 >
                   {order.customer?.phone || order.shippingAddress.phone}
                 </a>
+                {(order.customer?.email || (order.shippingAddress as any)?.email) && (
+                  <a
+                    href={`mailto:${order.customer?.email || (order.shippingAddress as any)?.email}`}
+                    className="text-white/60 hover:text-white transition-colors block text-xs truncate"
+                  >
+                    {order.customer?.email || (order.shippingAddress as any)?.email}
+                  </a>
+                )}
               </div>
             </div>
 
