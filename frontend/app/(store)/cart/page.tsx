@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Minus, Loader2 } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useMe } from "@/hooks/auth";
+import { clearBuyNowSelection } from "@/lib/buy-now-checkout";
 
 export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart, isUpdating, isRemoving, error, isCartSyncPending, cartSyncError, retryCartSync, discardGuestCartAndUseAccountCart } = useCart();
@@ -148,6 +149,7 @@ export default function CartPage() {
                 disabled={cartItems.length === 0}
                 className="w-full rounded-full bg-[#640C0C] text-white hover:opacity-90 h-12 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 onClick={() => {
+                  clearBuyNowSelection();
                   window.location.href = '/checkout';
                 }}
               >

@@ -148,6 +148,10 @@ function BestSellerCard({
 
   const handleBuyNow = () => {
     if (buyNowInFlight.current || product.inStock === false) return;
+    if (product.sizes && product.sizes.length > 0) {
+      router.push(`/products/${product.id}`);
+      return;
+    }
     buyNowInFlight.current = true;
     setIsPreparingCheckout(true);
     saveBuyNowSelection({ productId: String(product.id), variantId: null, quantity: 1 });
@@ -155,6 +159,10 @@ function BestSellerCard({
   };
 
   const handleAddToCart = () => {
+    if (product.sizes && product.sizes.length > 0) {
+      router.push(`/products/${product.id}`);
+      return;
+    }
     if (isAdded) return;
     addToCart({
       id: product.id,

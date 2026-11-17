@@ -19,11 +19,17 @@ export interface OrderItemRecord {
   selectedVariant: {
     id: string;
     colorName?: string | null;
+    colorHex?: string | null;
     sku: string | null;
     size?: string | null;
+    brand?: string | null;
+    warranty?: string | null;
   } | null;
   size?: string | null;
   brand?: string | null;
+  color?: string | null;
+  colorHex?: string | null;
+  warranty?: string | null;
   productColor?: string | null;
   productSizes?: string[] | null;
   productDimensions?: string | null;
@@ -81,6 +87,7 @@ export interface CreateOrderPayload {
   buyNowItem?: {
     productId: string;
     variantId?: string | null;
+    size?: string | null;
     quantity: number;
   };
 }

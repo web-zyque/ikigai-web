@@ -11,6 +11,7 @@ import {
   Printer,
   Copy,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 import type { OrderRecord, OrderStatusValue } from "@/services/orders.service";
 import { paymentsService } from "@/services/payments.service";
@@ -364,19 +365,36 @@ export default function OrderDetailsModal({
 
             <div className="rounded-xl border border-white/10 bg-[#0e0e0e] overflow-hidden divide-y divide-white/5">
               {order.items.map((item) => {
-                const selectedColor =
+                const rawColor =
+                  item.color ||
                   item.selectedVariant?.colorName ||
                   item.variantColorName ||
                   null;
+                const selectedColor =
+                  rawColor && !rawColor.includes(',') ? rawColor.trim() : null;
+
                 const colorInfo = selectedColor ? getColorInfo(selectedColor) : null;
-                const selectedSize =
+                const colorHex = item.colorHex || colorInfo?.hex || "#ffffff";
+
+                const rawSize =
                   item.size ||
                   item.selectedVariant?.size ||
                   null;
+                const selectedSize =
+                  rawSize && !rawSize.includes(',') && !rawSize.includes('[') ? rawSize.trim() : null;
+
                 const sku =
+                  item.sku ||
                   item.selectedVariant?.sku ||
                   item.variantSku ||
-                  item.sku ||
+                  null;
+                const brand =
+                  item.brand ||
+                  item.selectedVariant?.brand ||
+                  null;
+                const warranty =
+                  item.warranty ||
+                  item.selectedVariant?.warranty ||
                   null;
 
                 return (
@@ -398,9 +416,16 @@ export default function OrderDetailsModal({
 
                     <div className="flex-1 min-w-0 space-y-2">
                       <div>
-                        <h4 className="font-semibold text-white text-sm leading-snug">
-                          {item.productName}
-                        </h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-semibold text-white text-sm leading-snug">
+                            {item.productName}
+                          </h4>
+                          {brand && (
+                            <span className="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded bg-white/10 text-white/70 border border-white/10">
+                              {brand}
+                            </span>
+                          )}
+                        </div>
                         {sku && (
                           <p className="font-mono text-[11px] text-white/40 mt-0.5">
                             SKU: {sku}
@@ -426,7 +451,7 @@ export default function OrderDetailsModal({
                             <span className="inline-flex items-center gap-1.5 text-xs text-white/90 font-medium mt-0.5">
                               <span
                                 className="h-2.5 w-2.5 rounded-full border border-white/30 shrink-0"
-                                style={{ backgroundColor: colorInfo?.hex || "#fff" }}
+                                style={{ backgroundColor: colorHex }}
                               />
                               <span>{selectedColor}</span>
                             </span>
@@ -444,6 +469,18 @@ export default function OrderDetailsModal({
                           </div>
                         )}
 
+                        {warranty && (
+                          <div>
+                            <span className="text-white/40 block text-[10px] uppercase font-mono tracking-wider">
+                              Warranty
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium mt-0.5">
+                              <ShieldCheck className="h-3 w-3 shrink-0" />
+                              <span>{warranty}</span>
+                            </span>
+                          </div>
+                        )}
+
                         <div>
                           <span className="text-white/40 block text-[10px] uppercase font-mono tracking-wider">
                             Unit Price
@@ -452,6 +489,17 @@ export default function OrderDetailsModal({
                             ₹{parseFloat(item.unitPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                           </span>
                         </div>
+
+                        {item.totalPrice && (
+                          <div>
+                            <span className="text-white/40 block text-[10px] uppercase font-mono tracking-wider">
+                              Total
+                            </span>
+                            <span className="text-xs text-white font-semibold mt-0.5 block">
+                              ₹{parseFloat(item.totalPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

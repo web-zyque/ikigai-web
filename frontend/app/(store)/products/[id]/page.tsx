@@ -14,6 +14,7 @@ import { useStoreProduct, useStoreProducts } from "@/hooks/use-store-products";
 import { mapProductToStoreProduct, mapProductsToStoreProducts } from "@/lib/product-mapper";
 import ProductCard from "@/components/store/ProductCard";
 import { parseColorString, getColorInfo } from "@/lib/color-utils";
+import { saveBuyNowSelection } from "@/lib/buy-now-checkout";
 
 export interface ProductDetailItem {
   id: string | number;
@@ -239,19 +240,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const handleBuyNow = () => {
-    if (!isAdded) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        color: selectedColor,
-        size: selectedSize || undefined,
-        variantId: selectedVariantId || undefined,
-        acceptCod: apiProduct?.acceptCod,
-        acceptUpi: apiProduct?.acceptUpi,
-      }, quantity);
-    }
+    saveBuyNowSelection({
+      productId: String(product.id),
+      variantId: selectedVariantId || null,
+      size: selectedSize || null,
+      quantity,
+    });
     router.push("/checkout");
   };
 

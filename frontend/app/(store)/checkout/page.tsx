@@ -89,7 +89,8 @@ function createBuyNowCartItem(product: ProductResponse, selection: BuyNowSelecti
     name: product.name,
     price,
     image,
-    color: variant?.colorName ?? product.color ?? "Default",
+    color: variant?.colorName ?? (product.color && !product.color.includes(',') ? product.color : "Default"),
+    size: selection.size ?? undefined,
     quantity: selection.quantity,
     variantId: selection.variantId ?? undefined,
   };
@@ -460,6 +461,7 @@ export default function CheckoutPage() {
         ...(isBuyNowCheckout && buyNowSelection ? { buyNowItem: {
           productId: buyNowSelection.productId,
           variantId: buyNowSelection.variantId ?? null,
+          size: buyNowSelection.size ?? (buyNowItem?.size as string | undefined) ?? null,
           quantity: buyNowItem?.quantity ?? buyNowSelection.quantity,
         } } : {}),
       });
@@ -572,7 +574,7 @@ export default function CheckoutPage() {
                   {error && <p role="alert" className="py-3 text-sm text-red-400">{error}</p>}
                   {checkoutItems.map((item) => (
                     <div
-                      key={`${item.id}-${item.variantId ?? "default"}`}
+                      key={`${item.id}-${item.variantId ?? "default"}-${item.size ?? "nosize"}`}
                       className="py-3.5 md:py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-2 sm:gap-4 md:gap-6"
                     >
                       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 md:flex-none md:w-[46%]">

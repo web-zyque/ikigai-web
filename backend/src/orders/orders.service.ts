@@ -114,10 +114,22 @@ export class OrdersService {
         cartItemId: string | null;
         variantId: string | null;
         size: string | null;
+        color: string | null;
+        colorHex: string | null;
+        brand: string | null;
+        warranty: string | null;
         productName: string;
         sku: string;
         imageUrl: string | null;
-        selectedVariant: { id: string; colorName?: string | null; sku: string | null; size?: string | null } | null;
+        selectedVariant: {
+          id: string;
+          colorName?: string | null;
+          colorHex?: string | null;
+          sku: string | null;
+          size?: string | null;
+          brand?: string | null;
+          warranty?: string | null;
+        } | null;
         quantity: number;
         unitPrice: string;
         totalPrice: string;
@@ -139,7 +151,19 @@ export class OrdersService {
           throw new BadRequestException(`${isOnline ? 'UPI' : 'Cash on Delivery'} is not available for ${product.name}`);
         }
 
-        let selectedVariant: { id: string; colorName?: string | null; sku: string | null; size?: string | null } | null = null;
+        let selectedVariant: {
+          id: string;
+          colorName?: string | null;
+          sku: string | null;
+          size?: string | null;
+          brand?: string | null;
+          warranty?: string | null;
+        } | null = null;
+
+        let itemColor: string | null = null;
+        let itemSku: string = product.sku;
+        let itemSize: string | null = line.size || null;
+
         if (line.variantId) {
           const [variant] = await tx
             .select()
@@ -150,36 +174,98 @@ export class OrdersService {
           if (variant.stockQuantity < line.quantity) {
             throw new ConflictException(`Insufficient stock for ${product.name} (${variant.colorName})`);
           }
-          selectedVariant = { id: variant.id, colorName: variant.colorName, sku: variant.sku, size: line.size || null };
-        } else if (line.size) {
+          itemColor = variant.colorName;
+          itemSku = variant.sku || product.sku;
+          itemSize = line.size || variant.size || null;
+          selectedVariant = {
+            id: variant.id,
+            colorName: variant.colorName,
+            sku: itemSku,
+            size: itemSize,
+            brand: product.brand || null,
+            warranty: product.warranty || null,
+          };
+        } else {
+          // If no variantId is selected:
+          // Only if product.color is a single fixed color (no commas) and has no variants in productVariants
+          const hasComma = product.color && product.color.includes(',');
+          if (product.color && !hasComma) {
+            const [anyVariant] = await tx
+              .select({ id: productVariants.id })
+              .from(productVariants)
+              .where(eq(productVariants.productId, product.id))
+              .limit(1);
+            if (!anyVariant) {
+              itemColor = product.color;
+            }
+          }
+
           if (product.stockQuantity < line.quantity) {
             throw new ConflictException(`Insufficient stock for ${product.name}`);
           }
-          selectedVariant = { id: product.id, colorName: null, sku: product.sku, size: line.size };
-        } else if (product.stockQuantity < line.quantity) {
-          throw new ConflictException(`Insufficient stock for ${product.name}`);
+
+          if (itemSize || itemColor) {
+            selectedVariant = {
+              id: product.id,
+              colorName: itemColor,
+              sku: product.sku,
+              size: itemSize,
+              brand: product.brand || null,
+              warranty: product.warranty || null,
+            };
+          }
         }
 
-        const [image] = await tx
-          .select({ imageUrl: productImages.imageUrl })
-          .from(productImages)
-          .where(and(eq(productImages.productId, product.id), line.variantId
-            ? eq(productImages.variantId, line.variantId)
-            : sql`${productImages.variantId} IS NULL`))
-          .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder))
-          .limit(1);
+        let image: { imageUrl: string } | undefined;
+        if (line.variantId) {
+          [image] = await tx
+            .select({ imageUrl: productImages.imageUrl })
+            .from(productImages)
+            .where(and(eq(productImages.productId, product.id), eq(productImages.variantId, line.variantId)))
+            .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder))
+            .limit(1);
+        }
+        if (!image) {
+          [image] = await tx
+            .select({ imageUrl: productImages.imageUrl })
+            .from(productImages)
+            .where(eq(productImages.productId, product.id))
+            .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder))
+            .limit(1);
+        }
+
+        const itemBrand = product.brand ?? null;
+        const itemWarranty = product.warranty ?? null;
+
+        const richSelectedVariant = selectedVariant ? {
+          ...selectedVariant,
+          brand: itemBrand,
+          warranty: itemWarranty,
+        } : (itemColor || itemSize || itemBrand || itemWarranty ? {
+          id: product.id,
+          colorName: itemColor,
+          sku: itemSku,
+          size: itemSize,
+          brand: itemBrand,
+          warranty: itemWarranty,
+        } : null);
+
         const unitCents = cents(product.sellingPrice);
         const lineCents = unitCents * BigInt(line.quantity);
         subtotalCents += lineCents;
         itemSnapshots.push({
           productId: product.id,
           cartItemId: line.id ?? null,
-          variantId: line.variantId,
-          size: line.size ?? null,
+          variantId: line.variantId ?? null,
+          size: itemSize,
+          color: itemColor,
+          colorHex: null,
+          brand: itemBrand,
+          warranty: itemWarranty,
           productName: product.name,
-          sku: selectedVariant?.sku ?? product.sku,
+          sku: itemSku,
           imageUrl: image?.imageUrl ?? null,
-          selectedVariant,
+          selectedVariant: richSelectedVariant,
           quantity: line.quantity,
           unitPrice: money(unitCents),
           totalPrice: money(lineCents),
@@ -444,7 +530,7 @@ export class OrdersService {
   private async loadOrder(executor: any, orderId: string) {
     const [order] = await executor.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) throw new NotFoundException('Order not found');
-    const [[customer], items, statusHistory, cancellationRequests] = await Promise.all([
+    const [[customer], rawItems, statusHistory, cancellationRequests] = await Promise.all([
       executor.select({ id: users.id, name: users.fullName, phone: users.phone }).from(users).where(eq(users.id, order.userId)).limit(1),
       executor
         .select({
@@ -458,16 +544,21 @@ export class OrdersService {
           imageUrl: orderItems.imageUrl,
           selectedVariant: orderItems.selectedVariant,
           size: orderItems.size,
+          color: orderItems.color,
+          colorHex: orderItems.colorHex,
+          brand: orderItems.brand,
+          warranty: orderItems.warranty,
           quantity: orderItems.quantity,
           unitPrice: orderItems.unitPrice,
           totalPrice: orderItems.totalPrice,
           createdAt: orderItems.createdAt,
-          brand: products.brand,
-          productColor: products.color,
-          productSizes: products.sizes,
-          productDimensions: products.dimensions,
-          variantColorName: productVariants.colorName,
-          variantSku: productVariants.sku,
+          liveBrand: products.brand,
+          liveProductColor: products.color,
+          liveWarranty: products.warranty,
+          liveProductSizes: products.sizes,
+          liveProductDimensions: products.dimensions,
+          liveVariantColorName: productVariants.colorName,
+          liveVariantSku: productVariants.sku,
         })
         .from(orderItems)
         .leftJoin(products, eq(products.id, orderItems.productId))
@@ -477,6 +568,55 @@ export class OrdersService {
       executor.select().from(orderStatusHistory).where(eq(orderStatusHistory.orderId, orderId)).orderBy(asc(orderStatusHistory.createdAt)),
       executor.select().from(orderCancellationRequests).where(eq(orderCancellationRequests.orderId, orderId)).orderBy(desc(orderCancellationRequests.createdAt)),
     ]);
+
+    const items = await Promise.all(
+      rawItems.map(async (item: any) => {
+        let imageUrl = item.imageUrl;
+        if (!imageUrl && item.productId) {
+          const [fallbackImg] = await executor
+            .select({ imageUrl: productImages.imageUrl })
+            .from(productImages)
+            .where(eq(productImages.productId, item.productId))
+            .orderBy(desc(productImages.isMainImage), asc(productImages.displayOrder))
+            .limit(1);
+          imageUrl = fallbackImg?.imageUrl ?? null;
+        }
+
+        const brand = item.brand ?? item.selectedVariant?.brand ?? item.liveBrand ?? null;
+
+        // Color resolution: prioritize immutable snapshot. Never allow catalog strings containing commas (e.g. "Black, White")
+        let color = item.color ?? item.selectedVariant?.colorName ?? item.liveVariantColorName ?? null;
+        if (!color && item.liveProductColor && !item.liveProductColor.includes(',') && !item.liveVariantColorName) {
+          color = item.liveProductColor;
+        }
+        if (color && color.includes(',')) {
+          color = null;
+        }
+
+        const warranty = item.warranty ?? item.selectedVariant?.warranty ?? item.liveWarranty ?? null;
+
+        // Size resolution: prioritize snapshot. Never allow catalog lists containing commas or brackets
+        let size = item.size ?? item.selectedVariant?.size ?? null;
+        if (size && (size.includes(',') || size.includes('['))) {
+          size = null;
+        }
+
+        const sku = item.sku ?? item.selectedVariant?.sku ?? item.liveVariantSku ?? null;
+
+        return {
+          ...item,
+          imageUrl,
+          brand,
+          color,
+          warranty,
+          size,
+          sku,
+          variantColorName: item.liveVariantColorName ?? item.selectedVariant?.colorName ?? color ?? null,
+          productColor: color ?? null,
+        };
+      })
+    );
+
     return {
       ...order,
       customer: customer ? { id: customer.id, name: customer.name, phone: customer.phone } : null,

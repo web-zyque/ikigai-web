@@ -22,6 +22,7 @@ export interface Product {
   brand?: string;
   partType?: string;
   description?: string;
+  sizes?: string[];
   inStock?: boolean;
   acceptCod?: boolean;
   acceptUpi?: boolean;
@@ -55,6 +56,10 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (product.sizes && product.sizes.length > 0) {
+      router.push(`/products/${product.id}`);
+      return;
+    }
     if (isAdded || addInFlight.current || (showServerCartState && isCartSyncPending)) return;
     if (!showServerCartState) {
       addToCart({
@@ -91,6 +96,10 @@ export default function ProductCard({ product, showServerCartState = false }: Pr
 
   const handleBuyNow = () => {
     if (buyNowInFlight.current || product.inStock === false) return;
+    if (product.sizes && product.sizes.length > 0) {
+      router.push(`/products/${product.id}`);
+      return;
+    }
     buyNowInFlight.current = true;
     setIsPreparingCheckout(true);
     saveBuyNowSelection({ productId: String(product.id), variantId: null, quantity: 1 });

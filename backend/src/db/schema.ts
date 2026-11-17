@@ -389,10 +389,17 @@ export const orderItems = pgTable(
     selectedVariant: json('selected_variant').$type<{
       id: string;
       colorName?: string | null;
+      colorHex?: string | null;
       sku: string | null;
       size?: string | null;
+      brand?: string | null;
+      warranty?: string | null;
     } | null>(),
     size: varchar('size', { length: 100 }),
+    color: varchar('color', { length: 100 }),
+    colorHex: varchar('color_hex', { length: 30 }),
+    brand: varchar('brand', { length: 255 }),
+    warranty: varchar('warranty', { length: 255 }),
     quantity: integer('quantity').notNull(),
     unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
     totalPrice: decimal('total_price', { precision: 12, scale: 2 }).notNull(),

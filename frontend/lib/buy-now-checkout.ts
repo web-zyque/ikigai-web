@@ -1,6 +1,7 @@
 export interface BuyNowSelection {
   productId: string;
   variantId: string | null;
+  size?: string | null;
   quantity: number;
 }
 

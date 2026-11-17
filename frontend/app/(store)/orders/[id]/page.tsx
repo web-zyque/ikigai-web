@@ -162,9 +162,12 @@ export default function OrderDetailsPage() {
               <div>
                 <p>
                   {item.productName}
-                  {item.selectedVariant
+                  {item.color && !item.color.includes(',')
+                    ? ` · ${item.color}`
+                    : item.selectedVariant?.colorName && !item.selectedVariant.colorName.includes(',')
                     ? ` · ${item.selectedVariant.colorName}`
                     : ""}
+                  {item.size && !item.size.includes(',') ? ` · Size: ${item.size}` : ""}
                 </p>
                 <p className="text-sm text-white/50">
                   SKU {item.sku} · Qty {item.quantity}
