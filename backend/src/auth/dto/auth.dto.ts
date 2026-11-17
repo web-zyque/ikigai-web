@@ -45,11 +45,36 @@ export const CreateAdminSchema = z.object({
   role: z.enum(['ADMIN', 'STAFF']).default('STAFF'),
 });
 
+const staffPhoneSchema = z.string().trim().transform((value) => {
+  const cleaned = value.replace(/[\s()-]/g, '');
+  if (/^\d{10}$/.test(cleaned)) return `+91${cleaned}`;
+  if (/^91\d{10}$/.test(cleaned)) return `+${cleaned}`;
+  return cleaned;
+}).refine((value) => /^\+[1-9]\d{9,14}$/.test(value), 'Invalid phone number');
+
+export const CreateStaffSchema = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  email: z.string().trim().email().max(254),
+  phone: staffPhoneSchema,
+  password: z.string().min(12).max(72).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, 'Password must include uppercase, lowercase, a number, and a symbol'),
+  role: z.literal('STAFF').default('STAFF'),
+});
+
+export const UpdateStaffSchema = z.object({
+  fullName: z.string().trim().min(2).max(100).optional(),
+  email: z.string().trim().email().max(254).optional(),
+  phone: staffPhoneSchema.optional(),
+  role: z.literal('STAFF').optional(),
+  isActive: z.boolean().optional(),
+}).refine((value) => Object.keys(value).length > 0, 'At least one field is required');
+
 export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>;
 export type SendOtpDto = z.infer<typeof SendOtpSchema>;
 export type SignupDto = z.infer<typeof SignupSchema>;
 export type LoginDto = z.infer<typeof LoginSchema>;
 export type CreateAdminDto = z.infer<typeof CreateAdminSchema>;
+export type CreateStaffDto = z.infer<typeof CreateStaffSchema>;
+export type UpdateStaffDto = z.infer<typeof UpdateStaffSchema>;
 
 export const UpdateAdminProfileSchema = z.object({
   fullName: z.string().min(2).max(100).optional(),

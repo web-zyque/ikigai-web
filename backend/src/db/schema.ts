@@ -96,6 +96,7 @@ export const admins = pgTable('admins', {
   adminId: text('admin_id').notNull().unique(),
   fullName: text('full_name').notNull(),
   email: text('email').notNull().unique(),
+  phone: text('phone'),
   passwordHash: text('password_hash').notNull(),
   role: adminRoleEnum('role').default('ADMIN').notNull(),
   isActive: boolean('is_active').default(true).notNull(),

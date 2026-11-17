@@ -7,13 +7,13 @@
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { randomInt } from 'crypto';
+import { randomInt, randomBytes } from 'crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import { admins, otps, users } from '../db/schema';
-import type { CreateAdminDto, SignupDto, UpdateAdminProfileDto, ChangePasswordDto } from './dto/auth.dto';
+import type { CreateAdminDto, CreateStaffDto, SignupDto, UpdateAdminProfileDto, ChangePasswordDto, UpdateStaffDto } from './dto/auth.dto';
 
 const normalizePhone = (value: string) => {
   const cleaned = value.replace(/[\s()-]/g, '');
@@ -174,7 +174,7 @@ export class AuthService {
       const [admin] = await this.db
         .select()
         .from(admins)
-        .where(and(eq(admins.adminId, identifier), eq(admins.isActive, true)));
+        .where(and(identifier.includes('@') ? eq(admins.email, identifier.trim().toLowerCase()) : eq(admins.adminId, identifier), eq(admins.isActive, true)));
       if (!admin || !(await argon2.verify(admin.passwordHash, password))) {
         throw new UnauthorizedException('Invalid credentials');
       }
@@ -245,6 +245,38 @@ export class AuthService {
       }
       throw e;
     }
+  }
+
+  async listStaff() {
+    return this.db.select({ id: admins.id, adminId: admins.adminId, fullName: admins.fullName, email: admins.email, phone: admins.phone, role: admins.role, isActive: admins.isActive, createdAt: admins.createdAt }).from(admins).where(eq(admins.role, 'STAFF')).orderBy(desc(admins.createdAt));
+  }
+
+  async createStaff(dto: CreateStaffDto) {
+    const adminId = `staff_${randomBytes(8).toString('hex')}`;
+    try {
+      const [admin] = await this.db.insert(admins).values({ adminId, fullName: dto.fullName, email: dto.email.toLowerCase(), phone: dto.phone, passwordHash: await argon2.hash(dto.password), role: 'STAFF' }).returning({ id: admins.id, adminId: admins.adminId, fullName: admins.fullName, email: admins.email, phone: admins.phone, role: admins.role, isActive: admins.isActive, createdAt: admins.createdAt });
+      return admin;
+    } catch (e: any) {
+      if (e?.code === '23505') throw new ConflictException(e.constraint?.includes('phone') ? 'Phone number already registered' : 'Email already registered');
+      throw e;
+    }
+  }
+
+  async updateStaff(id: string, dto: UpdateStaffDto) {
+    try {
+      const [updated] = await this.db.update(admins).set({ ...dto, email: dto.email?.toLowerCase(), updatedAt: new Date() }).where(and(eq(admins.id, id), eq(admins.role, 'STAFF'))).returning({ id: admins.id, adminId: admins.adminId, fullName: admins.fullName, email: admins.email, phone: admins.phone, role: admins.role, isActive: admins.isActive, createdAt: admins.createdAt });
+      if (!updated) throw new BadRequestException('Staff account not found');
+      return updated;
+    } catch (e: any) {
+      if (e?.code === '23505') throw new ConflictException(e.constraint?.includes('phone') ? 'Phone number already registered' : 'Email already registered');
+      throw e;
+    }
+  }
+
+  async deleteStaff(id: string) {
+    const [deleted] = await this.db.delete(admins).where(and(eq(admins.id, id), eq(admins.role, 'STAFF'))).returning({ id: admins.id });
+    if (!deleted) throw new BadRequestException('Staff account not found');
+    return { ok: true };
   }
 
 

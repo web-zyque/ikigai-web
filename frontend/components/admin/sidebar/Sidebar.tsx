@@ -64,6 +64,9 @@ export default function AdminSidebar({
   profile = DEFAULT_PROFILE,
 }: SidebarProps) {
   const pathname = usePathname();
+  const visibleItems = profile?.role === "Staff"
+    ? items.filter((item) => item.href !== "/admin/staff")
+    : items;
 
   return (
     <>
@@ -153,7 +156,7 @@ export default function AdminSidebar({
             </p>
 
             <nav className="space-y-1.5">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   item.active !== undefined

@@ -226,6 +226,9 @@ export default function StaffTable({
                 Role
               </th>
               <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
+                Phone
+              </th>
+              <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
                 Join Date
               </th>
               <th className="px-6 py-3.5 font-medium uppercase tracking-wider whitespace-nowrap">
@@ -239,7 +242,7 @@ export default function StaffTable({
           <tbody className="divide-y divide-white/5">
             {paginatedStaff.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-white/40">
+                <td colSpan={7} className="px-6 py-12 text-center text-white/40">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Filter className="h-8 w-8 text-white/20 stroke-1" />
                     <p className="text-sm font-medium text-white/70">No staff members found</p>
@@ -271,6 +274,10 @@ export default function StaffTable({
 
                   <td className="px-6 py-4 whitespace-nowrap text-white/80">
                     {member.role}
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-white/60">
+                    {member.phone || "—"}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-white/60">

@@ -1,12 +1,7 @@
 export type StaffStatus = "Active" | "Inactive";
 
 export const STAFF_ROLES = [
-  "Store Manager",
-  "Fitment Specialist",
-  "Inventory Supervisor",
-  "Service Technician",
-  "Sales Executive",
-  "Support Agent",
+  "Staff",
 ] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number] | string;
@@ -30,4 +25,5 @@ export interface StaffFormData {
   role: string;
   joinDate: string;
   status: StaffStatus;
+  password?: string;
 }

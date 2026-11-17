@@ -1,8 +1,10 @@
 ﻿import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
   Patch,
   Post,
   Req,
@@ -12,9 +14,9 @@
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto, UpdateAdminProfileDto, ChangePasswordDto } from './dto/auth.dto';
-import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema, UpdateAdminProfileSchema, ChangePasswordSchema } from './dto/auth.dto';
-import { JwtAuthGuard } from './jwt/jwt-auth.guard';
+import type { LoginDto, SendOtpDto, SignupDto, VerifyOtpDto, CreateAdminDto, UpdateAdminProfileDto, ChangePasswordDto, CreateStaffDto, UpdateStaffDto } from './dto/auth.dto';
+import { LoginSchema, SendOtpSchema, SignupSchema, VerifyOtpSchema, CreateAdminSchema, UpdateAdminProfileSchema, ChangePasswordSchema, CreateStaffSchema, UpdateStaffSchema } from './dto/auth.dto';
+import { AdminGuard, JwtAuthGuard } from './jwt/jwt-auth.guard';
 
 const COOKIE_NAME = 'token';
 
@@ -84,12 +86,29 @@ export class AuthController {
     return this.auth.me(req.user.id, req.user.role);
   }
 
+  @UseGuards(AdminGuard)
   @Post('admin')
   @HttpCode(201)
   async createAdmin(@Body() body: unknown) {
     const dto = CreateAdminSchema.parse(body);
     return this.auth.createAdmin(dto);
   }
+
+  @UseGuards(AdminGuard)
+  @Get('staff')
+  listStaff() { return this.auth.listStaff(); }
+
+  @UseGuards(AdminGuard)
+  @Post('staff')
+  async createStaff(@Body() body: unknown) { return this.auth.createStaff(CreateStaffSchema.parse(body)); }
+
+  @UseGuards(AdminGuard)
+  @Patch('staff/:id')
+  async updateStaff(@Param('id') id: string, @Body() body: unknown) { return this.auth.updateStaff(id, UpdateStaffSchema.parse(body)); }
+
+  @UseGuards(AdminGuard)
+  @Delete('staff/:id')
+  deleteStaff(@Param('id') id: string) { return this.auth.deleteStaff(id); }
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
