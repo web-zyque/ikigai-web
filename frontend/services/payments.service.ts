@@ -22,6 +22,8 @@ export interface VerifiedPayment {
 }
 
 export interface PaymentHistory {
+  orderId?: string;
+  gateway?: string | null;
   attempts: Array<{
     id: string;
     provider: string;
@@ -31,26 +33,38 @@ export interface PaymentHistory {
     amount: string;
     currency: string;
     status: string;
+    failureReason?: string | null;
     sessionExpiresAt: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
   transactions: Array<{
+    id?: string;
+    paymentAttemptId?: string;
+    provider?: string;
+    providerOrderId?: string;
     providerPaymentId: string;
     amount: string;
     currency: string;
     status: string;
     paymentGroup: string | null;
     paidAt: string | null;
+    createdAt?: string;
   }>;
   refunds: Array<{
     id: string;
+    orderId?: string;
+    paymentAttemptId?: string;
+    merchantRefundId?: string;
     providerRefundId: string | null;
+    providerPaymentId: string;
     refundAmount: string;
     currency: string;
     status: string;
+    reason?: string | null;
+    failureReason?: string | null;
     createdAt: string;
-    updatedAt: string;
+    updatedAt?: string;
   }>;
 }
 
@@ -82,7 +96,7 @@ export const paymentsService = {
 
   adminHistory: (orderId: string) =>
     api
-      .get(`/admin/payments/cashfree/orders/${orderId}`)
+      .get<PaymentHistory>(`/admin/payments/cashfree/orders/${orderId}`)
       .then((r) => r.data),
 
   retryRefund: (refundId: string) =>

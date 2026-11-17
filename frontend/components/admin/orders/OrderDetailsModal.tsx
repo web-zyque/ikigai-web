@@ -12,9 +12,10 @@ import {
   Copy,
   Check,
   ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import type { OrderRecord, OrderStatusValue } from "@/services/orders.service";
-import { paymentsService } from "@/services/payments.service";
+import { paymentsService, type PaymentHistory } from "@/services/payments.service";
 import { getColorInfo } from "@/lib/color-utils";
 
 export interface OrderDetailsModalProps {
@@ -60,13 +61,10 @@ export default function OrderDetailsModal({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
-  const [paymentHistoryData, setPaymentHistoryData] = useState<{
-    attempts: Array<{ id: string; providerOrderId: string; providerPaymentId: string | null; amount: string; status: string; createdAt: string }>;
-    transactions: Array<{ providerPaymentId: string; amount: string; status: string; paymentGroup: string | null; paidAt: string | null }>;
-    refunds: Array<{ id: string; refundAmount: string; status: string; providerRefundId: string | null; createdAt: string }>;
-  } | null>(null);
+  const [paymentHistoryData, setPaymentHistoryData] = useState<PaymentHistory | null>(null);
   const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] = useState(false);
   const [paymentHistoryError, setPaymentHistoryError] = useState("");
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
     if (order) {
@@ -105,7 +103,25 @@ export default function OrderDetailsModal({
     setPaymentHistoryData(null);
     setPaymentHistoryError("");
     setIsCopied(false);
-  }, [order?.id, isOpen]);
+    setCopiedField(null);
+
+    if (isOpen && order?.id && order.paymentMethod === "ONLINE") {
+      setIsLoadingPaymentHistory(true);
+      paymentsService
+        .adminHistory(order.id)
+        .then((data) => {
+          setPaymentHistoryData(data as PaymentHistory);
+        })
+        .catch((err) => {
+          setPaymentHistoryError(
+            err instanceof Error ? err.message : "Failed to load payment history"
+          );
+        })
+        .finally(() => {
+          setIsLoadingPaymentHistory(false);
+        });
+    }
+  }, [order?.id, isOpen, order?.paymentMethod]);
 
   if (!isOpen || !order) return null;
 
@@ -119,37 +135,46 @@ export default function OrderDetailsModal({
     } catch {}
   };
 
+  const handleCopyText = async (text: string, fieldId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldId);
+      setTimeout(() => setCopiedField((cur) => (cur === fieldId ? null : cur)), 2000);
+    } catch {}
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
-  const loadPaymentHistory = async () => {
+  const togglePaymentHistory = async () => {
     if (showPaymentHistory) {
       setShowPaymentHistory(false);
       return;
     }
     setShowPaymentHistory(true);
-    if (paymentHistoryData) return;
-
-    setIsLoadingPaymentHistory(true);
-    setPaymentHistoryError("");
-    try {
-      const data = await paymentsService.adminHistory(order.id);
-      setPaymentHistoryData(data as typeof paymentHistoryData);
-    } catch (err) {
-      setPaymentHistoryError(
-        err instanceof Error ? err.message : "Failed to load payment history"
-      );
-    } finally {
-      setIsLoadingPaymentHistory(false);
+    if (!paymentHistoryData && !isLoadingPaymentHistory && order) {
+      setIsLoadingPaymentHistory(true);
+      setPaymentHistoryError("");
+      try {
+        const data = await paymentsService.adminHistory(order.id);
+        setPaymentHistoryData(data as PaymentHistory);
+      } catch (err) {
+        setPaymentHistoryError(
+          err instanceof Error ? err.message : "Failed to load payment history"
+        );
+      } finally {
+        setIsLoadingPaymentHistory(false);
+      }
     }
   };
 
   const handleRetryRefund = async (refundId: string) => {
+    if (!order) return;
     try {
       await paymentsService.retryRefund(refundId);
       const data = await paymentsService.adminHistory(order.id);
-      setPaymentHistoryData(data as typeof paymentHistoryData);
+      setPaymentHistoryData(data as PaymentHistory);
     } catch (err) {
       setPaymentHistoryError(
         err instanceof Error ? err.message : "Refund retry failed"
@@ -208,18 +233,100 @@ export default function OrderDetailsModal({
     }
   };
 
+  const formatGatewayName = (provider?: string | null) => {
+    if (!provider) return "Online Gateway";
+    const p = provider.trim().toUpperCase();
+    if (p === "CASHFREE") return "Cashfree";
+    if (p === "RAZORPAY") return "Razorpay";
+    if (p === "STRIPE") return "Stripe";
+    if (p === "PAYTM") return "Paytm";
+    if (p === "PHONEPE") return "PhonePe";
+    return provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase();
+  };
+
+  const formatPaymentMethod = (method?: string | null) => {
+    if (!method) return "Online";
+    const m = method.toLowerCase();
+    if (m === "upi") return "UPI";
+    if (m.includes("credit")) return "Credit Card";
+    if (m.includes("debit")) return "Debit Card";
+    if (m.includes("card")) return "Card";
+    if (m.includes("net") || m.includes("nb")) return "Net Banking";
+    if (m.includes("wallet")) return "Wallet";
+    if (m === "cod") return "Cash on Delivery";
+    return method.toUpperCase();
+  };
+
+  const getAttemptStatusBadge = (status: string) => {
+    const s = status.toUpperCase();
+    switch (s) {
+      case "SUCCESS":
+      case "PAID":
+        return {
+          label: "SUCCESS",
+          classes: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        };
+      case "FAILED":
+      case "USER_DROPPED":
+      case "CANCELLED":
+        return {
+          label: s === "USER_DROPPED" ? "DROPPED" : "FAILED",
+          classes: "bg-red-500/10 text-red-400 border-red-500/20",
+        };
+      case "PENDING":
+      case "CREATED":
+        return {
+          label: "PENDING",
+          classes: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        };
+      case "EXPIRED":
+        return {
+          label: "EXPIRED",
+          classes: "bg-white/10 text-white/50 border-white/10",
+        };
+      default:
+        return {
+          label: s,
+          classes: "bg-white/10 text-white/60 border-white/10",
+        };
+    }
+  };
+
+  const getRefundStatusBadge = (status: string) => {
+    const s = status.toUpperCase();
+    switch (s) {
+      case "SUCCESS":
+        return {
+          label: "REFUNDED",
+          classes: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        };
+      case "PROCESSING":
+      case "PENDING":
+        return {
+          label: "PROCESSING",
+          classes: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+        };
+      case "FAILED":
+        return {
+          label: "FAILED",
+          classes: "bg-red-500/10 text-red-400 border-red-500/20",
+        };
+      default:
+        return {
+          label: s,
+          classes: "bg-white/10 text-white/60 border-white/10",
+        };
+    }
+  };
+
   const getPaymentModeDisplay = () => {
     if (order.paymentMethod === "COD") {
       return "Cash on Delivery (COD)";
     }
-    const group = paymentHistoryData?.transactions?.[0]?.paymentGroup;
-    if (group) {
-      if (group.toLowerCase() === "upi") return "UPI";
-      if (group.toLowerCase().includes("card")) return "Card";
-      if (group.toLowerCase().includes("net")) return "Net Banking";
-      return group.toUpperCase();
-    }
-    return "UPI";
+    const group =
+      paymentHistoryData?.transactions?.[0]?.paymentGroup ||
+      paymentHistoryData?.attempts?.[0]?.method;
+    return formatPaymentMethod(group || "UPI");
   };
 
   const dateObj = new Date(order.createdAt);
@@ -511,23 +618,47 @@ export default function OrderDetailsModal({
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#0e0e0e] p-4 space-y-2.5 text-xs">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <div className="rounded-xl border border-white/10 bg-[#0e0e0e] p-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
               <span className="text-[11px] font-mono uppercase tracking-wider text-white/40">
                 Payment
               </span>
-              <span className={`font-semibold ${getPaymentStatusTextColor(order.paymentStatus)}`}>
+              <span
+                className={`font-semibold px-2 py-0.5 rounded text-[11px] tracking-wide border ${
+                  order.paymentStatus === "PAID"
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : order.paymentStatus === "REFUNDED"
+                    ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                    : order.paymentStatus === "FAILED"
+                    ? "bg-red-500/10 text-red-400 border-red-500/20"
+                    : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                }`}
+              >
                 {getPaymentStatusText(order.paymentStatus)}
               </span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-white/50">Method</span>
+                <span className="text-white/50">Payment Method</span>
                 <span className="font-medium text-white">
-                  {getPaymentModeDisplay()}
+                  {order.paymentMethod === "COD"
+                    ? "Cash on Delivery (COD)"
+                    : getPaymentModeDisplay()}
                 </span>
               </div>
+
+              {order.paymentMethod === "ONLINE" && (
+                <div className="flex items-center justify-between">
+                  <span className="text-white/50">Payment Gateway</span>
+                  <span className="font-medium text-white/90">
+                    {formatGatewayName(
+                      paymentHistoryData?.gateway ||
+                      paymentHistoryData?.attempts?.[0]?.provider
+                    )}
+                  </span>
+                </div>
+              )}
 
               {order.couponCode && (
                 <div className="flex items-center justify-between">
@@ -538,80 +669,339 @@ export default function OrderDetailsModal({
                 </div>
               )}
 
-              {order.paymentMethod === "ONLINE" && (
-                <div className="pt-1.5">
-                  <button
-                    type="button"
-                    onClick={loadPaymentHistory}
-                    className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <span>{showPaymentHistory ? "Hide Gateway History" : "View Gateway History"}</span>
-                    {showPaymentHistory ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </button>
-
-                  {showPaymentHistory && (
-                    <div className="mt-2 space-y-2 text-xs text-white/60 bg-[#0a0a0a] p-3 rounded-lg border border-white/10">
-                      {isLoadingPaymentHistory ? (
-                        <div className="flex items-center gap-2 py-1">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-white/60" />
-                          <span>Loading gateway history...</span>
-                        </div>
-                      ) : paymentHistoryError ? (
-                        <p className="text-red-400 text-xs">{paymentHistoryError}</p>
-                      ) : paymentHistoryData ? (
-                        <>
-                          {paymentHistoryData.attempts.map((attempt) => (
-                            <div key={attempt.id} className="border-b border-white/5 pb-1.5 last:border-b-0">
-                              <p className="font-medium text-white/80">
-                                Order {attempt.providerOrderId} · {attempt.status} · ₹{parseFloat(attempt.amount).toFixed(2)}
-                              </p>
-                              <p className="text-[10px] text-white/40 mt-0.5">
-                                {new Date(attempt.createdAt).toLocaleString()}
-                                {attempt.providerPaymentId && ` · Ref: ${attempt.providerPaymentId}`}
-                              </p>
-                            </div>
-                          ))}
-                          {paymentHistoryData.transactions.map((txn) => (
-                            <div key={txn.providerPaymentId} className="border-b border-white/5 pb-1.5 last:border-b-0">
-                              <p className="font-medium text-white/80">
-                                Txn {txn.providerPaymentId} · {txn.status} · ₹{parseFloat(txn.amount).toFixed(2)}
-                              </p>
-                              <p className="text-[10px] text-white/40 mt-0.5">
-                                {txn.paidAt ? new Date(txn.paidAt).toLocaleString() : "Pending"}
-                              </p>
-                            </div>
-                          ))}
-                          {paymentHistoryData.refunds.map((ref) => (
-                            <div key={ref.id} className="flex items-center justify-between border-b border-white/5 pb-1.5 last:border-b-0">
-                              <div>
-                                <p className="font-medium text-white/80">
-                                  Refund · {ref.status} · ₹{parseFloat(ref.refundAmount).toFixed(2)}
-                                </p>
-                                <p className="text-[10px] text-white/40 mt-0.5">
-                                  {ref.providerRefundId || ref.id}
-                                </p>
-                              </div>
-                              {ref.status === "FAILED" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRetryRefund(ref.id)}
-                                  className="text-[11px] text-red-400 underline cursor-pointer hover:text-red-300"
-                                >
-                                  Retry
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {paymentHistoryData.attempts.length === 0 && (
-                            <p className="text-white/40 text-xs py-1">No payment attempts recorded.</p>
-                          )}
-                        </>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                <span className="text-white/50">Total Amount</span>
+                <span className="font-bold text-white font-mono text-sm">
+                  ₹{parseFloat(order.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
+
+            {/* Collapsible Gateway History Toggle for ONLINE orders */}
+            {order.paymentMethod === "ONLINE" && (
+              <div className="pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={togglePaymentHistory}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-white/80 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5 text-white/60" />
+                    <span>Payment Gateway History</span>
+                    {paymentHistoryData?.attempts?.length ? (
+                      <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[10px] font-mono text-white/60">
+                        {paymentHistoryData.attempts.length}{" "}
+                        {paymentHistoryData.attempts.length === 1 ? "attempt" : "attempts"}
+                      </span>
+                    ) : null}
+                  </div>
+                  {showPaymentHistory ? (
+                    <ChevronUp className="h-3.5 w-3.5 text-white/60" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-white/60" />
+                  )}
+                </button>
+
+                {showPaymentHistory && (
+                  <div className="mt-2.5 space-y-3 pt-1">
+                    {isLoadingPaymentHistory && !paymentHistoryData ? (
+                      <div className="flex items-center gap-2 py-3 px-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-xs text-white/60">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-white/60" />
+                        <span>Loading payment gateway history...</span>
+                      </div>
+                    ) : paymentHistoryError ? (
+                      <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 space-y-1.5">
+                        <p>{paymentHistoryError}</p>
+                        <button
+                          type="button"
+                          onClick={togglePaymentHistory}
+                          className="text-[11px] underline text-red-300 hover:text-red-200 cursor-pointer"
+                        >
+                          Retry Loading
+                        </button>
+                      </div>
+                    ) : paymentHistoryData ? (
+                      <>
+                        {/* Chronological Payment Attempts */}
+                        {paymentHistoryData.attempts.length === 0 ? (
+                          <div className="p-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-white/40 text-xs text-center">
+                            No payment gateway attempts recorded for this order.
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {paymentHistoryData.attempts.map((attempt, index) => {
+                              const badge = getAttemptStatusBadge(attempt.status);
+                              const linkedTxn = paymentHistoryData.transactions?.find(
+                                (t) =>
+                                  t.paymentAttemptId === attempt.id ||
+                                  (attempt.providerPaymentId &&
+                                    t.providerPaymentId === attempt.providerPaymentId)
+                              );
+                              const transactionId =
+                                attempt.providerPaymentId || linkedTxn?.providerPaymentId || null;
+                              const transactionDate = linkedTxn?.paidAt || attempt.createdAt;
+
+                              return (
+                                <div
+                                  key={attempt.id}
+                                  className="rounded-lg border border-white/10 bg-[#0a0a0a] p-3 space-y-2.5"
+                                >
+                                  {/* Attempt Header */}
+                                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                    <span className="font-semibold text-white text-xs">
+                                      Attempt #{index + 1}
+                                    </span>
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider border ${badge.classes}`}
+                                    >
+                                      {badge.label}
+                                    </span>
+                                  </div>
+
+                                  {/* Attempt Field Grid */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                                    <div className="sm:col-span-2 flex items-center justify-between sm:justify-start sm:gap-2">
+                                      <span className="text-white/40">Transaction Amount:</span>
+                                      <span className="font-mono font-medium text-white">
+                                        ₹{parseFloat(attempt.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}{" "}
+                                        {attempt.currency}
+                                      </span>
+                                    </div>
+
+                                    {/* Gateway Order ID */}
+                                    <div className="sm:col-span-2 flex items-center justify-between gap-2 bg-white/[0.02] px-2.5 py-1.5 rounded border border-white/5">
+                                      <span className="text-white/40 shrink-0">Gateway Order ID:</span>
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="font-mono text-white/90 truncate text-[10px]">
+                                          {attempt.providerOrderId}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleCopyText(attempt.providerOrderId, `order-id-${attempt.id}`)
+                                          }
+                                          title="Copy Gateway Order ID"
+                                          className="text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+                                        >
+                                          {copiedField === `order-id-${attempt.id}` ? (
+                                            <Check className="h-3 w-3 text-emerald-400" />
+                                          ) : (
+                                            <Copy className="h-3 w-3" />
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Transaction ID */}
+                                    <div className="sm:col-span-2 flex items-center justify-between gap-2 bg-white/[0.02] px-2.5 py-1.5 rounded border border-white/5">
+                                      <span className="text-white/40 shrink-0">Transaction ID:</span>
+                                      {transactionId ? (
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="font-mono text-white/90 truncate text-[10px]">
+                                            {transactionId}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleCopyText(transactionId, `txn-id-${attempt.id}`)
+                                            }
+                                            title="Copy Transaction ID"
+                                            className="text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+                                          >
+                                            {copiedField === `txn-id-${attempt.id}` ? (
+                                              <Check className="h-3 w-3 text-emerald-400" />
+                                            ) : (
+                                              <Copy className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-white/30 italic text-[10px]">
+                                          None (Not generated or session incomplete)
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Gateway Reference Number (where available) */}
+                                    {(() => {
+                                      const refNo =
+                                        (attempt as any).gatewayReference ||
+                                        (linkedTxn as any)?.gatewayReference ||
+                                        (attempt as any).bankReference ||
+                                        (linkedTxn as any)?.bankReference ||
+                                        null;
+                                      if (!refNo) return null;
+
+                                      return (
+                                        <div className="sm:col-span-2 flex items-center justify-between gap-2 bg-white/[0.02] px-2.5 py-1.5 rounded border border-white/5">
+                                          <span className="text-white/40 shrink-0">Gateway Reference Number:</span>
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="font-mono text-white/90 truncate text-[10px]">
+                                              {refNo}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleCopyText(refNo, `ref-no-${attempt.id}`)
+                                              }
+                                              title="Copy Gateway Reference Number"
+                                              className="text-white/40 hover:text-white transition-colors cursor-pointer shrink-0"
+                                            >
+                                              {copiedField === `ref-no-${attempt.id}` ? (
+                                                <Check className="h-3 w-3 text-emerald-400" />
+                                              ) : (
+                                                <Copy className="h-3 w-3" />
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Transaction Date & Time */}
+                                    <div className="sm:col-span-2 flex items-center justify-between sm:justify-start sm:gap-2 text-[10px]">
+                                      <span className="text-white/40">Transaction Date & Time:</span>
+                                      <span className="font-mono text-white/70">
+                                        {new Date(transactionDate).toLocaleString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          year: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                          second: "2-digit",
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Failure Reason */}
+                                  {attempt.failureReason && (
+                                    <div className="rounded bg-red-500/10 border border-red-500/20 p-2 text-[11px] text-red-300 flex items-start gap-1.5">
+                                      <AlertCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
+                                      <div>
+                                        <span className="font-semibold text-red-400">Failure Reason: </span>
+                                        <span>{attempt.failureReason}</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Session Expiry */}
+                                  {attempt.status === "PENDING" && attempt.sessionExpiresAt && (
+                                    <div className="text-[10px] text-amber-400/80 font-mono">
+                                      Session expires: {new Date(attempt.sessionExpiresAt).toLocaleTimeString()}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Refunds History Block */}
+                        {paymentHistoryData.refunds && paymentHistoryData.refunds.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-white/5">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
+                              <span>Refund History</span>
+                              <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-[10px] font-mono text-white/50">
+                                {paymentHistoryData.refunds.length}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2">
+                              {paymentHistoryData.refunds.map((ref, refIndex) => {
+                                const refBadge = getRefundStatusBadge(ref.status);
+                                return (
+                                  <div
+                                    key={ref.id}
+                                    className="rounded-lg border border-white/10 bg-[#0a0a0a] p-3 space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-white text-xs">
+                                          Refund #{refIndex + 1}
+                                        </span>
+                                        <span className="font-mono text-xs font-bold text-white">
+                                          ₹{parseFloat(ref.refundAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}{" "}
+                                          {ref.currency}
+                                        </span>
+                                      </div>
+                                      <span
+                                        className={`px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider border ${refBadge.classes}`}
+                                      >
+                                        {refBadge.label}
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                                      {/* Merchant Refund ID */}
+                                      <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+                                        <span className="text-white/40">Merchant Refund ID:</span>
+                                        <span className="font-mono text-white/80 text-[10px]">
+                                          {ref.merchantRefundId || ref.id}
+                                        </span>
+                                      </div>
+
+                                      {/* Gateway Reference Number (Provider Refund ID) */}
+                                      <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+                                        <span className="text-white/40">Gateway Ref No:</span>
+                                        <span className="font-mono text-white/90 text-[10px]">
+                                          {ref.providerRefundId || "Pending Gateway Assignment"}
+                                        </span>
+                                      </div>
+
+                                      {/* Transaction ID */}
+                                      <div className="sm:col-span-2 flex items-center justify-between sm:justify-start sm:gap-2">
+                                        <span className="text-white/40">Original Transaction ID:</span>
+                                        <span className="font-mono text-white/80 text-[10px]">
+                                          {ref.providerPaymentId}
+                                        </span>
+                                      </div>
+
+                                      {/* Date */}
+                                      <div className="sm:col-span-2 flex items-center justify-between sm:justify-start sm:gap-2 text-[10px]">
+                                        <span className="text-white/40">Initiated At:</span>
+                                        <span className="font-mono text-white/60">
+                                          {new Date(ref.createdAt).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {ref.reason && (
+                                      <p className="text-[11px] text-white/60">
+                                        <span className="text-white/40">Reason:</span> {ref.reason}
+                                      </p>
+                                    )}
+
+                                    {ref.failureReason && (
+                                      <div className="rounded bg-red-500/10 border border-red-500/20 p-2 text-[11px] text-red-300">
+                                        <span className="font-semibold text-red-400">Failure: </span>
+                                        <span>{ref.failureReason}</span>
+                                      </div>
+                                    )}
+
+                                    {ref.status === "FAILED" && (
+                                      <div className="pt-1 flex justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRetryRefund(ref.id)}
+                                          className="inline-flex items-center gap-1 rounded bg-red-600/80 hover:bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors cursor-pointer"
+                                        >
+                                          Retry Refund
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-white/10 bg-[#0e0e0e] p-4 space-y-2.5 text-xs">

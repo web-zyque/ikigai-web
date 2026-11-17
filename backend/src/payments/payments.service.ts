@@ -34,6 +34,8 @@ type PaymentRow = {
   order_currency: string;
   payment_group?: string;
   payment_time?: string;
+  payment_message?: string;
+  bank_reference?: string;
 };
 
 @Injectable()
@@ -41,7 +43,7 @@ export class PaymentsService {
   constructor(
     @Inject(DB) private readonly db: NeonDatabase<typeof schema>,
     private readonly cashfree: CashfreeService,
-  ) {}
+  ) { }
 
   async createAttempt(userId: string, orderId: string, idempotencyKey: string) {
     const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
@@ -191,7 +193,14 @@ export class PaymentsService {
       } else if (payments.some((payment) => payment.payment_status === 'PENDING')) {
         await this.db.update(paymentAttempts).set({ status: 'PENDING', updatedAt: new Date() }).where(eq(paymentAttempts.id, attempt.id));
       } else if (payments.some((payment) => ['FAILED', 'USER_DROPPED'].includes(payment.payment_status))) {
-        await this.db.update(paymentAttempts).set({ status: 'FAILED', updatedAt: new Date() }).where(eq(paymentAttempts.id, attempt.id));
+        const failedPayment = payments.find((payment) => ['FAILED', 'USER_DROPPED'].includes(payment.payment_status));
+        const failureReason = failedPayment?.payment_message || (failedPayment?.payment_status === 'USER_DROPPED' ? 'Payment cancelled by customer' : 'Payment failed at gateway');
+        await this.db.update(paymentAttempts).set({
+          status: 'FAILED',
+          providerPaymentId: failedPayment?.cf_payment_id ? String(failedPayment.cf_payment_id) : attempt.providerPaymentId,
+          failureReason,
+          updatedAt: new Date()
+        }).where(eq(paymentAttempts.id, attempt.id));
       }
     }
     const [updated] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
@@ -255,9 +264,11 @@ export class PaymentsService {
         const verified = payments.find((item) => String(item.cf_payment_id) === providerPaymentId);
         if (verified?.payment_status === 'SUCCESS') await this.applyVerifiedPayment(providerOrderId, verified);
         else if (verified && ['FAILED', 'USER_DROPPED'].includes(verified.payment_status)) {
+          const failureReason = verified.payment_message || (verified.payment_status === 'USER_DROPPED' ? 'Payment cancelled by customer' : 'Payment failed at gateway');
           await this.db.update(paymentAttempts).set({
             status: 'FAILED',
             providerPaymentId: String(verified.cf_payment_id),
+            failureReason,
             updatedAt: new Date()
           }).where(eq(paymentAttempts.providerOrderId, providerOrderId));
         }
@@ -372,35 +383,47 @@ export class PaymentsService {
     const [order] = await this.db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) throw new NotFoundException('Order not found');
     if (order.userId !== userId) throw new ForbiddenException('Order does not belong to this account');
-    const attempts = await this.db.select().from(paymentAttempts).where(eq(paymentAttempts.orderId, orderId)).orderBy(desc(paymentAttempts.createdAt));
+    const attempts = await this.db.select().from(paymentAttempts).where(eq(paymentAttempts.orderId, orderId)).orderBy(asc(paymentAttempts.createdAt));
     const transactions = await this.db.select({
+      id: paymentTransactions.id,
+      paymentAttemptId: paymentTransactions.paymentAttemptId,
+      provider: paymentAttempts.provider,
+      providerOrderId: paymentAttempts.providerOrderId,
       providerPaymentId: paymentTransactions.providerPaymentId,
       amount: paymentTransactions.amount,
       currency: paymentTransactions.currency,
       status: paymentTransactions.status,
       paymentGroup: paymentTransactions.paymentGroup,
-      paidAt: paymentTransactions.paidAt
+      paidAt: paymentTransactions.paidAt,
+      createdAt: paymentTransactions.createdAt,
     }).from(paymentTransactions)
-      .innerJoin(paymentAttempts, eq(paymentAttempts.id, paymentTransactions.paymentAttemptId)).where(eq(paymentAttempts.orderId, orderId)).orderBy(desc(paymentTransactions.createdAt));
-    const refunds = await this.db.select().from(paymentRefunds).where(eq(paymentRefunds.orderId, orderId)).orderBy(desc(paymentRefunds.createdAt));
-    return { attempts: attempts.map((attempt) => this.publicAttempt(attempt)), transactions, refunds };
+      .innerJoin(paymentAttempts, eq(paymentAttempts.id, paymentTransactions.paymentAttemptId)).where(eq(paymentAttempts.orderId, orderId)).orderBy(asc(paymentTransactions.createdAt));
+    const refunds = await this.db.select().from(paymentRefunds).where(eq(paymentRefunds.orderId, orderId)).orderBy(asc(paymentRefunds.createdAt));
+    const gateway = attempts[0]?.provider || (order.paymentMethod === 'ONLINE' ? 'CASHFREE' : null);
+    return { orderId, gateway, attempts: attempts.map((attempt) => this.publicAttempt(attempt)), transactions, refunds };
   }
 
   async listAdminOrderPayments(orderId: string) {
-    const [order] = await this.db.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId)).limit(1);
+    const [order] = await this.db.select({ id: orders.id, paymentMethod: orders.paymentMethod }).from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) throw new NotFoundException('Order not found');
-    const attempts = await this.db.select().from(paymentAttempts).where(eq(paymentAttempts.orderId, orderId)).orderBy(desc(paymentAttempts.createdAt));
+    const attempts = await this.db.select().from(paymentAttempts).where(eq(paymentAttempts.orderId, orderId)).orderBy(asc(paymentAttempts.createdAt));
     const transactions = await this.db.select({
+      id: paymentTransactions.id,
+      paymentAttemptId: paymentTransactions.paymentAttemptId,
+      provider: paymentAttempts.provider,
+      providerOrderId: paymentAttempts.providerOrderId,
       providerPaymentId: paymentTransactions.providerPaymentId,
       amount: paymentTransactions.amount,
       currency: paymentTransactions.currency,
       status: paymentTransactions.status,
       paymentGroup: paymentTransactions.paymentGroup,
-      paidAt: paymentTransactions.paidAt
+      paidAt: paymentTransactions.paidAt,
+      createdAt: paymentTransactions.createdAt,
     }).from(paymentTransactions)
-      .innerJoin(paymentAttempts, eq(paymentAttempts.id, paymentTransactions.paymentAttemptId)).where(eq(paymentAttempts.orderId, orderId)).orderBy(desc(paymentTransactions.createdAt));
-    const refunds = await this.db.select().from(paymentRefunds).where(eq(paymentRefunds.orderId, orderId)).orderBy(desc(paymentRefunds.createdAt));
-    return { attempts: attempts.map((attempt) => this.publicAttempt(attempt)), transactions, refunds };
+      .innerJoin(paymentAttempts, eq(paymentAttempts.id, paymentTransactions.paymentAttemptId)).where(eq(paymentAttempts.orderId, orderId)).orderBy(asc(paymentTransactions.createdAt));
+    const refunds = await this.db.select().from(paymentRefunds).where(eq(paymentRefunds.orderId, orderId)).orderBy(asc(paymentRefunds.createdAt));
+    const gateway = attempts[0]?.provider || (order.paymentMethod === 'ONLINE' ? 'CASHFREE' : null);
+    return { orderId, gateway, attempts: attempts.map((attempt) => this.publicAttempt(attempt)), transactions, refunds };
   }
 
   private async applyVerifiedPayment(providerOrderId: string, payment: PaymentRow) {
@@ -590,6 +613,7 @@ export class PaymentsService {
       amount: attempt.amount,
       currency: attempt.currency,
       status: attempt.status,
+      failureReason: attempt.failureReason,
       sessionExpiresAt: attempt.sessionExpiresAt,
       createdAt: attempt.createdAt,
       updatedAt: attempt.updatedAt
